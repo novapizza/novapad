@@ -129,9 +129,9 @@ export function MenuBar({
         ],
       },
       {
-        label: 'Convert Case', submenu: [
+        label: 'Convert Case (UPPER/lower)', submenu: [
           { label: 'UPPERCASE', shortcut: `${mod}+Shift+U`, action: editorCmd('toUpperCase') },
-          { label: 'lowercase', shortcut: `${mod}+U`, action: editorCmd('toLowerCase') },
+          { label: 'lowercase', shortcut: `${mod}+Shift+L`, action: editorCmd('toLowerCase') },
           { label: 'Title Case', action: editorCmd('toTitleCase') },
         ],
       },
@@ -140,7 +140,7 @@ export function MenuBar({
       { label: 'Toggle Block Comment', shortcut: `${mod}+Shift+/`, action: editorCmd('toggleBlockComment') },
       { separator: true, label: '' },
       { label: 'Trim Trailing Whitespace', action: editorCmd('trimTrailingWhitespace') },
-      { label: 'Beautify (JSON / SQL / XML)', shortcut: `${mod}+${alt}+Shift+M`, action: editorCmd('beautify') },
+      { label: 'Beautify (JSON / SQL / XML / Markdown)', shortcut: `${mod}+${alt}+Shift+M`, action: editorCmd('beautify') },
       { label: 'Indent Selection', shortcut: 'Tab', action: editorCmd('indentSelection') },
       { label: 'Outdent Selection', shortcut: 'Shift+Tab', action: editorCmd('outdentSelection') },
     ],
@@ -326,7 +326,7 @@ export function MenuBar({
 
             {/* Dropdown */}
             {activeMenu === label && menuItems[label] && (
-              <div className="absolute top-full left-0 mt-0.5 min-w-[260px] max-h-[80vh] overflow-y-auto bg-popover border border-border rounded-md shadow-lg py-1 z-50">
+              <div className="absolute top-full left-0 mt-0.5 min-w-[260px] bg-popover border border-border rounded-md shadow-lg py-1 z-50">
                 {renderMenuItems(menuItems[label], label)}
               </div>
             )}

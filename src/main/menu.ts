@@ -168,10 +168,10 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
           ]
         },
         {
-          label: 'Convert Case',
+          label: 'Convert Case (UPPER/lower)',
           submenu: [
             { label: 'UPPERCASE', accelerator: 'CmdOrCtrl+Shift+U', click: () => win.webContents.send('editor:command', 'toUpperCase') },
-            { label: 'lowercase', accelerator: 'CmdOrCtrl+U', click: () => win.webContents.send('editor:command', 'toLowerCase') },
+            { label: 'lowercase', accelerator: 'CmdOrCtrl+Shift+L', click: () => win.webContents.send('editor:command', 'toLowerCase') },
             { label: 'Title Case', click: () => win.webContents.send('editor:command', 'toTitleCase') }
           ]
         },
@@ -192,7 +192,7 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
           click: () => win.webContents.send('editor:command', 'trimTrailingWhitespace')
         },
         {
-          label: 'Beautify (JSON / SQL / XML)',
+          label: 'Beautify (JSON / SQL / XML / Markdown)',
           accelerator: 'CmdOrCtrl+Alt+Shift+M',
           click: () => win.webContents.send('editor:command', 'beautify')
         },

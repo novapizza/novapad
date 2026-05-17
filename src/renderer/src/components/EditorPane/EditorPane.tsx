@@ -364,6 +364,17 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
       monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyM,
       () => window.dispatchEvent(new CustomEvent('editor:command', { detail: 'beautify' }))
     )
+    // Convert Case — register Ctrl+Shift+U / Ctrl+Shift+L directly on the
+    // editor so they fire reliably when Monaco has focus. Ctrl+Shift+L would
+    // otherwise be intercepted by Monaco's built-in selectHighlights action.
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyU,
+      () => window.dispatchEvent(new CustomEvent('editor:command', { detail: 'toUpperCase' }))
+    )
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyL,
+      () => window.dispatchEvent(new CustomEvent('editor:command', { detail: 'toLowerCase' }))
+    )
 
     // Re-run language autodetect whenever the user pastes content. Together
     // with on-load and on-save detection, this keeps syntax highlighting in
