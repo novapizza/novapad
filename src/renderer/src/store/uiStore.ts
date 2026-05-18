@@ -31,7 +31,15 @@ interface UIState {
   showFindReplace: boolean
   findReplaceMode: 'find' | 'replace' | 'findInFiles'
   findInitialTerm: string
-  /** Whether the live Markdown preview pane is open next to the editor. */
+  /**
+   * Whether the right-side preview pane is open. The pane's content is
+   * decided by the active buffer's type — Markdown gets the rendered HTML,
+   * .sqlplan / ShowPlanXML gets the modern execution-plan tree, .csv gets
+   * the Table Lens viewer. One flag drives all three so the user-visible
+   * state is "preview is open / closed".
+   */
+  showPreview: boolean
+  /** @deprecated kept temporarily for any callers that read it; mirrors showPreview. */
   showMarkdownPreview: boolean
   showAbout: boolean
   showBottomPanel: boolean
@@ -59,6 +67,9 @@ interface UIState {
   setWorkspaceFolder: (path: string | null) => void
   openFind: (mode?: 'find' | 'replace' | 'findInFiles', initialTerm?: string) => void
   closeFind: () => void
+  togglePreview: () => void
+  setShowPreview: (v: boolean) => void
+  /** @deprecated alias of togglePreview / setShowPreview. */
   toggleMarkdownPreview: () => void
   setMarkdownPreview: (v: boolean) => void
   setShowAbout: (v: boolean) => void
@@ -87,6 +98,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   showFindReplace: false,
   findReplaceMode: 'find',
   findInitialTerm: '',
+  showPreview: false,
   showMarkdownPreview: false,
   showAbout: false,
   showBottomPanel: false,
@@ -140,8 +152,10 @@ export const useUIStore = create<UIState>((set, get) => ({
   setWorkspaceFolder: (path) => set({ workspaceFolder: path }),
   openFind: (mode = 'find', initialTerm = '') => set({ showFindReplace: true, findReplaceMode: mode, findInitialTerm: initialTerm }),
   closeFind: () => set({ showFindReplace: false }),
-  toggleMarkdownPreview: () => set((s) => ({ showMarkdownPreview: !s.showMarkdownPreview })),
-  setMarkdownPreview: (v) => set({ showMarkdownPreview: v }),
+  togglePreview: () => set((s) => ({ showPreview: !s.showPreview, showMarkdownPreview: !s.showPreview })),
+  setShowPreview: (v) => set({ showPreview: v, showMarkdownPreview: v }),
+  toggleMarkdownPreview: () => set((s) => ({ showPreview: !s.showPreview, showMarkdownPreview: !s.showPreview })),
+  setMarkdownPreview: (v) => set({ showPreview: v, showMarkdownPreview: v }),
   setShowAbout: (v) => set({ showAbout: v }),
   setShowBottomPanel: (v) => set({ showBottomPanel: v }),
   setActiveBottomPanel: (p) => set({ activeBottomPanel: p }),

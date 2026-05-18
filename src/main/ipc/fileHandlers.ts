@@ -19,25 +19,37 @@ export function registerFileHandlers(): void {
       const content = iconv.decode(raw, encoding)
       const stats = await fs.promises.stat(filePath)
       const eol = content.includes('\r\n') ? 'CRLF' : content.includes('\r') ? 'CR' : 'LF'
+      // BOM detection: a faithful save needs to re-emit the BOM if the original
+      // file had one. Without this, .sqlplan (UTF-16 LE w/ BOM) and similar
+      // files become unreadable after the first save -- chardet can't reliably
+      // detect UTF-16 without the BOM signal, so reopen produces gibberish.
+      const hasBom =
+        raw.length >= 2 && (
+          (raw[0] === 0xFF && raw[1] === 0xFE) ||                                   // UTF-16 LE
+          (raw[0] === 0xFE && raw[1] === 0xFF) ||                                   // UTF-16 BE
+          (raw.length >= 3 && raw[0] === 0xEF && raw[1] === 0xBB && raw[2] === 0xBF) // UTF-8
+        )
       // Send the Magika sample as plain bytes (up to 16KB is enough for detection).
       const magikaSample = new Uint8Array(raw.buffer, raw.byteOffset, Math.min(raw.length, 16384))
-      return { content, encoding, eol, mtime: stats.mtimeMs, magikaSample, error: null }
+      return { content, encoding, eol, mtime: stats.mtimeMs, hasBom, magikaSample, error: null }
     } catch (err: any) {
-      return { content: '', encoding: 'UTF-8', eol: 'LF', mtime: 0, magikaSample: new Uint8Array(0), error: err.message }
+      return { content: '', encoding: 'UTF-8', eol: 'LF', mtime: 0, hasBom: false, magikaSample: new Uint8Array(0), error: err.message }
     }
   })
 
   // Write file and return the written bytes sample so the renderer can
   // re-run Magika to update syntax highlighting if the content now matches
   // a different format (e.g. untitled.txt saved with JSON content).
-  ipcMain.handle('file:write', async (_event, filePath: string, content: string, encoding = 'UTF-8', eol = 'LF') => {
+  ipcMain.handle('file:write', async (_event, filePath: string, content: string, encoding = 'UTF-8', eol = 'LF', hasBom = false) => {
     try {
       let normalized = content
       normalized = normalized.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
       if (eol === 'CRLF') normalized = normalized.replace(/\n/g, '\r\n')
       else if (eol === 'CR') normalized = normalized.replace(/\n/g, '\r')
 
-      const buf = iconv.encode(normalized, encoding)
+      // Preserve the original BOM if the file had one. iconv-lite supports
+      // addBOM for utf-8 / utf-16le / utf-16be variants.
+      const buf = iconv.encode(normalized, encoding, hasBom ? { addBOM: true } : {})
       // Tell the file watcher to ignore the change event our own write will trigger
       markSelfSaved(filePath)
       fs.writeFileSync(filePath, buf)

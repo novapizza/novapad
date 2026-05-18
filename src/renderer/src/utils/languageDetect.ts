@@ -29,6 +29,9 @@ const extMap: Record<string, string> = {
   bat: 'bat', cmd: 'bat',
   // Data
   sql: 'sql',
+  sqlplan: 'xml',   // SQL Server execution plan — XML under the hood; Ctrl+P opens the modern plan viewer
+  csv: 'csv',
+  tsv: 'csv',
   yaml: 'yaml', yml: 'yaml',
   toml: 'ini',
   ini: 'ini', cfg: 'ini', conf: 'ini',

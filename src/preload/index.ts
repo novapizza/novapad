@@ -9,8 +9,8 @@ const api = {
   // File operations
   file: {
     read: (filePath: string) => ipcRenderer.invoke('file:read', filePath),
-    write: (filePath: string, content: string, encoding?: string, eol?: string) =>
-      ipcRenderer.invoke('file:write', filePath, content, encoding, eol),
+    write: (filePath: string, content: string, encoding?: string, eol?: string, hasBom?: boolean) =>
+      ipcRenderer.invoke('file:write', filePath, content, encoding, eol, hasBom),
     saveDialog: (defaultPath?: string, suggestedExt?: string | null) =>
       ipcRenderer.invoke('file:save-dialog', defaultPath, suggestedExt),
     openDialog: () => ipcRenderer.invoke('file:open-dialog'),

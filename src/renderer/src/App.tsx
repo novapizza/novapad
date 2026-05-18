@@ -17,12 +17,40 @@ import { BottomPanelContainer } from './components/Panels/BottomPanelContainer'
 import { FindReplaceDialog } from './components/Dialogs/FindReplace/FindReplaceDialog'
 import { AboutDialog } from './components/Dialogs/AboutDialog/AboutDialog'
 import { Sidebar } from './components/Sidebar/Sidebar'
-// Lazy-loaded: react-markdown + remark-gfm + rehype-highlight + highlight.js +
-// merslim weigh ~1 MB together. Only fetched the first time the user opens
-// the preview pane (Ctrl+Alt+Shift+M on a .md file).
+// Lazy-loaded preview panes — each pulls heavy deps that stay out of the
+// main bundle until the user actually opens the preview.
 const MarkdownPreviewPane = lazy(() =>
   import('./components/MarkdownPreview/MarkdownPreviewPane').then((m) => ({ default: m.MarkdownPreviewPane }))
 )
+const SqlPlanPreviewPane = lazy(() =>
+  import('./components/SqlPlanPreview/SqlPlanPreviewPane').then((m) => ({ default: m.SqlPlanPreviewPane }))
+)
+const TableLensPreviewPane = lazy(() =>
+  import('./components/CsvViewer/TableLensPreviewPane').then((m) => ({ default: m.TableLensPreviewPane }))
+)
+
+/** Decide which preview component to render for a given buffer. */
+function detectPreviewKind(
+  language: string | null | undefined,
+  filePath: string | null | undefined,
+  content: string | null | undefined
+): 'markdown' | 'sqlplan' | 'csv' | null {
+  if (language === 'markdown') return 'markdown'
+  // .csv / .tsv extension wins (Monaco may load these as plain text).
+  const ext = filePath?.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1]
+  if (ext === 'csv' || ext === 'tsv') return 'csv'
+  if (language === 'csv') return 'csv'
+  // .sqlplan files load as XML in Monaco; detect by extension OR by content
+  // so any XML buffer containing a SQL Server ShowPlan is also routed here.
+  if (ext === 'sqlplan') return 'sqlplan'
+  if ((language === 'xml' || language === 'html') && content) {
+    const head = content.slice(0, 4096)
+    if (/<ShowPlanXML|http:\/\/schemas\.microsoft\.com\/sqlserver\/2004\/07\/showplan/.test(head)) {
+      return 'sqlplan'
+    }
+  }
+  return null
+}
 import { Toaster, toast } from './components/ui/sonner'
 import { useEditorStore } from './store/editorStore'
 import { useUIStore } from './store/uiStore'
@@ -41,10 +69,14 @@ export default function App() {
   const { activeId, buffers } = useEditorStore()
   const activeBuffer = buffers.find((b) => b.id === activeId)
   const activeKind = activeBuffer?.kind ?? 'file'
-  const { theme, showToolbar, showStatusBar, showBottomPanel, showSidebar, openFind, csvViewerOpen, csvViewerText, csvViewerFileName, showMarkdownPreview } = useUIStore()
-  // Markdown preview pane only renders for actual markdown buffers — if the
-  // user toggles it on then switches to a non-markdown tab, the pane hides.
-  const previewVisible = showMarkdownPreview && activeBuffer?.language === 'markdown' && activeKind === 'file'
+  const { theme, showToolbar, showStatusBar, showBottomPanel, showSidebar, openFind, csvViewerOpen, csvViewerText, csvViewerFileName, showPreview } = useUIStore()
+  // The right-side preview pane renders when the user toggled showPreview AND
+  // the active buffer's type is one we know how to preview. The pane
+  // component is decided per-buffer so switching tabs swaps the preview.
+  const previewKind = (showPreview && activeKind === 'file' && activeBuffer)
+    ? detectPreviewKind(activeBuffer.language, activeBuffer.filePath, activeBuffer.content ?? null)
+    : null
+  const previewVisible = previewKind !== null
   const { openFiles, newFile, saveBuffer, saveActiveAs, closeBuffer, reloadBuffer, loadBuffer, restoreSession } = useFileOps()
   // Mount window-level keyboard (Alt+Left/Right or Ctrl+-) and mouse
   // back/forward button listeners that drive navigation history.
@@ -328,6 +360,7 @@ export default function App() {
           title: b.filePath ? null : b.title,
           language: b.language,
           encoding: b.encoding,
+          hasBom: b.hasBom,
           eol: b.eol,
           // Use live viewState if available, fall back to savedViewState for ghost tabs
           viewState: b.viewState ? JSON.parse(JSON.stringify(b.viewState)) : b.savedViewState,
@@ -513,13 +546,15 @@ export default function App() {
                         id="md-preview-resize"
                         className="w-1 bg-border cursor-col-resize shrink-0 transition-colors hover:bg-primary data-[resize-handle-active]:bg-primary"
                       />
-                      <Panel id="md-preview" order={2} defaultSize={45} minSize={20}>
+                      <Panel id="preview-pane" order={2} defaultSize={45} minSize={20}>
                         <Suspense fallback={
                           <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
                             Loading preview…
                           </div>
                         }>
-                          <MarkdownPreviewPane />
+                          {previewKind === 'markdown' && <MarkdownPreviewPane />}
+                          {previewKind === 'sqlplan' && <SqlPlanPreviewPane />}
+                          {previewKind === 'csv' && <TableLensPreviewPane />}
                         </Suspense>
                       </Panel>
                     </>

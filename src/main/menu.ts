@@ -192,9 +192,14 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
           click: () => win.webContents.send('editor:command', 'trimTrailingWhitespace')
         },
         {
-          label: 'Beautify (JSON / SQL / XML / Markdown)',
+          label: 'Beautify (JSON / SQL / XML) — Markdown Preview',
           accelerator: 'CmdOrCtrl+Alt+Shift+M',
           click: () => win.webContents.send('editor:command', 'beautify')
+        },
+        {
+          label: 'Remove Duplicate Lines',
+          accelerator: 'CmdOrCtrl+Alt+Shift+C',
+          click: () => win.webContents.send('editor:command', 'removeDuplicates')
         },
         {
           label: 'Indent Selection',
@@ -282,6 +287,11 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
           type: 'checkbox',
           checked: true,
           click: (item) => win.webContents.send('ui:toggle-sidebar', item.checked)
+        },
+        {
+          label: 'Toggle Preview Pane',
+          accelerator: 'CmdOrCtrl+P',
+          click: () => win.webContents.send('editor:command', 'togglePreview')
         },
         { type: 'separator' },
         {

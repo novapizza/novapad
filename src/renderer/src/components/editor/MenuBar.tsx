@@ -140,7 +140,8 @@ export function MenuBar({
       { label: 'Toggle Block Comment', shortcut: `${mod}+Shift+/`, action: editorCmd('toggleBlockComment') },
       { separator: true, label: '' },
       { label: 'Trim Trailing Whitespace', action: editorCmd('trimTrailingWhitespace') },
-      { label: 'Beautify (JSON / SQL / XML / Markdown)', shortcut: `${mod}+${alt}+Shift+M`, action: editorCmd('beautify') },
+      { label: 'Beautify (JSON / SQL / XML) — Markdown Preview', shortcut: `${mod}+${alt}+Shift+M`, action: editorCmd('beautify') },
+      { label: 'Remove Duplicate Lines', shortcut: `${mod}+${alt}+Shift+C`, action: editorCmd('removeDuplicates') },
       { label: 'Indent Selection', shortcut: 'Tab', action: editorCmd('indentSelection') },
       { label: 'Outdent Selection', shortcut: 'Shift+Tab', action: editorCmd('outdentSelection') },
     ],
@@ -160,6 +161,7 @@ export function MenuBar({
       { label: showToolbar ? 'Hide Toolbar' : 'Show Toolbar', action: () => setShowToolbar(!showToolbar) },
       { label: showStatusBar ? 'Hide Status Bar' : 'Show Status Bar', action: () => setShowStatusBar(!showStatusBar) },
       { label: showSidebar ? 'Hide Sidebar' : 'Show Sidebar', icon: showSidebar ? <PanelLeftClose size={18} /> : <PanelLeft size={18} />, shortcut: `${mod}+B`, action: () => setShowSidebar(!showSidebar) },
+      { label: 'Toggle Preview Pane', shortcut: `${mod}+P`, action: editorCmd('togglePreview') },
       { separator: true, label: '' },
       {
         label: 'Word Wrap', shortcut: `${alt}+Z`, checked: wordWrap,

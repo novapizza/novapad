@@ -171,6 +171,40 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
         if (id) clearBookmarks(id)
         break
       }
+      case 'togglePreview': {
+        // Ctrl+P: open the right-side preview pane if the active buffer is
+        // a previewable type (.sqlplan / xml-with-ShowPlan / .csv / .md).
+        // App.tsx decides which component to render from buffer state.
+        useUIStore.getState().togglePreview()
+        break
+      }
+      case 'removeDuplicates': {
+        // Ctrl+Alt+Shift+C: dedupe the current selection (or full buffer if
+        // no selection). Whitespace-trim and empty-line removal applied too,
+        // matching exifmaster-pro's ListCleaner defaults.
+        const model = editor.getModel()
+        if (!model) break
+        const sel = editor.getSelection()
+        const hasSelection = sel && !sel.isEmpty()
+        const range = hasSelection ? sel : model.getFullModelRange()
+        const text = model.getValueInRange(range)
+        if (!text.trim()) break
+        ;(async () => {
+          const { processListItems, DEFAULT_CLEAN_OPTIONS } = await import('../../utils/listOps')
+          const before = text.split(/\r?\n/).filter((l) => l.trim()).length
+          const cleaned = processListItems(text, DEFAULT_CLEAN_OPTIONS)
+          const after = cleaned ? cleaned.split('\n').length : 0
+          editor.executeEdits('remove-duplicates', [{ range, text: cleaned, forceMoveMarkers: true }])
+          const removed = before - after
+          useUIStore.getState().addToast(
+            removed > 0
+              ? `Removed ${removed} duplicate line${removed !== 1 ? 's' : ''} (${after} unique).`
+              : 'No duplicates found.',
+            removed > 0 ? 'info' : 'warn'
+          )
+        })()
+        break
+      }
       case 'toggleColumnSelect': {
         const current = editor.getOption(monaco.editor.EditorOption.columnSelection)
         editor.updateOptions({ columnSelection: !current })
@@ -259,7 +293,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
         // Markdown files: Ctrl+Alt+Shift+M toggles the live preview pane
         // instead of attempting to beautify the source.
         if (buf?.language === 'markdown') {
-          useUIStore.getState().toggleMarkdownPreview()
+          useUIStore.getState().togglePreview()
           break
         }
 
@@ -363,6 +397,18 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyM,
       () => window.dispatchEvent(new CustomEvent('editor:command', { detail: 'beautify' }))
+    )
+    // Ctrl+P (Cmd+P on macOS): toggle the right-side preview pane. The pane
+    // itself decides what to render based on the active buffer's language /
+    // content (.sqlplan / xml-with-ShowPlan / .csv / .md).
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP,
+      () => window.dispatchEvent(new CustomEvent('editor:command', { detail: 'togglePreview' }))
+    )
+    // Ctrl+Alt+Shift+C: remove duplicate lines in selection (or whole buffer).
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyC,
+      () => window.dispatchEvent(new CustomEvent('editor:command', { detail: 'removeDuplicates' }))
     )
     // Convert Case — register Ctrl+Shift+U / Ctrl+Shift+L directly on the
     // editor so they fire reliably when Monaco has focus. Ctrl+Shift+L would

@@ -20,6 +20,7 @@ export interface SessionData {
     title?: string | null
     language: string
     encoding: string
+    hasBom?: boolean
     eol: string
     viewState: object | null
     backupPath?: string | null
@@ -70,6 +71,7 @@ export function useFileOps() {
         content: result.content,
         isDirty: false,
         encoding: result.encoding,
+        hasBom: result.hasBom ?? false,
         eol: result.eol as EOLType,
         language,
         mtime: result.mtime,
@@ -115,7 +117,8 @@ export function useFileOps() {
         content: result.content,
         encoding: result.encoding,
         eol: result.eol as EOLType,
-        mtime: result.mtime
+        mtime: result.mtime,
+        hasBom: result.hasBom ?? false
       })
 
       window.api.watch.add(buf.filePath)
@@ -170,6 +173,7 @@ export function useFileOps() {
               content: '',
               isDirty: false,
               encoding: file.encoding || 'UTF-8',
+              hasBom: file.hasBom ?? false,
               eol: (file.eol as EOLType) || 'LF',
               language: file.language || detectLanguage(file.filePath),
               mtime: 0,
@@ -198,6 +202,7 @@ export function useFileOps() {
           content,
           isDirty: true,
           encoding: file.encoding || 'UTF-8',
+          hasBom: file.hasBom ?? false,
           eol: (file.eol as EOLType) || 'LF',
           language,
           mtime: file.originalMtime ?? 0,
@@ -294,6 +299,7 @@ export function useFileOps() {
       content: '',
       isDirty: false,
       encoding: 'UTF-8',
+      hasBom: false,
       eol: 'LF',
       language: 'plaintext',
       mtime: 0,
@@ -323,7 +329,7 @@ export function useFileOps() {
     }
 
     const content = buf.model?.getValue() ?? buf.content
-    const result = await window.api.file.write(filePath, content, buf.encoding, buf.eol)
+    const result = await window.api.file.write(filePath, content, buf.encoding, buf.eol, buf.hasBom)
     if (result.error) {
       addToast(`Save failed: ${result.error}`, 'error')
       return false
@@ -351,7 +357,7 @@ export function useFileOps() {
     if (res.canceled || !res.filePath) return false
 
     const content = buf.model?.getValue() ?? buf.content
-    const result = await window.api.file.write(res.filePath, content, buf.encoding, buf.eol)
+    const result = await window.api.file.write(res.filePath, content, buf.encoding, buf.eol, buf.hasBom)
     if (result.error) {
       addToast(`Save failed: ${result.error}`, 'error')
       return false

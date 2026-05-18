@@ -13,6 +13,10 @@ export interface Buffer {
   content: string
   isDirty: boolean
   encoding: string
+  /** True when the file on disk started with a BOM (UTF-8 / UTF-16 LE / BE).
+   *  Preserved across save round-trips so re-encoding doesn't strip the marker
+   *  that consumers like SSMS rely on for .sqlplan UTF-16 detection. */
+  hasBom: boolean
   eol: EOLType
   language: string
   mtime: number                // last known on-disk mtime
@@ -37,7 +41,7 @@ interface EditorState {
   // Actions
   addBuffer: (buf: Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null }) => string
   addGhostBuffer: (buf: Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null }) => string
-  hydrateBuffer: (id: string, patch: { content: string; encoding: string; eol: EOLType; mtime: number }) => void
+  hydrateBuffer: (id: string, patch: { content: string; encoding: string; eol: EOLType; mtime: number; hasBom?: boolean }) => void
   removeBuffer: (id: string) => void
   updateBuffer: (id: string, patch: Partial<Buffer>) => void
   setActive: (id: string) => void
@@ -158,6 +162,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           content: '',
           isDirty: false,
           encoding: 'UTF-8',
+          hasBom: false,
           eol: 'LF',
           language: 'plaintext',
           mtime: 0,
@@ -195,6 +200,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           content: '',
           isDirty: false,
           encoding: 'UTF-8',
+          hasBom: false,
           eol: 'LF',
           language: 'plaintext',
           mtime: 0,
@@ -232,6 +238,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           content: '',
           isDirty: false,
           encoding: 'UTF-8',
+          hasBom: false,
           eol: 'LF',
           language: 'plaintext',
           mtime: 0,
