@@ -29,6 +29,19 @@ export interface PlanNode {
   estimatedRowsRead?: number
 }
 
+/** Per-statement plan slice. SQL Server batches and Postgres pipelines can
+ *  contain multiple statements; the analyzer returns one entry per. */
+export interface PlanStatement {
+  statementText: string
+  totalCost: number
+  totalNodes: number
+  planTree: PlanNode | null
+  executionPath: PlanNode[]
+  redFlags: RedFlag[]
+  missingIndexes: string[]
+  operations: { name: string; count: number }[]
+}
+
 export interface PlanSummary {
   totalNodes: number
   operations: { name: string; count: number }[]
@@ -38,4 +51,7 @@ export interface PlanSummary {
   redFlags: RedFlag[]
   executionPath: PlanNode[]
   planTree: PlanNode | null
+  /** Per-statement breakdown. Empty for single-statement plans; populated by
+   *  SQL Server / PostgreSQL analyzers when more than one statement exists. */
+  statements: PlanStatement[]
 }

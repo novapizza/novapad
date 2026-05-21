@@ -108,36 +108,80 @@ export const SqlPlanPreviewPane: React.FC = () => {
               )}
             </div>
 
-            {/* Red flags list */}
-            {summary.redFlags.length > 0 && (
-              <ul className="mb-3 space-y-1 text-[11px]">
-                {summary.redFlags.map((f, i) => (
-                  <li
-                    key={i}
-                    className={`flex items-start gap-2 p-2 rounded border ${
-                      f.severity === 'high'
-                        ? 'border-destructive/40 bg-destructive/5 text-destructive'
-                        : f.severity === 'medium'
-                          ? 'border-amber-500/40 bg-amber-500/5 text-amber-700 dark:text-amber-300'
-                          : 'border-border bg-secondary/40 text-muted-foreground'
-                    }`}
-                  >
-                    <AlertTriangle size={12} className="shrink-0 mt-0.5" />
-                    <span>
-                      <strong>{f.type}:</strong> {f.description}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {summary.planTree && (
-              <div className="border border-border rounded-md p-2 bg-card overflow-x-auto">
-                <PlanTreeRenderer
-                  root={summary.planTree}
-                  redFlags={summary.redFlags}
-                />
-              </div>
+            {/* Multi-statement plans (batches): render each statement as its
+                own section with its own tree + red flags. Falls back to the
+                single-tree path when only one statement was parsed. */}
+            {summary.statements && summary.statements.length > 1 ? (
+              summary.statements.map((stmt, i) => (
+                <section key={i} className="mb-4 border border-border rounded-md overflow-hidden">
+                  <header className="px-2 py-1 bg-secondary/40 flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
+                    <span>Statement {i + 1} of {summary.statements.length}</span>
+                    <span className="px-1.5 py-0 rounded bg-background">{stmt.totalNodes} nodes</span>
+                    <span className="px-1.5 py-0 rounded bg-background">cost {stmt.totalCost.toFixed(2)}</span>
+                    {stmt.redFlags.length > 0 && (
+                      <span className="px-1.5 py-0 rounded bg-destructive/15 text-destructive">
+                        {stmt.redFlags.length} flag{stmt.redFlags.length !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </header>
+                  {stmt.statementText && (
+                    <pre className="px-2 py-1 text-[10px] font-mono text-muted-foreground border-b border-border bg-card whitespace-pre-wrap break-words max-h-24 overflow-y-auto">
+                      {stmt.statementText}
+                    </pre>
+                  )}
+                  {stmt.redFlags.length > 0 && (
+                    <ul className="px-2 py-1 space-y-1 text-[11px] border-b border-border">
+                      {stmt.redFlags.map((f, j) => (
+                        <li
+                          key={j}
+                          className={`flex items-start gap-2 p-1.5 rounded border ${
+                            f.severity === 'high'
+                              ? 'border-destructive/40 bg-destructive/5 text-destructive'
+                              : f.severity === 'medium'
+                                ? 'border-amber-500/40 bg-amber-500/5 text-amber-700 dark:text-amber-300'
+                                : 'border-border bg-secondary/40 text-muted-foreground'
+                          }`}
+                        >
+                          <AlertTriangle size={11} className="shrink-0 mt-0.5" />
+                          <span><strong>{f.type}:</strong> {f.description}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {stmt.planTree && (
+                    <div className="p-2 bg-card overflow-x-auto">
+                      <PlanTreeRenderer root={stmt.planTree} redFlags={stmt.redFlags} />
+                    </div>
+                  )}
+                </section>
+              ))
+            ) : (
+              <>
+                {summary.redFlags.length > 0 && (
+                  <ul className="mb-3 space-y-1 text-[11px]">
+                    {summary.redFlags.map((f, i) => (
+                      <li
+                        key={i}
+                        className={`flex items-start gap-2 p-2 rounded border ${
+                          f.severity === 'high'
+                            ? 'border-destructive/40 bg-destructive/5 text-destructive'
+                            : f.severity === 'medium'
+                              ? 'border-amber-500/40 bg-amber-500/5 text-amber-700 dark:text-amber-300'
+                              : 'border-border bg-secondary/40 text-muted-foreground'
+                        }`}
+                      >
+                        <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+                        <span><strong>{f.type}:</strong> {f.description}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {summary.planTree && (
+                  <div className="border border-border rounded-md p-2 bg-card overflow-x-auto">
+                    <PlanTreeRenderer root={summary.planTree} redFlags={summary.redFlags} />
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

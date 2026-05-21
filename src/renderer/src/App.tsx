@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, lazy, Suspense } from 'react'
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels'
 import { EditorPane } from './components/EditorPane/EditorPane'
 import { SettingsTab } from './components/SettingsTab/SettingsTab'
@@ -70,6 +70,20 @@ export default function App() {
   const activeBuffer = buffers.find((b) => b.id === activeId)
   const activeKind = activeBuffer?.kind ?? 'file'
   const { theme, showToolbar, showStatusBar, showBottomPanel, showSidebar, openFind, csvViewerOpen, csvViewerText, csvViewerFileName, showPreview } = useUIStore()
+  // Auto-close the preview pane when the user switches tabs. Without this,
+  // toggling preview on (say) a .md tab would leave it open across every
+  // tab whose buffer type also happens to be previewable, which surprises
+  // users. Using useLayoutEffect (not useEffect) so the close lands before
+  // the browser paints — no flash of the wrong preview during the switch.
+  const prevActiveIdRef = useRef<string | null>(activeId)
+  useLayoutEffect(() => {
+    if (prevActiveIdRef.current !== activeId) {
+      if (useUIStore.getState().showPreview) {
+        useUIStore.getState().setShowPreview(false)
+      }
+      prevActiveIdRef.current = activeId
+    }
+  }, [activeId])
   // The right-side preview pane renders when the user toggled showPreview AND
   // the active buffer's type is one we know how to preview. The pane
   // component is decided per-buffer so switching tabs swaps the preview.
