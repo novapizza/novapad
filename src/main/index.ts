@@ -37,9 +37,12 @@ type OpenItem = { kind: 'file' | 'folder'; path: string }
  *  - process.argv on cold launch (Windows + Linux "Open with" routes args here)
  *  - app 'open-file' event before window exists (macOS Finder "Open With")
  *  - second-instance event (Windows: dropped file/folder onto running exe)
- * Drained once on did-finish-load.
+ * Drained on 'app:renderer-ready' from the renderer (sent after its IPC
+ * listeners are attached). `did-finish-load` is too early — it fires after the
+ * `load` event but before React's useEffect runs, so listeners aren't ready.
  */
 const pendingOpenItems: OpenItem[] = []
+let rendererReady = false
 
 /** Stat each arg; keep only real files and directories. CLI flags and bogus paths are dropped. */
 function classifyPaths(paths: string[]): OpenItem[] {
@@ -60,7 +63,7 @@ function classifyPaths(paths: string[]): OpenItem[] {
 /** Send queued items to the renderer (or queue them if it isn't ready yet). */
 function dispatchOpenItems(items: OpenItem[]): void {
   if (items.length === 0) return
-  if (!mainWindow || mainWindow.webContents.isLoading()) {
+  if (!mainWindow || !rendererReady) {
     pendingOpenItems.push(...items)
     return
   }
@@ -105,8 +108,8 @@ if (process.env['E2E_TEST'] !== '1') {
 }
 
 // macOS routes "Open With → NovaPad" through this event instead of argv.
-// It can fire BEFORE app.whenReady, so we just queue and let did-finish-load
-// drain pendingOpenFiles when the renderer is ready.
+// It can fire BEFORE app.whenReady; dispatchOpenItems queues the path and the
+// 'app:renderer-ready' handler drains it once the renderer's listeners exist.
 app.on('open-file', (event, filePath) => {
   event.preventDefault()
   if (filePath) dispatchOpenItems(classifyPaths([filePath]))
@@ -134,14 +137,10 @@ function createWindow(): void {
     mainWindow!.show()
   })
 
-  // Drain queued open-file/open-folder requests once the renderer is ready.
-  // Ordering note: did-finish-load fires AFTER session restore IPC, so files
-  // opened via Open With end up alongside (not in place of) the previous
-  // session. Folders dropped on the icon will replace the restored workspace.
-  mainWindow.webContents.on('did-finish-load', () => {
-    if (pendingOpenItems.length === 0) return
-    const items = pendingOpenItems.splice(0, pendingOpenItems.length)
-    dispatchOpenItems(items)
+  // Reset readiness on every navigation (e.g. dev reload). The renderer will
+  // re-send 'app:renderer-ready' after its useEffect re-attaches IPC listeners.
+  mainWindow.webContents.on('did-start-loading', () => {
+    rendererReady = false
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -170,7 +169,7 @@ app.whenReady().then(() => {
 
   // Cold-launch arg handling: when Windows/Linux "Open with NovaPad" (file or
   // folder) fires for the *first* instance, the path lands in process.argv.
-  // Queue now so did-finish-load forwards it to the renderer.
+  // Queue now; 'app:renderer-ready' drains it once renderer listeners attach.
   if (process.env['E2E_TEST'] !== '1') {
     const initialItems = classifyPaths(process.argv.slice(1))
     if (initialItems.length) pendingOpenItems.push(...initialItems)
@@ -225,6 +224,17 @@ app.on('before-quit', () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin' || process.env['E2E_TEST'] === '1') app.quit()
+})
+
+// Renderer signals it has attached its IPC listeners (in App.tsx useEffect).
+// Until this fires, any 'menu:file-open' / 'menu:folder-open' we send would
+// land on a channel with no listener and be silently dropped — see the
+// pendingOpenItems comment for the full race. We drain the queue here.
+ipcMain.on('app:renderer-ready', () => {
+  rendererReady = true
+  if (pendingOpenItems.length === 0) return
+  const items = pendingOpenItems.splice(0, pendingOpenItems.length)
+  dispatchOpenItems(items)
 })
 
 ipcMain.on('app:close-cancelled', () => {

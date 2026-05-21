@@ -161,6 +161,7 @@ const api = {
     const allowedChannels = [
       'app:close-confirmed',
       'app:close-cancelled',
+      'app:renderer-ready',
       'plugin:editor-get-text:reply',
       'plugin:editor-get-selection:reply',
       'plugin:editor-get-path:reply',

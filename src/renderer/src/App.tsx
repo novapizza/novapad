@@ -392,6 +392,13 @@ export default function App() {
       window.api.send('app:close-confirmed')
     })
 
+    // Signal the main process that our IPC listeners are attached. This drains
+    // pendingOpenItems (files passed via Explorer "Open with NovaPad" on cold
+    // launch). did-finish-load is too early — it fires before this useEffect
+    // runs, so IPCs sent then would land on a not-yet-registered listener and
+    // be lost.
+    window.api.send('app:renderer-ready')
+
     return () => {
       window.api.off('menu:file-new')
       window.api.off('menu:file-open')
