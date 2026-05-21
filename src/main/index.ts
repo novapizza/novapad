@@ -19,6 +19,17 @@ let mainWindow: BrowserWindow | null = null
 /** True when quit was initiated (Cmd+Q / Quit); false for macOS red close button only. */
 let isQuitting = false
 
+// Last-resort net: keep the app alive instead of popping Electron's default
+// "A JavaScript error occurred in the main process" dialog. Individual
+// subsystems should still handle their own errors; this only catches things
+// that slip through (e.g. a new event emitter without an 'error' listener).
+process.on('uncaughtException', (err) => {
+  console.error('[main] uncaughtException:', err)
+})
+process.on('unhandledRejection', (reason) => {
+  console.error('[main] unhandledRejection:', reason)
+})
+
 type OpenItem = { kind: 'file' | 'folder'; path: string }
 
 /**

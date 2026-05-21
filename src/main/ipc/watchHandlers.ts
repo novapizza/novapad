@@ -28,7 +28,23 @@ export function registerWatchHandlers(win: BrowserWindow): void {
     })
     watcher.on('unlink', () => {
       win.webContents.send('file:externally-deleted', filePath)
-      watchers.delete(filePath)
+      const w = watchers.get(filePath)
+      if (w) {
+        void w.close()
+        watchers.delete(filePath)
+      }
+    })
+    // Without an 'error' listener chokidar lets the underlying fs.watch error
+    // bubble up as an uncaught exception. On Windows that fires as EPERM when
+    // an external tool (git checkout, atomic-replace editors) swaps the file
+    // out from under us, crashing the main process with a JS error dialog.
+    watcher.on('error', (err) => {
+      console.error('[watch] error for', filePath, err)
+      const w = watchers.get(filePath)
+      if (w) {
+        void w.close()
+        watchers.delete(filePath)
+      }
     })
     watchers.set(filePath, watcher)
   })
