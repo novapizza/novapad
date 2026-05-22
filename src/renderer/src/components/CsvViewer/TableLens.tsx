@@ -637,8 +637,13 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
   const allFilteredSelected = filteredRows.length > 0 && filteredRows.every(r => selected.has(r.idx));
 
   // ── Main table view ─────────────────────────────────────────────
+  // Use h-full so we inherit whatever height our parent gives us — the table
+  // is hosted both in the full-window CsvViewerOverlay (which provides a
+  // flex-1 container) and in the right-side preview pane (which is much
+  // shorter). The previous calc(100vh - 160px) overflowed the preview pane
+  // and clipped the data rows / filter inputs below the visible area.
   return (
-    <div className="flex flex-col gap-3" style={{ height: 'calc(100vh - 160px)', minHeight: 480 }}>
+    <div className="flex flex-col gap-3 h-full min-h-0 p-3">
 
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 flex-wrap shrink-0">

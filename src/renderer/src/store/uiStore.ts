@@ -39,6 +39,12 @@ interface UIState {
    * state is "preview is open / closed".
    */
   showPreview: boolean
+  /**
+   * Whether the preview pane is in fullscreen mode (overlays the whole window
+   * instead of sharing the split with the editor). Always implies showPreview;
+   * resetting showPreview also clears this flag.
+   */
+  previewFullscreen: boolean
   /** @deprecated kept temporarily for any callers that read it; mirrors showPreview. */
   showMarkdownPreview: boolean
   showAbout: boolean
@@ -69,6 +75,8 @@ interface UIState {
   closeFind: () => void
   togglePreview: () => void
   setShowPreview: (v: boolean) => void
+  togglePreviewFullscreen: () => void
+  setPreviewFullscreen: (v: boolean) => void
   /** @deprecated alias of togglePreview / setShowPreview. */
   toggleMarkdownPreview: () => void
   setMarkdownPreview: (v: boolean) => void
@@ -99,6 +107,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   findReplaceMode: 'find',
   findInitialTerm: '',
   showPreview: false,
+  previewFullscreen: false,
   showMarkdownPreview: false,
   showAbout: false,
   showBottomPanel: false,
@@ -152,10 +161,34 @@ export const useUIStore = create<UIState>((set, get) => ({
   setWorkspaceFolder: (path) => set({ workspaceFolder: path }),
   openFind: (mode = 'find', initialTerm = '') => set({ showFindReplace: true, findReplaceMode: mode, findInitialTerm: initialTerm }),
   closeFind: () => set({ showFindReplace: false }),
-  togglePreview: () => set((s) => ({ showPreview: !s.showPreview, showMarkdownPreview: !s.showPreview })),
-  setShowPreview: (v) => set({ showPreview: v, showMarkdownPreview: v }),
-  toggleMarkdownPreview: () => set((s) => ({ showPreview: !s.showPreview, showMarkdownPreview: !s.showPreview })),
-  setMarkdownPreview: (v) => set({ showPreview: v, showMarkdownPreview: v }),
+  togglePreview: () =>
+    set((s) => ({
+      showPreview: !s.showPreview,
+      showMarkdownPreview: !s.showPreview,
+      previewFullscreen: s.showPreview ? false : s.previewFullscreen,
+    })),
+  setShowPreview: (v) =>
+    set((s) => ({ showPreview: v, showMarkdownPreview: v, previewFullscreen: v ? s.previewFullscreen : false })),
+  togglePreviewFullscreen: () =>
+    set((s) => ({
+      previewFullscreen: !s.previewFullscreen,
+      showPreview: s.previewFullscreen ? s.showPreview : true,
+      showMarkdownPreview: s.previewFullscreen ? s.showMarkdownPreview : true,
+    })),
+  setPreviewFullscreen: (v) =>
+    set((s) => ({
+      previewFullscreen: v,
+      showPreview: v ? true : s.showPreview,
+      showMarkdownPreview: v ? true : s.showMarkdownPreview,
+    })),
+  toggleMarkdownPreview: () =>
+    set((s) => ({
+      showPreview: !s.showPreview,
+      showMarkdownPreview: !s.showPreview,
+      previewFullscreen: s.showPreview ? false : s.previewFullscreen,
+    })),
+  setMarkdownPreview: (v) =>
+    set((s) => ({ showPreview: v, showMarkdownPreview: v, previewFullscreen: v ? s.previewFullscreen : false })),
   setShowAbout: (v) => set({ showAbout: v }),
   setShowBottomPanel: (v) => set({ showBottomPanel: v }),
   setActiveBottomPanel: (p) => set({ activeBottomPanel: p }),

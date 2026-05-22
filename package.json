@@ -69,7 +69,7 @@
     "iconv-lite": "^0.6.3",
     "lucide-react": "^1.7.0",
     "magika": "^1.0.0",
-    "merslim": "^0.2.1",
+    "merslim": "^0.2.3",
     "monaco-editor": "^0.52.2",
     "papaparse": "^5.5.3",
     "react": "^18.3.1",

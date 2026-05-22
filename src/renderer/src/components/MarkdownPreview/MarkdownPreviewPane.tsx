@@ -12,6 +12,7 @@ import {
 } from 'merslim'
 import { editorRegistry } from '../../utils/editorRegistry'
 import { useUIStore } from '../../store/uiStore'
+import { usePreviewFullscreen } from '../preview/previewFullscreen'
 
 // Highlight.js stylesheet — dynamically swapped between light/dark via the
 // effect below so code blocks match the rest of the editor theme.
@@ -65,6 +66,7 @@ const REHYPE_PLUGINS: [typeof rehypeHighlight, { detect: boolean; ignoreMissing:
 export const MarkdownPreviewPane: React.FC = () => {
   const [content, setContent] = useState('')
   const setMarkdownPreview = useUIStore((s) => s.setMarkdownPreview)
+  const { sectionClass, Toggle: FullscreenToggle } = usePreviewFullscreen()
 
   useEffect(() => {
     bootstrapDiagramRenderers()
@@ -97,20 +99,23 @@ export const MarkdownPreviewPane: React.FC = () => {
   }, [])
 
   return (
-    <section className="flex flex-col h-full overflow-hidden bg-background border-l border-border">
+    <section className={sectionClass}>
       <header className="px-3 py-2 border-b border-border flex items-center gap-2 bg-secondary/30">
         <Eye size={14} className="text-muted-foreground" />
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Markdown Preview
         </span>
-        <button
-          onClick={() => setMarkdownPreview(false)}
-          aria-label="Close preview"
-          title="Close preview (Ctrl+Alt+Shift+M)"
-          className="ml-auto p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <X size={14} />
-        </button>
+        <div className="ml-auto flex items-center gap-1">
+          {FullscreenToggle}
+          <button
+            onClick={() => setMarkdownPreview(false)}
+            aria-label="Close preview"
+            title="Close preview (Ctrl+Alt+Shift+M)"
+            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X size={14} />
+          </button>
+        </div>
       </header>
       <div className="flex-1 overflow-auto p-4 markdown-body">
         <ReactMarkdown

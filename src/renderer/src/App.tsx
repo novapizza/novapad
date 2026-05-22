@@ -69,7 +69,7 @@ export default function App() {
   const { activeId, buffers } = useEditorStore()
   const activeBuffer = buffers.find((b) => b.id === activeId)
   const activeKind = activeBuffer?.kind ?? 'file'
-  const { theme, showToolbar, showStatusBar, showBottomPanel, showSidebar, openFind, csvViewerOpen, csvViewerText, csvViewerFileName, showPreview } = useUIStore()
+  const { theme, showToolbar, showStatusBar, showBottomPanel, showSidebar, openFind, csvViewerOpen, csvViewerText, csvViewerFileName, showPreview, previewFullscreen } = useUIStore()
   // Auto-close the preview pane when the user switches tabs. Without this,
   // toggling preview on (say) a .md tab would leave it open across every
   // tab whose buffer type also happens to be previewable, which surprises
@@ -90,7 +90,11 @@ export default function App() {
   const previewKind = (showPreview && activeKind === 'file' && activeBuffer)
     ? detectPreviewKind(activeBuffer.language, activeBuffer.filePath, activeBuffer.content ?? null)
     : null
-  const previewVisible = previewKind !== null
+  // Side-by-side panel only renders when preview is open AND not fullscreen —
+  // in fullscreen the preview pane positions itself as a top-level overlay
+  // covering the whole window, so reserving split-panel space would be wasted.
+  const previewVisible = previewKind !== null && !previewFullscreen
+  const previewFullscreenVisible = previewKind !== null && previewFullscreen
   const { openFiles, newFile, saveBuffer, saveActiveAs, closeBuffer, reloadBuffer, loadBuffer, restoreSession } = useFileOps()
   // Mount window-level keyboard (Alt+Left/Right or Ctrl+-) and mouse
   // back/forward button listeners that drive navigation history.
@@ -605,6 +609,17 @@ export default function App() {
       <FindReplaceDialog />
       <AboutDialog />
       {csvViewerOpen && <CsvViewerOverlay csvText={csvViewerText} fileName={csvViewerFileName} />}
+      {previewFullscreenVisible && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background text-xs text-muted-foreground">
+            Loading preview…
+          </div>
+        }>
+          {previewKind === 'markdown' && <MarkdownPreviewPane />}
+          {previewKind === 'sqlplan' && <SqlPlanPreviewPane />}
+          {previewKind === 'csv' && <TableLensPreviewPane />}
+        </Suspense>
+      )}
       {dragActive && <DropOverlay />}
       <Toaster position="bottom-right" richColors closeButton />
       <SonnerBridge />
