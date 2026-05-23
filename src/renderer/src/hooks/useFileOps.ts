@@ -339,6 +339,7 @@ export function useFileOps() {
       filePath,
       title: basename(filePath),
       isDirty: false,
+      savedVersionId: buf.model?.getAlternativeVersionId() ?? 0,
       content
     })
     window.api.file.addRecent(filePath)
@@ -367,6 +368,7 @@ export function useFileOps() {
       filePath: res.filePath,
       title: basename(res.filePath),
       isDirty: false,
+      savedVersionId: buf.model?.getAlternativeVersionId() ?? 0,
       content
     })
     window.api.file.addRecent(res.filePath)
@@ -394,7 +396,13 @@ export function useFileOps() {
     const result = await window.api.file.read(buf.filePath)
     if (result.error) { addToast(`Reload failed: ${result.error}`, 'error'); return }
     buf.model?.setValue(result.content)
-    updateBuffer(id, { content: result.content, isDirty: false, mtime: result.mtime, eol: result.eol as EOLType })
+    updateBuffer(id, {
+      content: result.content,
+      isDirty: false,
+      savedVersionId: buf.model?.getAlternativeVersionId() ?? 0,
+      mtime: result.mtime,
+      eol: result.eol as EOLType
+    })
   }, [updateBuffer, addToast])
 
   return { openFiles, newFile, saveBuffer, saveActiveAs, closeBuffer, reloadBuffer, loadBuffer, restoreSession }

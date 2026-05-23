@@ -12,6 +12,11 @@ export interface Buffer {
   title: string                // display name
   content: string
   isDirty: boolean
+  /** Monaco model.getAlternativeVersionId() at the last clean baseline (load/save/reload).
+   *  Content change handler compares the live alt-id to this — undoing back to the
+   *  baseline clears the dirty flag, like VS Code. Sentinel `-1` keeps the buffer
+   *  permanently dirty until next save (used for snapshot-restored dirty buffers). */
+  savedVersionId: number
   encoding: string
   /** True when the file on disk started with a BOM (UTF-8 / UTF-16 LE / BE).
    *  Preserved across save round-trips so re-encoding doesn't strip the marker
@@ -39,8 +44,8 @@ interface EditorState {
   splitActiveId: string | null
 
   // Actions
-  addBuffer: (buf: Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null }) => string
-  addGhostBuffer: (buf: Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null }) => string
+  addBuffer: (buf: Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath' | 'savedVersionId'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null }) => string
+  addGhostBuffer: (buf: Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath' | 'savedVersionId'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null }) => string
   hydrateBuffer: (id: string, patch: { content: string; encoding: string; eol: EOLType; mtime: number; hasBom?: boolean }) => void
   removeBuffer: (id: string) => void
   updateBuffer: (id: string, patch: Partial<Buffer>) => void
@@ -75,8 +80,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     // Force plaintext for large files to skip expensive tokenization
     const lang = buf.isLargeFile ? 'plaintext' : (buf.language || 'plaintext')
     const model = monaco.editor.createModel(buf.content, lang)
+    // Snapshot-restored buffers come in already dirty (content differs from disk);
+    // mark savedVersionId as unreachable so undoing within Monaco can't clear it.
+    const savedVersionId = buf.isDirty ? -1 : model.getAlternativeVersionId()
     set((s) => ({
-      buffers: [...s.buffers, { ...buf, kind: buf.kind ?? 'file', id, model, loaded: true, missing: false, savedViewState: buf.savedViewState ?? null, pluginId: buf.pluginId ?? null, backupPath: buf.backupPath ?? null }],
+      buffers: [...s.buffers, { ...buf, kind: buf.kind ?? 'file', id, model, savedVersionId, loaded: true, missing: false, savedViewState: buf.savedViewState ?? null, pluginId: buf.pluginId ?? null, backupPath: buf.backupPath ?? null }],
       activeId: s.activeId ?? id
     }))
     return id
@@ -85,7 +93,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   addGhostBuffer: (buf) => {
     const id = newId()
     set((s) => ({
-      buffers: [...s.buffers, { ...buf, kind: buf.kind ?? 'file', id, model: null, pluginId: buf.pluginId ?? null, backupPath: buf.backupPath ?? null }],
+      buffers: [...s.buffers, { ...buf, kind: buf.kind ?? 'file', id, model: null, savedVersionId: 0, pluginId: buf.pluginId ?? null, backupPath: buf.backupPath ?? null }],
       activeId: s.activeId ?? id
     }))
     return id
@@ -96,10 +104,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!buf || buf.loaded) return
     const lang = buf.isLargeFile ? 'plaintext' : (buf.language || 'plaintext')
     const model = monaco.editor.createModel(patch.content, lang)
+    const savedVersionId = model.getAlternativeVersionId()
     set((s) => ({
       buffers: s.buffers.map((b) =>
         b.id === id
-          ? { ...b, ...patch, model, content: patch.content, loaded: true }
+          ? { ...b, ...patch, model, content: patch.content, loaded: true, isDirty: false, savedVersionId }
           : b
       )
     }))
@@ -161,6 +170,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           title,
           content: '',
           isDirty: false,
+          savedVersionId: 0,
           encoding: 'UTF-8',
           hasBom: false,
           eol: 'LF',
@@ -199,6 +209,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           title: 'Extensions',
           content: '',
           isDirty: false,
+          savedVersionId: 0,
           encoding: 'UTF-8',
           hasBom: false,
           eol: 'LF',
@@ -237,6 +248,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           title: pluginName,
           content: '',
           isDirty: false,
+          savedVersionId: 0,
           encoding: 'UTF-8',
           hasBom: false,
           eol: 'LF',

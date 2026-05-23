@@ -142,7 +142,7 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile }) => {
                 className={cn(
                   'group relative flex items-center gap-1.5 pl-3 pr-2 cursor-pointer text-base min-w-0 shrink-0 transition-colors border-r border-border',
                   buf.id === activeId
-                    ? 'bg-tab-active text-tab-foreground'
+                    ? 'bg-tab-active text-tab-foreground font-semibold shadow-[inset_0_-1px_0_0_hsl(var(--tab-active))]'
                     : 'bg-tab-inactive text-tab-muted hover:bg-tab-hover',
                   !buf.loaded && 'opacity-55',
                 )}
@@ -156,7 +156,7 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile }) => {
               >
                 {/* Active indicator — blue top line */}
                 {buf.id === activeId && (
-                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-primary" />
+                  <div className="absolute top-0 left-0 right-0 h-[3px] bg-primary" />
                 )}
 
                 {/* Kind icon for virtual tabs */}
@@ -165,24 +165,23 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile }) => {
                 {buf.kind === 'whatsNew' && <Sparkles size={18} className="shrink-0 opacity-80" />}
                 {(buf.kind === 'pluginManager' || buf.kind === 'pluginDetail') && <Puzzle size={18} className="shrink-0 opacity-80" />}
 
-                {/* Tab title */}
+                {/* Tab title — prefix dirty buffers with "*" (Notepad++ style) */}
                 <span className={cn('truncate', buf.missing && 'line-through opacity-50')}>
+                  {!isVirtual && buf.isDirty && (
+                    <span className="text-destructive font-bold mr-0.5">*</span>
+                  )}
                   {buf.title}
                 </span>
 
-                {/* Modified dot / Close button (virtual tabs never show dirty dot) */}
+                {/* Close button */}
                 <span className="ml-1 w-[22px] h-[22px] flex items-center justify-center shrink-0">
-                  {!isVirtual && buf.isDirty && buf.id !== activeId ? (
-                    <span className="w-2 h-2 rounded-full bg-tab-muted" />
-                  ) : (
-                    <button
-                      type="button"
-                      className="opacity-0 group-hover:opacity-100 hover:bg-secondary rounded-sm transition-opacity p-0.5 flex items-center justify-center"
-                      onClick={(e) => { e.stopPropagation(); onClose?.(buf.id) }}
-                    >
-                      <X size={18} />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="opacity-0 group-hover:opacity-100 hover:bg-secondary rounded-sm transition-opacity p-0.5 flex items-center justify-center"
+                    onClick={(e) => { e.stopPropagation(); onClose?.(buf.id) }}
+                  >
+                    <X size={18} />
+                  </button>
                 </span>
               </div>
             </ContextMenuTrigger>

@@ -10,7 +10,10 @@ import { useMacroRecorder } from '../../hooks/useMacroRecorder'
 import { useFileOps } from '../../hooks/useFileOps'
 import { refineLanguageAsync, sampleFromString } from '../../utils/refineLanguage'
 import { beautify, detectBeautifyFormat } from '../../utils/beautify'
+import { registerNppThemes, nppThemeName } from '../../utils/monacoThemes'
 import { EditorContextMenu } from './EditorContextMenu'
+
+registerNppThemes()
 
 /** Same-buffer cursor moves below this line-delta do not push a navigation entry (spec BR-005). */
 const NAV_LINE_THRESHOLD = 10
@@ -337,7 +340,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
 
     const cfg = useConfigStore.getState()
     const editor = monaco.editor.create(containerRef.current, {
-      theme: theme === 'dark' ? 'vs-dark' : 'vs',
+      theme: nppThemeName(theme),
       fontSize: cfg.fontSize,
       fontFamily: cfg.fontFamily,
       lineNumbers: cfg.showLineNumbers ? 'on' : 'off',
@@ -436,10 +439,20 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
       void refineLanguageAsync(id, sampleFromString(text), buf.language)
     })
 
-    // Track content changes -> mark dirty
+    // Track content changes — compare Monaco's alternative version id to the
+    // last clean baseline so that undoing back to the saved state clears the
+    // dirty flag (same approach VS Code uses).
     editor.onDidChangeModelContent(() => {
       const id = currentIdRef.current
-      if (id) updateBuffer(id, { isDirty: true })
+      if (!id) return
+      const buf = useEditorStore.getState().getBuffer(id)
+      if (!buf) return
+      const model = editor.getModel()
+      if (!model) return
+      const nextDirty = model.getAlternativeVersionId() !== buf.savedVersionId
+      if (nextDirty !== buf.isDirty) {
+        updateBuffer(id, { isDirty: nextDirty })
+      }
     })
 
     // Track cursor position -> status bar + navigation history (threshold)
@@ -490,7 +503,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
   // Update theme
   useEffect(() => {
     if (editorRef.current) {
-      monaco.editor.setTheme(theme === 'dark' ? 'vs-dark' : 'vs')
+      monaco.editor.setTheme(nppThemeName(theme))
     }
   }, [theme])
 
@@ -739,7 +752,9 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
     const applyEncoding = (encoding: string) => {
       const id = currentIdRef.current
       if (!id) return
-      updateBuffer(id, { encoding, isDirty: true })
+      // Encoding change is a non-content dirty marker — bump savedVersionId out
+      // of reach so undoing within Monaco can't accidentally clear the flag.
+      updateBuffer(id, { encoding, isDirty: true, savedVersionId: -1 })
     }
     const ipcHandler = (...args: unknown[]) => applyEncoding(args[0] as string)
     const customHandler = (e: Event) => applyEncoding((e as CustomEvent<string>).detail)
