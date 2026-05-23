@@ -32,7 +32,7 @@ export const FIND_IN_FILES_MAX_PER_FILE = 500
 /** Yield to the event loop every N directory visits while walking. */
 const ASYNC_YIELD_EVERY_DIRS = 64
 /** Concurrent file reads in streaming search. */
-export const FIND_IN_FILES_V2_CONCURRENCY = 16
+export const FIND_IN_FILES_V2_CONCURRENCY = 64
 
 export function parseFilter(filter: string): RegExp {
   if (!filter || filter === '*' || filter === '*.*') return /.*/

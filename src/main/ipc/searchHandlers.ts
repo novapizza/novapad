@@ -21,7 +21,7 @@ export function registerSearchHandlers(win: BrowserWindow): void {
     let worker: Worker
     try {
       worker = new Worker(workerPath, {
-        workerData: { searchId, opts, progressEvery: 50 }
+        workerData: { searchId, opts, progressEvery: 150 }
       })
     } catch (err) {
       return { error: `Failed to start search worker: ${(err as Error).message}` }

@@ -122,7 +122,12 @@ function createWindow(): void {
     minWidth: 600,
     minHeight: 400,
     show: false,
-    autoHideMenuBar: process.platform !== 'darwin',
+    // Linux: autohide so Alt reveals the native menu (legacy behavior preserved).
+    // Windows: do NOT autohide — autoHideMenuBar:true causes Alt to toggle the
+    // bar back into view, producing two menus stacked with the custom React
+    // MenuBar. setMenuBarVisibility(false) below + a re-hide inside buildMenu
+    // keep the native bar permanently invisible.
+    autoHideMenuBar: process.platform === 'linux',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -131,6 +136,15 @@ function createWindow(): void {
       nodeIntegration: false
     }
   })
+
+  // Windows-only: also force the native menu bar fully hidden so Alt no
+  // longer reveals it. The custom React <MenuBar> already covers every
+  // action, and on some Windows configs autoHideMenuBar leaves the bar
+  // visible after an Alt tap — which produced a "two menus stacked" look
+  // (native bar + React bar). Linux keeps the autoHide-on-Alt behavior.
+  if (process.platform === 'win32') {
+    mainWindow.setMenuBarVisibility(false)
+  }
 
   mainWindow.on('ready-to-show', () => {
     mainWindow!.maximize()

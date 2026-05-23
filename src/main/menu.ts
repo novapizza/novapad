@@ -463,6 +463,19 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
 
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
+
+  // Windows-only: setApplicationMenu re-attaches the menu to all windows and
+  // re-shows the native bar even after an earlier setMenuBarVisibility(false).
+  // Re-hide after every rebuild (initial, recents update, plugin reload) and
+  // turn OFF auto-hide-on-Alt — with autoHideMenuBar:true, pressing Alt still
+  // toggles the bar back into view; we want the bar gone permanently and the
+  // custom React MenuBar to be the only menu on Windows. Accelerators
+  // (Ctrl+N etc.) keep firing because the Menu object still exists, only its
+  // visibility is suppressed.
+  if (process.platform === 'win32') {
+    win.setAutoHideMenuBar(false)
+    win.setMenuBarVisibility(false)
+  }
 }
 
 export function updateRecentFiles(win: BrowserWindow, files: string[]): void {

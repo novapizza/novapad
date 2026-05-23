@@ -1,3 +1,4 @@
+import * as monaco from 'monaco-editor'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -10,9 +11,63 @@ import {
   ContextMenuTrigger,
 } from '../ui/context-menu'
 import { shortcutMod } from '../../utils/platform'
+import { editorRegistry } from '../../utils/editorRegistry'
 
 const editorCmd = (cmd: string) =>
   window.dispatchEvent(new CustomEvent('editor:command', { detail: cmd }))
+
+// document.execCommand('paste') is blocked in Chromium for security; cut/copy
+// also stopped being reliable from non-keyboard events. Drive the active
+// Monaco editor directly via navigator.clipboard + executeEdits so the menu
+// items actually do what their label says.
+function getActiveSelection() {
+  const ed = editorRegistry.get()
+  if (!ed) return null
+  const sel = ed.getSelection()
+  const model = ed.getModel()
+  if (!sel || !model) return null
+  return { ed, sel, model }
+}
+
+async function doCut() {
+  const ctx = getActiveSelection()
+  if (!ctx || ctx.sel.isEmpty()) return
+  const text = ctx.model.getValueInRange(ctx.sel)
+  try { await navigator.clipboard.writeText(text) } catch { return }
+  ctx.ed.executeEdits('contextmenu-cut', [
+    { range: ctx.sel, text: '', forceMoveMarkers: true },
+  ])
+  ctx.ed.focus()
+}
+
+async function doCopy() {
+  const ctx = getActiveSelection()
+  if (!ctx || ctx.sel.isEmpty()) return
+  const text = ctx.model.getValueInRange(ctx.sel)
+  try { await navigator.clipboard.writeText(text) } catch { /* swallow */ }
+  ctx.ed.focus()
+}
+
+async function doPaste() {
+  const ed = editorRegistry.get()
+  if (!ed) return
+  let text = ''
+  try { text = await navigator.clipboard.readText() } catch { return }
+  if (!text) return
+  const sel = ed.getSelection() ?? new monaco.Range(1, 1, 1, 1)
+  ed.executeEdits('contextmenu-paste', [
+    { range: sel, text, forceMoveMarkers: true },
+  ])
+  ed.focus()
+}
+
+function doSelectAll() {
+  const ed = editorRegistry.get()
+  const model = ed?.getModel()
+  if (!ed || !model) return
+  ed.setSelection(model.getFullModelRange())
+  ed.focus()
+}
 
 interface EditorContextMenuProps {
   children: React.ReactNode
@@ -26,22 +81,22 @@ export function EditorContextMenu({ children }: EditorContextMenuProps) {
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent className="min-w-[200px]">
-        <ContextMenuItem onSelect={() => document.execCommand('cut')}>
+        <ContextMenuItem onSelect={() => void doCut()}>
           Cut
           <ContextMenuShortcut>{mod}+X</ContextMenuShortcut>
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => document.execCommand('copy')}>
+        <ContextMenuItem onSelect={() => void doCopy()}>
           Copy
           <ContextMenuShortcut>{mod}+C</ContextMenuShortcut>
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => document.execCommand('paste')}>
+        <ContextMenuItem onSelect={() => void doPaste()}>
           Paste
           <ContextMenuShortcut>{mod}+V</ContextMenuShortcut>
         </ContextMenuItem>
 
         <ContextMenuSeparator />
 
-        <ContextMenuItem onSelect={() => document.execCommand('selectAll')}>
+        <ContextMenuItem onSelect={doSelectAll}>
           Select All
           <ContextMenuShortcut>{mod}+A</ContextMenuShortcut>
         </ContextMenuItem>
