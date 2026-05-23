@@ -250,7 +250,7 @@ export function MenuBar({
             onMouseEnter={() => setHoveredSubmenu(subKey)}
             onMouseLeave={() => setHoveredSubmenu(null)}
           >
-            <div className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-popover-foreground hover:bg-secondary transition-colors cursor-default">
+            <div className="w-full flex items-center gap-2.5 px-3 py-2 text-base text-popover-foreground hover:bg-secondary transition-colors cursor-default">
               <span className="w-5 flex justify-center shrink-0">{item.icon}</span>
               <span className="flex-1 text-left">{item.label}</span>
               <ChevronRight size={18} className="text-muted-foreground shrink-0" />
@@ -266,7 +266,7 @@ export function MenuBar({
       return (
         <button
           key={item.label}
-          className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-popover-foreground transition-colors ${
+          className={`w-full flex items-center gap-2.5 px-3 py-2 text-base text-popover-foreground transition-colors ${
             item.disabled ? 'opacity-40 pointer-events-none' : 'hover:bg-secondary'
           }`}
           disabled={item.disabled}
@@ -280,14 +280,14 @@ export function MenuBar({
         >
           <span className="w-5 flex justify-center shrink-0">
             {item.checked !== undefined ? (
-              <span className="text-sm">{item.checked ? '✓' : ''}</span>
+              <span className="text-base">{item.checked ? '✓' : ''}</span>
             ) : (
               item.icon
             )}
           </span>
           <span className="flex-1 text-left">{item.label}</span>
           {item.shortcut && (
-            <span className="text-sm text-muted-foreground ml-4 font-mono tabular-nums shrink-0">{item.shortcut}</span>
+            <span className="text-base text-muted-foreground ml-4 font-mono tabular-nums shrink-0">{item.shortcut}</span>
           )}
         </button>
       )
@@ -306,7 +306,7 @@ export function MenuBar({
         <div className="w-5 h-5 rounded-sm bg-primary flex items-center justify-center shrink-0">
           <span className="text-primary-foreground text-[10px] font-bold font-mono leading-none">N+</span>
         </div>
-        <span className="text-sm font-semibold text-toolbar-foreground tracking-tight">NovaPad</span>
+        <span className="text-base font-semibold text-toolbar-foreground tracking-tight">NovaPad</span>
       </div>
 
       {/* Menu items */}
@@ -314,7 +314,7 @@ export function MenuBar({
         {topMenus.map((label) => (
           <div key={label} className="relative">
             <button
-              className={`px-3 py-1.5 text-sm text-toolbar-foreground hover:bg-secondary rounded-sm transition-colors ${
+              className={`px-3 py-1.5 text-base text-toolbar-foreground hover:bg-secondary rounded-sm transition-colors ${
                 activeMenu === label ? 'bg-secondary' : ''
               }`}
               onMouseEnter={() => activeMenu && setActiveMenu(label)}

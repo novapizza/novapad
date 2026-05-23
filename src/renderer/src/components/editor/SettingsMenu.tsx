@@ -72,7 +72,7 @@ export function SettingsMenu() {
           <button
             role="menuitem"
             onClick={toggleTheme}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-popover-foreground hover:bg-secondary transition-colors"
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-base text-popover-foreground hover:bg-secondary transition-colors"
             data-testid="settings-menu-theme"
           >
             <span className="w-5 flex justify-center shrink-0">
@@ -88,7 +88,7 @@ export function SettingsMenu() {
           <button
             role="menuitem"
             onClick={openShortcuts}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-popover-foreground hover:bg-secondary transition-colors"
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-base text-popover-foreground hover:bg-secondary transition-colors"
             data-testid="settings-menu-shortcuts"
           >
             <span className="w-5 flex justify-center shrink-0"><Keyboard size={18} /></span>
@@ -98,7 +98,7 @@ export function SettingsMenu() {
           <button
             role="menuitem"
             onClick={openSettings}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-popover-foreground hover:bg-secondary transition-colors"
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-base text-popover-foreground hover:bg-secondary transition-colors"
             data-testid="settings-menu-settings"
           >
             <span className="w-5 flex justify-center shrink-0"><SettingsIcon size={18} /></span>
