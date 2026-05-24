@@ -1,9 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import { useUIStore } from '../../../store/uiStore'
+import { useAltHeld } from '../../../hooks/useAltHeld'
+import { useAltMnemonics } from '../../../hooks/useAltMnemonics'
+import { MnemonicLabel } from '../../../utils/mnemonic'
+import { isWindows } from '../../../utils/platform'
 
 export function AboutDialog() {
   const { showAbout, setShowAbout } = useUIStore()
   const [version, setVersion] = useState<string>('')
+  const altHeld = useAltHeld()
+  useAltMnemonics(
+    showAbout && isWindows(),
+    { O: () => setShowAbout(false) },
+    { allowInsideInputs: true, priority: true },
+  )
 
   useEffect(() => {
     if (!showAbout) return
@@ -59,7 +69,7 @@ export function AboutDialog() {
           <button
             className="px-3 py-1.5 text-base border-none rounded bg-primary text-primary-foreground cursor-pointer hover:bg-primary/90 transition-colors"
             onClick={() => setShowAbout(false)}
-          >OK</button>
+          ><MnemonicLabel label="&OK" show={altHeld} /></button>
         </div>
       </div>
     </div>

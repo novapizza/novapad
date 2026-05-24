@@ -1,4 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { useAltHeld } from '../../hooks/useAltHeld'
+import { useAltMnemonics } from '../../hooks/useAltMnemonics'
+import { MnemonicLabel } from '../../utils/mnemonic'
+import { isWindows } from '../../utils/platform'
 
 interface GoToLineInputProps {
   currentLine: number
@@ -15,6 +19,13 @@ export const GoToLineInput: React.FC<GoToLineInputProps> = ({
 }) => {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const altHeld = useAltHeld()
+
+  useAltMnemonics(
+    isWindows(),
+    { L: () => inputRef.current?.focus() },
+    { allowInsideInputs: true, priority: true },
+  )
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -69,11 +80,15 @@ export const GoToLineInput: React.FC<GoToLineInputProps> = ({
         className="fixed z-[9001] left-1/2 -translate-x-1/2 top-[60px] w-[min(400px,90vw)] bg-popover border border-border rounded-lg shadow-2xl flex flex-col"
         data-testid="gotoline"
       >
-        <div className="p-2">
+        <div className="p-2 flex items-center gap-2">
+          <label htmlFor="gotoline-input" className="text-base text-muted-foreground shrink-0">
+            <MnemonicLabel label="&Line:" show={altHeld} />
+          </label>
           <input
+            id="gotoline-input"
             ref={inputRef}
             type="text"
-            className="w-full bg-input border border-border rounded px-2 py-1 text-base text-popover-foreground outline-none focus:ring-1 focus:ring-ring"
+            className="flex-1 bg-input border border-border rounded px-2 py-1 text-base text-popover-foreground outline-none focus:ring-1 focus:ring-ring"
             placeholder={`Go to Line:Column (current ${currentLine}:${currentCol})`}
             value={value}
             onChange={(e) => setValue(e.target.value)}

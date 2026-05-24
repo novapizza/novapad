@@ -499,6 +499,7 @@ export default function App() {
         onReplace={() => openFind('replace')}
         onFindInFiles={() => openFind('findInFiles')}
         onReload={() => { const id = useEditorStore.getState().activeId; if (id) reloadBuffer(id) }}
+        onOpenRecent={openFiles}
       />
 
       {/* QuickStrip — macOS only (separate row with app icon + quick actions) */}

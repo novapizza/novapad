@@ -2,6 +2,10 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useUIStore } from '../../../store/uiStore'
 import { useSearchStore, SearchMode } from '../../../store/searchStore'
 import { useSearchEngine } from '../../../hooks/useSearchEngine'
+import { useAltHeld } from '../../../hooks/useAltHeld'
+import { useAltMnemonics, MnemonicHandlers } from '../../../hooks/useAltMnemonics'
+import { MnemonicLabel } from '../../../utils/mnemonic'
+import { isWindows } from '../../../utils/platform'
 import { cn } from '../../../lib/utils'
 
 type DialogTab = 'find' | 'replace' | 'findInFiles' | 'mark'
@@ -80,9 +84,12 @@ function SearchInput({ value, onChange, placeholder, history, onKeyDown, autoFoc
 // ─── Shared options panel ─────────────────────────────────────────────────────
 interface SearchOptionsProps {
   showInSelection?: boolean
+  altHeld: boolean
 }
-function SearchOptionsPanel({ showInSelection }: SearchOptionsProps) {
+function SearchOptionsPanel({ showInSelection, altHeld }: SearchOptionsProps) {
   const { options, setOptions } = useSearchStore()
+  const modeLabel = (m: SearchMode) =>
+    m === 'normal' ? '&Normal' : m === 'extended' ? 'E&xtended (\\n \\t …)' : 'Re&gex'
   return (
     <>
       <div className="flex items-center gap-3 mt-1.5">
@@ -97,22 +104,22 @@ function SearchOptionsPanel({ showInSelection }: SearchOptionsProps) {
               onChange={() => setOptions({ searchMode: m })}
               className="accent-primary"
             />
-            {m === 'normal' ? 'Normal' : m === 'extended' ? 'Extended (\\n \\t …)' : 'Regex'}
+            <MnemonicLabel label={modeLabel(m)} show={altHeld} />
           </label>
         ))}
       </div>
       <div className="flex items-center gap-3 mt-1">
         <label className="flex items-center gap-1 text-base text-foreground cursor-pointer">
           <input type="checkbox" checked={options.isCaseSensitive} onChange={(e) => setOptions({ isCaseSensitive: e.target.checked })} className="accent-primary" />
-          Match case
+          <MnemonicLabel label="Match &case" show={altHeld} />
         </label>
         <label className="flex items-center gap-1 text-base text-foreground cursor-pointer">
           <input type="checkbox" checked={options.isWholeWord} onChange={(e) => setOptions({ isWholeWord: e.target.checked })} className="accent-primary" />
-          Whole word
+          <MnemonicLabel label="&Whole word" show={altHeld} />
         </label>
         <label className="flex items-center gap-1 text-base text-foreground cursor-pointer">
           <input type="checkbox" checked={options.isWrapAround} onChange={(e) => setOptions({ isWrapAround: e.target.checked })} className="accent-primary" />
-          Wrap around
+          <MnemonicLabel label="Wrap a&round" show={altHeld} />
         </label>
         {options.searchMode === 'regex' && (
           <label className="flex items-center gap-1 text-base text-foreground cursor-pointer">
@@ -174,8 +181,6 @@ export function FindReplaceDialog() {
     if (!options.pattern) engine.clearCurrentMatchHighlight()
   }, [options.pattern]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!showFindReplace) return null
-
   // ── Handlers ──
   const handleFindNext = () => {
     const { match, current, total } = engine.findNext()
@@ -218,10 +223,59 @@ export function FindReplaceDialog() {
     if (e.key === 'Enter') { e.preventDefault(); handleReplaceOne() }
   }
 
+  const altHeld = useAltHeld()
+
   const tabNames: { id: DialogTab; label: string }[] = [
-    { id: 'find', label: 'Find' }, { id: 'replace', label: 'Replace' },
-    { id: 'findInFiles', label: 'Find in Files' }, { id: 'mark', label: 'Mark' },
+    { id: 'find', label: '&Find' }, { id: 'replace', label: 'Re&place' },
+    { id: 'findInFiles', label: 'Find in F&iles' }, { id: 'mark', label: '&Mark' },
   ]
+
+  const mnemonicHandlers: MnemonicHandlers = (() => {
+    const h: MnemonicHandlers = {
+      F: () => setActiveTab('find'),
+      P: () => setActiveTab('replace'),
+      I: () => setActiveTab('findInFiles'),
+      M: () => setActiveTab('mark'),
+    }
+    if (activeTab !== 'findInFiles') {
+      h.N = () => setOptions({ searchMode: 'normal' })
+      h.X = () => setOptions({ searchMode: 'extended' })
+      h.G = () => setOptions({ searchMode: 'regex' })
+      h.C = () => setOptions({ isCaseSensitive: !options.isCaseSensitive })
+      h.W = () => setOptions({ isWholeWord: !options.isWholeWord })
+      h.R = () => setOptions({ isWrapAround: !options.isWrapAround })
+    }
+    if (activeTab === 'find') {
+      h.V = handleFindPrev
+      h.U = handleCount
+      h.D = handleFindAll
+      h.O = handleFindAllOpenDocs
+    } else if (activeTab === 'replace') {
+      h.E = handleReplaceOne
+      h.A = handleReplaceAll
+      h.U = handleCount
+    } else if (activeTab === 'findInFiles') {
+      h.C = () => setOptions({ isCaseSensitive: !options.isCaseSensitive })
+      h.W = () => setOptions({ isWholeWord: !options.isWholeWord })
+      h.R = () => setFifRecursive(!fifRecursive)
+      h.A = handleFindInFiles
+      h.B = handleBrowseDir
+      h.N = handleCancelSearch
+    } else if (activeTab === 'mark') {
+      h.K = handleMarkAll
+      h.Y = handleClearMarks
+      h.A = handleClearAllMarks
+    }
+    return h
+  })()
+
+  useAltMnemonics(
+    showFindReplace && isWindows(),
+    mnemonicHandlers,
+    { allowInsideInputs: true, priority: true },
+  )
+
+  if (!showFindReplace) return null
 
   const btn = "px-3 py-1 text-base border border-border rounded bg-secondary text-foreground cursor-pointer hover:bg-muted transition-colors"
   const btnPrimary = "px-3 py-1 text-base border-none rounded bg-primary text-primary-foreground cursor-pointer hover:bg-primary/90 transition-colors"
@@ -233,7 +287,7 @@ export function FindReplaceDialog() {
       >
         {/* Title bar */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-          <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Find & Replace</span>
+          <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Find &amp; Replace</span>
           <button className="bg-transparent border-none cursor-pointer text-muted-foreground text-sm w-6 h-6 flex items-center justify-center rounded hover:bg-secondary hover:text-foreground" onClick={closeFind} tabIndex={-1} title="Close (Esc)">✕</button>
         </div>
 
@@ -248,7 +302,7 @@ export function FindReplaceDialog() {
               )}
               onClick={() => setActiveTab(tab.id)}
             >
-              {tab.label}
+              <MnemonicLabel label={tab.label} show={altHeld} />
             </button>
           ))}
         </div>
@@ -262,14 +316,14 @@ export function FindReplaceDialog() {
                 <span className="text-base text-muted-foreground w-14 shrink-0">Find:</span>
                 <SearchInput value={options.pattern} onChange={(v) => setOptions({ pattern: v })} placeholder="Search pattern…" history={patternHistory} onKeyDown={findInputKeyDown} autoFocus inputRef={findInputRef} />
               </div>
-              <SearchOptionsPanel showInSelection />
+              <SearchOptionsPanel showInSelection altHeld={altHeld} />
               <hr className="border-border my-1" />
               <div className="flex gap-1.5 flex-wrap">
                 <button className={btnPrimary} onClick={handleFindNext}>Find Next ↓</button>
-                <button className={btn} onClick={handleFindPrev}>Find Prev ↑</button>
-                <button className={btn} onClick={handleCount}>Count</button>
-                <button className={btn} onClick={handleFindAll}>Find All (this doc)</button>
-                <button className={btn} onClick={handleFindAllOpenDocs}>Find All (open docs)</button>
+                <button className={btn} onClick={handleFindPrev}><MnemonicLabel label="Find Pre&v ↑" show={altHeld} /></button>
+                <button className={btn} onClick={handleCount}><MnemonicLabel label="Co&unt" show={altHeld} /></button>
+                <button className={btn} onClick={handleFindAll}><MnemonicLabel label="Find All (this &doc)" show={altHeld} /></button>
+                <button className={btn} onClick={handleFindAllOpenDocs}><MnemonicLabel label="Find All (&open docs)" show={altHeld} /></button>
               </div>
             </>
           )}
@@ -285,13 +339,13 @@ export function FindReplaceDialog() {
                 <span className="text-base text-muted-foreground w-14 shrink-0">Replace:</span>
                 <SearchInput value={options.replaceText} onChange={(v) => setOptions({ replaceText: v })} placeholder="Replacement text…" history={replaceHistory} onKeyDown={replaceInputKeyDown} />
               </div>
-              <SearchOptionsPanel showInSelection />
+              <SearchOptionsPanel showInSelection altHeld={altHeld} />
               <hr className="border-border my-1" />
               <div className="flex gap-1.5 flex-wrap">
                 <button className={btnPrimary} onClick={handleFindNext}>Find Next</button>
-                <button className={btn} onClick={handleReplaceOne}>Replace</button>
-                <button className={btn} onClick={handleReplaceAll}>Replace All</button>
-                <button className={btn} onClick={handleCount}>Count</button>
+                <button className={btn} onClick={handleReplaceOne}><MnemonicLabel label="R&eplace" show={altHeld} /></button>
+                <button className={btn} onClick={handleReplaceAll}><MnemonicLabel label="Replace &All" show={altHeld} /></button>
+                <button className={btn} onClick={handleCount}><MnemonicLabel label="Co&unt" show={altHeld} /></button>
               </div>
             </>
           )}
@@ -307,7 +361,7 @@ export function FindReplaceDialog() {
                 <span className="text-base text-muted-foreground w-14 shrink-0">Directory:</span>
                 <div className="flex flex-1 gap-1.5">
                   <input className="flex-1 bg-input border border-border rounded px-2 py-1 text-sm text-foreground outline-none focus:border-ring" value={fifDir} onChange={(e) => setFifDir(e.target.value)} placeholder="/path/to/search…" spellCheck={false} />
-                  <button className={btn} onClick={handleBrowseDir}>Browse…</button>
+                  <button className={btn} onClick={handleBrowseDir}><MnemonicLabel label="&Browse…" show={altHeld} /></button>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -324,22 +378,22 @@ export function FindReplaceDialog() {
               </div>
               <div className="flex items-center gap-3 mt-1">
                 <label className="flex items-center gap-1 text-base text-foreground cursor-pointer">
-                  <input type="checkbox" checked={options.isCaseSensitive} onChange={(e) => setOptions({ isCaseSensitive: e.target.checked })} className="accent-primary" />Match case
+                  <input type="checkbox" checked={options.isCaseSensitive} onChange={(e) => setOptions({ isCaseSensitive: e.target.checked })} className="accent-primary" /><MnemonicLabel label="Match &case" show={altHeld} />
                 </label>
                 <label className="flex items-center gap-1 text-base text-foreground cursor-pointer">
-                  <input type="checkbox" checked={options.isWholeWord} onChange={(e) => setOptions({ isWholeWord: e.target.checked })} className="accent-primary" />Whole word
+                  <input type="checkbox" checked={options.isWholeWord} onChange={(e) => setOptions({ isWholeWord: e.target.checked })} className="accent-primary" /><MnemonicLabel label="&Whole word" show={altHeld} />
                 </label>
                 <label className="flex items-center gap-1 text-base text-foreground cursor-pointer">
-                  <input type="checkbox" checked={fifRecursive} onChange={(e) => setFifRecursive(e.target.checked)} className="accent-primary" />Recursive
+                  <input type="checkbox" checked={fifRecursive} onChange={(e) => setFifRecursive(e.target.checked)} className="accent-primary" /><MnemonicLabel label="&Recursive" show={altHeld} />
                 </label>
               </div>
               <hr className="border-border my-1" />
               <div className="flex gap-1.5 items-center">
                 <button className={btnPrimary} onClick={handleFindInFiles} disabled={isSearching}>
                   {isSearching ? <span className="inline-block animate-spin mr-1">⟳</span> : null}
-                  {isSearching ? 'Searching…' : 'Find All'}
+                  {isSearching ? 'Searching…' : <MnemonicLabel label="Find &All" show={altHeld} />}
                 </button>
-                {isSearching && currentSearchId && <button className={btn} onClick={handleCancelSearch}>Cancel</button>}
+                {isSearching && currentSearchId && <button className={btn} onClick={handleCancelSearch}><MnemonicLabel label="Ca&ncel" show={altHeld} /></button>}
               </div>
               {isSearching && searchProgress && searchProgress.scanned > 0 && (
                 <div className="text-base text-primary mt-1">Scanning {searchProgress.scanned} files…</div>
@@ -354,7 +408,7 @@ export function FindReplaceDialog() {
                 <span className="text-base text-muted-foreground w-14 shrink-0">Find:</span>
                 <SearchInput value={options.pattern} onChange={(v) => setOptions({ pattern: v })} placeholder="Pattern to mark…" history={patternHistory} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleMarkAll() } }} autoFocus inputRef={findInputRef} />
               </div>
-              <SearchOptionsPanel />
+              <SearchOptionsPanel altHeld={altHeld} />
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-base text-muted-foreground w-14 shrink-0">Style:</span>
                 <div className="flex items-center gap-1.5">
@@ -378,9 +432,9 @@ export function FindReplaceDialog() {
               </div>
               <hr className="border-border my-1" />
               <div className="flex gap-1.5 flex-wrap">
-                <button className={btnPrimary} onClick={handleMarkAll}>Mark All</button>
-                <button className={btn} onClick={handleClearMarks}>Clear Style {markStyleIndex + 1}</button>
-                <button className={btn} onClick={handleClearAllMarks}>Clear All Marks</button>
+                <button className={btnPrimary} onClick={handleMarkAll}><MnemonicLabel label="Mar&k All" show={altHeld} /></button>
+                <button className={btn} onClick={handleClearMarks}><MnemonicLabel label={`Clear St&yle ${markStyleIndex + 1}`} show={altHeld} /></button>
+                <button className={btn} onClick={handleClearAllMarks}><MnemonicLabel label="Clear &All Marks" show={altHeld} /></button>
               </div>
             </>
           )}

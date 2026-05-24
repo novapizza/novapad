@@ -23,3 +23,14 @@ export function shortcutMod(): '⌘' | 'Ctrl' {
 export function shortcutAlt(): '⌥' | 'Alt' {
   return isMacOS() ? '⌥' : 'Alt'
 }
+
+export function isWindows(): boolean {
+  const p = typeof window !== 'undefined' ? window.api?.platform : undefined
+  if (p === 'win32') return true
+  if (p === 'darwin' || p === 'linux' || p === 'freebsd' || p === 'openbsd') return false
+  if (typeof navigator !== 'undefined') {
+    const ua = navigator.userAgent ?? ''
+    if (/Windows/i.test(ua)) return true
+  }
+  return false
+}

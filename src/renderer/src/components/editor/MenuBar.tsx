@@ -4,12 +4,15 @@ import {
   Undo2, Redo2, Scissors, Copy, Clipboard, SquareDashedMousePointer,
   Search, Replace, FolderSearch,
   PanelLeftClose, PanelLeft,
-  RotateCcw, ChevronRight,
+  RotateCcw, ChevronRight, Clock,
 } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { useEditorStore } from '../../store/editorStore'
 import { usePluginStore } from '../../store/pluginStore'
-import { isMacOS, shortcutMod, shortcutAlt } from '../../utils/platform'
+import { isMacOS, isWindows, shortcutMod, shortcutAlt } from '../../utils/platform'
+import { MnemonicLabel, parseMnemonic } from '../../utils/mnemonic'
+import { useAltHeld } from '../../hooks/useAltHeld'
+import { useAltMnemonics } from '../../hooks/useAltMnemonics'
 import { SettingsMenu } from './SettingsMenu'
 import { NavButtons } from './NavButtons'
 
@@ -26,10 +29,12 @@ interface MenuBarProps {
   onReplace: () => void
   onFindInFiles: () => void
   onReload: () => void
+  onOpenRecent: (paths: string[]) => void
 }
 
 interface MenuItem {
   label: string
+  title?: string
   icon?: React.ReactNode
   shortcut?: string
   action?: () => void
@@ -44,7 +49,7 @@ const editorCmd = (cmd: string) => () =>
 
 export function MenuBar({
   onNew, onOpen, onOpenFolder, onSave, onSaveAs, onSaveAll,
-  onClose, onCloseAll, onFind, onReplace, onFindInFiles, onReload,
+  onClose, onCloseAll, onFind, onReplace, onFindInFiles, onReload, onOpenRecent,
 }: MenuBarProps) {
   // macOS uses native menu — hide custom MenuBar
   if (isMacOS()) return null
@@ -54,6 +59,7 @@ export function MenuBar({
 
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [hoveredSubmenu, setHoveredSubmenu] = useState<string | null>(null)
+  const [recentFiles, setRecentFiles] = useState<string[]>([])
   const menuRef = useRef<HTMLDivElement>(null)
   const {
     showToolbar, showStatusBar, showSidebar,
@@ -91,81 +97,96 @@ export function MenuBar({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Refresh recents whenever the File menu opens so newly opened files appear.
+  useEffect(() => {
+    if (activeMenu === 'File') {
+      window.api.file.getRecents().then(setRecentFiles)
+    }
+  }, [activeMenu])
+
+  const recentFilesSubmenu: MenuItem[] = recentFiles.length > 0
+    ? recentFiles.map((fp) => {
+        const name = fp.replace(/\\/g, '/').split('/').pop() ?? fp
+        return { label: name, title: fp, action: () => onOpenRecent([fp]) }
+      })
+    : [{ label: 'No recent files', disabled: true }]
+
   const menuItems: Record<string, MenuItem[]> = {
     File: [
-      { label: 'New File', icon: <FilePlus size={18} />, shortcut: `${mod}+N`, action: onNew },
-      { label: 'Open File...', icon: <FolderOpen size={18} />, shortcut: `${mod}+O`, action: onOpen },
-      { label: 'Open Folder...', shortcut: `${mod}+Shift+O`, action: onOpenFolder },
-      { label: 'Save', icon: <Save size={18} />, shortcut: `${mod}+S`, action: onSave },
-      { label: 'Save As...', shortcut: `${mod}+Shift+S`, action: onSaveAs },
-      { label: 'Save All', shortcut: `${mod}+${alt}+S`, action: onSaveAll },
+      { label: '&New File', icon: <FilePlus size={18} />, shortcut: `${mod}+N`, action: onNew },
+      { label: '&Open File...', icon: <FolderOpen size={18} />, shortcut: `${mod}+O`, action: onOpen },
+      { label: 'Open &Folder...', shortcut: `${mod}+Shift+O`, action: onOpenFolder },
+      { label: '&Save', icon: <Save size={18} />, shortcut: `${mod}+S`, action: onSave },
+      { label: 'Save &As...', shortcut: `${mod}+Shift+S`, action: onSaveAs },
+      { label: 'Sa&ve All', shortcut: `${mod}+${alt}+S`, action: onSaveAll },
       { separator: true, label: '' },
-      { label: 'Reload from Disk', icon: <RotateCcw size={18} />, shortcut: `${mod}+R`, action: onReload },
+      { label: '&Reload from Disk', icon: <RotateCcw size={18} />, shortcut: `${mod}+R`, action: onReload },
+      { label: 'Rec&ent Files', icon: <Clock size={18} />, submenu: recentFilesSubmenu },
       { separator: true, label: '' },
-      { label: 'Close File', icon: <X size={18} />, shortcut: `${mod}+W`, action: onClose },
-      { label: 'Close All Files', action: onCloseAll },
+      { label: '&Close File', icon: <X size={18} />, shortcut: `${mod}+W`, action: onClose },
+      { label: 'Close All Fi&les', action: onCloseAll },
     ],
     Edit: [
-      { label: 'Undo', icon: <Undo2 size={18} />, shortcut: `${mod}+Z`, action: () => window.dispatchEvent(new CustomEvent('editor:undo')) },
-      { label: 'Redo', icon: <Redo2 size={18} />, shortcut: `${mod}+Y`, action: () => window.dispatchEvent(new CustomEvent('editor:redo')) },
+      { label: '&Undo', icon: <Undo2 size={18} />, shortcut: `${mod}+Z`, action: () => window.dispatchEvent(new CustomEvent('editor:undo')) },
+      { label: '&Redo', icon: <Redo2 size={18} />, shortcut: `${mod}+Y`, action: () => window.dispatchEvent(new CustomEvent('editor:redo')) },
       { separator: true, label: '' },
-      { label: 'Cut', icon: <Scissors size={18} />, shortcut: `${mod}+X`, action: () => document.execCommand('cut') },
-      { label: 'Copy', icon: <Copy size={18} />, shortcut: `${mod}+C`, action: () => document.execCommand('copy') },
-      { label: 'Paste', icon: <Clipboard size={18} />, shortcut: `${mod}+V`, action: () => document.execCommand('paste') },
+      { label: 'Cu&t', icon: <Scissors size={18} />, shortcut: `${mod}+X`, action: () => document.execCommand('cut') },
+      { label: '&Copy', icon: <Copy size={18} />, shortcut: `${mod}+C`, action: () => document.execCommand('copy') },
+      { label: '&Paste', icon: <Clipboard size={18} />, shortcut: `${mod}+V`, action: () => document.execCommand('paste') },
       { separator: true, label: '' },
-      { label: 'Select All', icon: <SquareDashedMousePointer size={18} />, shortcut: `${mod}+A`, action: () => document.execCommand('selectAll') },
-      { label: 'Begin/End Select', shortcut: `${mod}+Shift+B`, disabled: true, action: editorCmd('beginEndSelect') },
-      { label: 'Begin/End Select in Column Mode', shortcut: `${mod}+Shift+${alt}+B`, disabled: true, action: editorCmd('beginEndSelectColumn') },
+      { label: 'Select &All', icon: <SquareDashedMousePointer size={18} />, shortcut: `${mod}+A`, action: () => document.execCommand('selectAll') },
+      { label: '&Begin/End Select', shortcut: `${mod}+Shift+B`, disabled: true, action: editorCmd('beginEndSelect') },
+      { label: 'Begin/End Select in Co&lumn Mode', shortcut: `${mod}+Shift+${alt}+B`, disabled: true, action: editorCmd('beginEndSelectColumn') },
       { separator: true, label: '' },
       {
-        label: 'Line Operations', submenu: [
-          { label: 'Duplicate Line', shortcut: `${mod}+D`, action: editorCmd('duplicateLine') },
-          { label: 'Delete Line', shortcut: `${mod}+Shift+K`, action: editorCmd('deleteLine') },
-          { label: 'Move Line Up', shortcut: `${alt}+Up`, action: editorCmd('moveLineUp') },
-          { label: 'Move Line Down', shortcut: `${alt}+Down`, action: editorCmd('moveLineDown') },
+        label: 'Line &Operations', submenu: [
+          { label: '&Duplicate Line', shortcut: `${mod}+D`, action: editorCmd('duplicateLine') },
+          { label: 'De&lete Line', shortcut: `${mod}+Shift+K`, action: editorCmd('deleteLine') },
+          { label: 'Move Line &Up', shortcut: `${alt}+Up`, action: editorCmd('moveLineUp') },
+          { label: 'Move Line Dow&n', shortcut: `${alt}+Down`, action: editorCmd('moveLineDown') },
           { separator: true, label: '' },
-          { label: 'Sort Lines Ascending', action: editorCmd('sortLinesAsc') },
-          { label: 'Sort Lines Descending', action: editorCmd('sortLinesDesc') },
+          { label: 'Sort Lines &Ascending', action: editorCmd('sortLinesAsc') },
+          { label: 'Sort Lines Descendin&g', action: editorCmd('sortLinesDesc') },
         ],
       },
       {
-        label: 'Convert Case (UPPER/lower)', submenu: [
-          { label: 'UPPERCASE', shortcut: `${mod}+Shift+U`, action: editorCmd('toUpperCase') },
-          { label: 'lowercase', shortcut: `${mod}+Shift+L`, action: editorCmd('toLowerCase') },
-          { label: 'Title Case', action: editorCmd('toTitleCase') },
+        label: 'Convert Cas&e (UPPER/lower)', submenu: [
+          { label: '&UPPERCASE', shortcut: `${mod}+Shift+U`, action: editorCmd('toUpperCase') },
+          { label: '&lowercase', shortcut: `${mod}+Shift+L`, action: editorCmd('toLowerCase') },
+          { label: '&Title Case', action: editorCmd('toTitleCase') },
         ],
       },
       { separator: true, label: '' },
-      { label: 'Toggle Comment', shortcut: `${mod}+/`, action: editorCmd('toggleComment') },
-      { label: 'Toggle Block Comment', shortcut: `${mod}+Shift+/`, action: editorCmd('toggleBlockComment') },
+      { label: 'Toggle Co&mment', shortcut: `${mod}+/`, action: editorCmd('toggleComment') },
+      { label: 'Toggle Bloc&k Comment', shortcut: `${mod}+Shift+/`, action: editorCmd('toggleBlockComment') },
       { separator: true, label: '' },
-      { label: 'Trim Trailing Whitespace', action: editorCmd('trimTrailingWhitespace') },
-      { label: 'Beautify', shortcut: `${mod}+${alt}+Shift+M`, action: editorCmd('beautify') },
-      { label: 'Transform schema', shortcut: `${mod}+${alt}+Shift+K`, action: editorCmd('transformToDiagram') },
-      { label: 'Remove Duplicates', shortcut: `${mod}+${alt}+Shift+C`, action: editorCmd('removeDuplicates') },
-      { label: 'Indent Selection', shortcut: 'Tab', action: editorCmd('indentSelection') },
-      { label: 'Outdent Selection', shortcut: 'Shift+Tab', action: editorCmd('outdentSelection') },
+      { label: 'Tri&m Trailing Whitespace', action: editorCmd('trimTrailingWhitespace') },
+      { label: 'Beauti&fy', shortcut: `${mod}+${alt}+Shift+M`, action: editorCmd('beautify') },
+      { label: 'Transform sc&hema', shortcut: `${mod}+${alt}+Shift+K`, action: editorCmd('transformToDiagram') },
+      { label: 'Remove Du&plicates', shortcut: `${mod}+${alt}+Shift+C`, action: editorCmd('removeDuplicates') },
+      { label: '&Indent Selection', shortcut: 'Tab', action: editorCmd('indentSelection') },
+      { label: 'Out&dent Selection', shortcut: 'Shift+Tab', action: editorCmd('outdentSelection') },
     ],
     Search: [
-      { label: 'Find...', icon: <Search size={18} />, shortcut: `${mod}+F`, action: onFind },
-      { label: 'Replace...', icon: <Replace size={18} />, shortcut: `${mod}+H`, action: onReplace },
-      { label: 'Find in Files...', icon: <FolderSearch size={18} />, shortcut: `${mod}+Shift+F`, action: onFindInFiles },
+      { label: '&Find...', icon: <Search size={18} />, shortcut: `${mod}+F`, action: onFind },
+      { label: '&Replace...', icon: <Replace size={18} />, shortcut: `${mod}+H`, action: onReplace },
+      { label: 'Find in F&iles...', icon: <FolderSearch size={18} />, shortcut: `${mod}+Shift+F`, action: onFindInFiles },
       { separator: true, label: '' },
-      { label: 'Go to Line...', shortcut: `${mod}+G`, action: editorCmd('goToLine') },
+      { label: '&Go to Line...', shortcut: `${mod}+G`, action: editorCmd('goToLine') },
       { separator: true, label: '' },
-      { label: 'Toggle Bookmark', shortcut: `${mod}+F2`, disabled: true },
-      { label: 'Next Bookmark', shortcut: 'F2', disabled: true },
-      { label: 'Previous Bookmark', shortcut: 'Shift+F2', disabled: true },
-      { label: 'Clear All Bookmarks', disabled: true },
+      { label: '&Toggle Bookmark', shortcut: `${mod}+F2`, disabled: true },
+      { label: '&Next Bookmark', shortcut: 'F2', disabled: true },
+      { label: '&Previous Bookmark', shortcut: 'Shift+F2', disabled: true },
+      { label: '&Clear All Bookmarks', disabled: true },
     ],
     View: [
-      { label: showToolbar ? 'Hide Toolbar' : 'Show Toolbar', action: () => setShowToolbar(!showToolbar) },
-      { label: showStatusBar ? 'Hide Status Bar' : 'Show Status Bar', action: () => setShowStatusBar(!showStatusBar) },
-      { label: showSidebar ? 'Hide Sidebar' : 'Show Sidebar', icon: showSidebar ? <PanelLeftClose size={18} /> : <PanelLeft size={18} />, shortcut: `${mod}+B`, action: () => setShowSidebar(!showSidebar) },
-      { label: 'Preview', shortcut: `${mod}+P`, action: editorCmd('togglePreview') },
+      { label: showToolbar ? 'Hide &Toolbar' : 'Show &Toolbar', action: () => setShowToolbar(!showToolbar) },
+      { label: showStatusBar ? 'Hide &Status Bar' : 'Show &Status Bar', action: () => setShowStatusBar(!showStatusBar) },
+      { label: showSidebar ? 'Hide Side&bar' : 'Show Side&bar', icon: showSidebar ? <PanelLeftClose size={18} /> : <PanelLeft size={18} />, shortcut: `${mod}+B`, action: () => setShowSidebar(!showSidebar) },
+      { label: 'Pre&view', shortcut: `${mod}+P`, action: editorCmd('togglePreview') },
       { separator: true, label: '' },
       {
-        label: 'Word Wrap', shortcut: `${alt}+Z`, checked: wordWrap,
+        label: '&Word Wrap', shortcut: `${alt}+Z`, checked: wordWrap,
         action: () => {
           const v = !wordWrap
           setWordWrap(v)
@@ -173,7 +194,7 @@ export function MenuBar({
         },
       },
       {
-        label: 'Show Whitespace', checked: renderWhitespace,
+        label: 'Show W&hitespace', checked: renderWhitespace,
         action: () => {
           const v = !renderWhitespace
           setRenderWhitespace(v)
@@ -181,7 +202,7 @@ export function MenuBar({
         },
       },
       {
-        label: 'Show Indentation Guides', checked: indentationGuides,
+        label: 'Show I&ndentation Guides', checked: indentationGuides,
         action: () => {
           const v = !indentationGuides
           setIndentationGuides(v)
@@ -189,7 +210,7 @@ export function MenuBar({
         },
       },
       {
-        label: 'Column Select Mode', checked: columnSelectMode,
+        label: '&Column Select Mode', checked: columnSelectMode,
         action: () => {
           const v = !columnSelectMode
           setColumnSelectMode(v)
@@ -197,22 +218,22 @@ export function MenuBar({
         },
       },
       { separator: true, label: '' },
-      { label: 'Zoom In', shortcut: `${mod}+=`, action: editorCmd('zoomIn') },
-      { label: 'Zoom Out', shortcut: `${mod}+-`, action: editorCmd('zoomOut') },
-      { label: 'Reset Zoom', shortcut: `${mod}+0`, action: editorCmd('zoomReset') },
+      { label: 'Zoom &In', shortcut: `${mod}+=`, action: editorCmd('zoomIn') },
+      { label: 'Zoom &Out', shortcut: `${mod}+-`, action: editorCmd('zoomOut') },
+      { label: '&Reset Zoom', shortcut: `${mod}+0`, action: editorCmd('zoomReset') },
       { separator: true, label: '' },
-      { label: 'Split View', disabled: true },
+      { label: 'S&plit View', disabled: true },
     ],
     Macro: [
-      { label: 'Start Recording', shortcut: `${mod}+Shift+R`, disabled: true },
-      { label: 'Stop Recording', shortcut: `${mod}+Shift+R`, disabled: true },
-      { label: 'Playback', shortcut: `${mod}+Shift+P`, disabled: true },
+      { label: '&Start Recording', shortcut: `${mod}+Shift+R`, disabled: true },
+      { label: 'S&top Recording', shortcut: `${mod}+Shift+R`, disabled: true },
+      { label: '&Playback', shortcut: `${mod}+Shift+P`, disabled: true },
       { separator: true, label: '' },
-      { label: 'Saved Macros', disabled: true },
+      { label: 'Sa&ved Macros', disabled: true },
     ],
     Plugins: [
       {
-        label: 'Plugin Manager...',
+        label: '&Plugin Manager...',
         action: () => useEditorStore.getState().openPluginManagerTab()
       },
       ...(dynamicPluginMenu.length > 0
@@ -220,22 +241,86 @@ export function MenuBar({
         : []),
     ],
     Window: [
-      { label: 'Minimize', action: () => window.dispatchEvent(new CustomEvent('window:minimize')) },
-      { label: 'Zoom', action: () => window.dispatchEvent(new CustomEvent('window:zoom')) },
+      { label: '&Minimize', action: () => window.dispatchEvent(new CustomEvent('window:minimize')) },
+      { label: '&Zoom', action: () => window.dispatchEvent(new CustomEvent('window:zoom')) },
       { separator: true, label: '' },
-      { label: 'Next Tab', shortcut: `${mod}+Tab`, action: () => window.dispatchEvent(new CustomEvent('tab:next-local')) },
-      { label: 'Previous Tab', shortcut: `${mod}+Shift+Tab`, action: () => window.dispatchEvent(new CustomEvent('tab:prev-local')) },
+      { label: '&Next Tab', shortcut: `${mod}+Tab`, action: () => window.dispatchEvent(new CustomEvent('tab:next-local')) },
+      { label: '&Previous Tab', shortcut: `${mod}+Shift+Tab`, action: () => window.dispatchEvent(new CustomEvent('tab:prev-local')) },
     ],
     Help: [
-      { label: 'About NovaPad', action: () => useUIStore.getState().setShowAbout(true) },
+      { label: '&About NovaPad', action: () => useUIStore.getState().setShowAbout(true) },
       { separator: true, label: '' },
-      { label: 'Check for Updates...', action: () => { void window.api.update.check() } },
+      { label: '&Check for Updates...', action: () => { void window.api.update.check() } },
       { separator: true, label: '' },
-      { label: 'Open DevTools', shortcut: 'F12', action: () => window.api.send('dev:toggle-devtools') },
+      { label: 'Open Dev&Tools', shortcut: 'F12', action: () => window.api.send('dev:toggle-devtools') },
     ],
   }
 
-  const topMenus = ['File', 'Edit', 'Search', 'View', 'Macro', 'Plugins', 'Window', 'Help']
+  const topMenus: { key: string; label: string }[] = [
+    { key: 'File', label: '&File' },
+    { key: 'Edit', label: '&Edit' },
+    { key: 'Search', label: '&Search' },
+    { key: 'View', label: '&View' },
+    { key: 'Macro', label: '&Macro' },
+    { key: 'Plugins', label: '&Plugins' },
+    { key: 'Window', label: '&Window' },
+    { key: 'Help', label: '&Help' },
+  ]
+
+  const altHeld = useAltHeld()
+
+  const topLevelHandlers: Record<string, () => void> = {}
+  for (const { key, label } of topMenus) {
+    const { letter } = parseMnemonic(label)
+    if (letter) topLevelHandlers[letter] = () => {
+      setActiveMenu((prev) => prev === key ? null : key)
+      setHoveredSubmenu(null)
+    }
+  }
+  useAltMnemonics(isWindows(), topLevelHandlers, { allowInsideInputs: true })
+
+  const menuItemsRef = useRef(menuItems)
+  menuItemsRef.current = menuItems
+
+  useEffect(() => {
+    if (!isWindows() || !activeMenu) return
+    const items = menuItemsRef.current[activeMenu]
+    if (!items) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveMenu(null)
+        setHoveredSubmenu(null)
+        return
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      if (!e.key || e.key.length !== 1) return
+      const upper = e.key.toUpperCase()
+      for (const item of items) {
+        if (item.separator || item.disabled) continue
+        const { letter } = parseMnemonic(item.label)
+        if (letter === upper) {
+          e.preventDefault()
+          e.stopPropagation()
+          if (item.submenu) {
+            setHoveredSubmenu(`${activeMenu}-${item.label}`)
+          } else {
+            item.action?.()
+            setActiveMenu(null)
+            setHoveredSubmenu(null)
+          }
+          return
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [activeMenu])
+
+  useEffect(() => {
+    const onBlur = () => { setActiveMenu(null); setHoveredSubmenu(null) }
+    window.addEventListener('blur', onBlur)
+    return () => window.removeEventListener('blur', onBlur)
+  }, [])
 
   const renderMenuItems = (items: MenuItem[], parentLabel: string) => (
     items.map((item, i) => {
@@ -253,7 +338,7 @@ export function MenuBar({
           >
             <div className="w-full flex items-center gap-2.5 px-3 py-2 text-base text-popover-foreground hover:bg-secondary transition-colors cursor-default">
               <span className="w-5 flex justify-center shrink-0">{item.icon}</span>
-              <span className="flex-1 text-left">{item.label}</span>
+              <span className="flex-1 text-left"><MnemonicLabel label={item.label} show={altHeld} /></span>
               <ChevronRight size={18} className="text-muted-foreground shrink-0" />
             </div>
             {hoveredSubmenu === subKey && (
@@ -267,6 +352,7 @@ export function MenuBar({
       return (
         <button
           key={item.label}
+          title={item.title}
           className={`w-full flex items-center gap-2.5 px-3 py-2 text-base text-popover-foreground transition-colors ${
             item.disabled ? 'opacity-40 pointer-events-none' : 'hover:bg-secondary'
           }`}
@@ -286,7 +372,7 @@ export function MenuBar({
               item.icon
             )}
           </span>
-          <span className="flex-1 text-left">{item.label}</span>
+          <span className="flex-1 text-left"><MnemonicLabel label={item.label} show={altHeld} /></span>
           {item.shortcut && (
             <span className="text-base text-muted-foreground ml-4 font-mono tabular-nums shrink-0">{item.shortcut}</span>
           )}
@@ -304,25 +390,25 @@ export function MenuBar({
     >
       {/* Menu items */}
       <div className="flex items-center" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-        {topMenus.map((label) => (
-          <div key={label} className="relative">
+        {topMenus.map(({ key, label }) => (
+          <div key={key} className="relative">
             <button
               className={`px-3 py-1.5 text-base text-toolbar-foreground hover:bg-secondary rounded-sm transition-colors ${
-                activeMenu === label ? 'bg-secondary' : ''
+                activeMenu === key ? 'bg-secondary' : ''
               }`}
-              onMouseEnter={() => activeMenu && setActiveMenu(label)}
+              onMouseEnter={() => activeMenu && setActiveMenu(key)}
               onClick={() => {
-                setActiveMenu(activeMenu === label ? null : label)
+                setActiveMenu(activeMenu === key ? null : key)
                 setHoveredSubmenu(null)
               }}
             >
-              {label}
+              <MnemonicLabel label={label} show={altHeld} />
             </button>
 
             {/* Dropdown */}
-            {activeMenu === label && menuItems[label] && (
+            {activeMenu === key && menuItems[key] && (
               <div className="absolute top-full left-0 mt-0.5 min-w-[260px] bg-popover border border-border rounded-md shadow-lg py-1 z-50">
-                {renderMenuItems(menuItems[label], label)}
+                {renderMenuItems(menuItems[key], key)}
               </div>
             )}
           </div>

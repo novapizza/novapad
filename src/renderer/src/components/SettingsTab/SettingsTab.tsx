@@ -4,17 +4,21 @@ import { useConfigStore, AppConfig } from '../../store/configStore'
 import { usePluginStore, PluginSettingField } from '../../store/pluginStore'
 import { cn } from '../../lib/utils'
 import { ShortcutsSection } from './ShortcutsSection'
+import { useAltHeld } from '../../hooks/useAltHeld'
+import { useAltMnemonics, MnemonicHandlers } from '../../hooks/useAltMnemonics'
+import { MnemonicLabel, parseMnemonic } from '../../utils/mnemonic'
+import { isWindows } from '../../utils/platform'
 
 type PrefTab = 'general' | 'editor' | 'appearance' | 'newDoc' | 'backup' | 'completion' | 'shortcuts' | 'extensions'
 
 const STATIC_TABS: { id: PrefTab; label: string }[] = [
-  { id: 'general',    label: 'General' },
-  { id: 'editor',     label: 'Editor' },
-  { id: 'appearance', label: 'Appearance' },
-  { id: 'newDoc',     label: 'New Document' },
-  { id: 'backup',     label: 'Backup / AutoSave' },
-  { id: 'completion', label: 'Auto-Completion' },
-  { id: 'shortcuts',  label: 'Keyboard Shortcuts' },
+  { id: 'general',    label: '&General' },
+  { id: 'editor',     label: '&Editor' },
+  { id: 'appearance', label: '&Appearance' },
+  { id: 'newDoc',     label: '&New Document' },
+  { id: 'backup',     label: '&Backup / AutoSave' },
+  { id: 'completion', label: 'Auto-&Completion' },
+  { id: 'shortcuts',  label: '&Keyboard Shortcuts' },
 ]
 
 const ENCODINGS = [
@@ -61,8 +65,20 @@ export function SettingsTab() {
   const activePluginSettings = Object.entries(pluginSettings).filter(([name]) => enabledPluginNames.has(name))
   const hasExtensions = activePluginSettings.length > 0
   const TABS = hasExtensions
-    ? [...STATIC_TABS, { id: 'extensions' as PrefTab, label: 'Extensions' }]
+    ? [...STATIC_TABS, { id: 'extensions' as PrefTab, label: 'E&xtensions' }]
     : STATIC_TABS
+
+  const altHeld = useAltHeld()
+
+  const tabHandlers: MnemonicHandlers = (() => {
+    const h: MnemonicHandlers = {}
+    for (const t of TABS) {
+      const { letter } = parseMnemonic(t.label)
+      if (letter && !(letter in h)) h[letter] = () => setActiveTab(t.id)
+    }
+    return h
+  })()
+  useAltMnemonics(isWindows(), tabHandlers, { allowInsideInputs: true, priority: true })
 
   const set = <K extends keyof AppConfig>(key: K, val: AppConfig[K]) => config.setProp(key, val)
 
@@ -86,7 +102,7 @@ export function SettingsTab() {
               onClick={() => setActiveTab(t.id)}
               data-testid={`settings-category-${t.id}`}
             >
-              {t.label}
+              <MnemonicLabel label={t.label} show={altHeld} />
             </button>
           ))}
         </div>
