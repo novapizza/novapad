@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Settings as SettingsIcon, Sun, Moon, Keyboard } from 'lucide-react'
+import { Settings as SettingsIcon, Sun, Moon } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { useConfigStore } from '../../store/configStore'
 import { useEditorStore } from '../../store/editorStore'
@@ -7,8 +7,9 @@ import { shortcutMod } from '../../utils/platform'
 
 /**
  * Gear icon in the top-right of the menu/title bar. Clicking opens a small
- * dropdown with the theme toggle, Keyboard Shortcuts, and Settings entries —
- * the only way to reach Settings once the legacy menu has been removed.
+ * dropdown with the theme toggle and Settings entry — the only way to reach
+ * Settings once the legacy menu has been removed. Keyboard shortcuts live
+ * inside Settings (Settings > Keyboard Shortcuts).
  */
 export function SettingsMenu() {
   const mod = shortcutMod()
@@ -37,11 +38,6 @@ export function SettingsMenu() {
   const toggleTheme = () => {
     useUIStore.getState().toggleTheme()
     useConfigStore.getState().setProp('theme', useUIStore.getState().theme)
-    setOpen(false)
-  }
-
-  const openShortcuts = () => {
-    useEditorStore.getState().openVirtualTab('shortcuts')
     setOpen(false)
   }
 
@@ -84,16 +80,6 @@ export function SettingsMenu() {
           </button>
 
           <div className="h-px bg-border mx-2 my-1" />
-
-          <button
-            role="menuitem"
-            onClick={openShortcuts}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-base text-popover-foreground hover:bg-secondary transition-colors"
-            data-testid="settings-menu-shortcuts"
-          >
-            <span className="w-5 flex justify-center shrink-0"><Keyboard size={18} /></span>
-            <span className="flex-1 text-left">Keyboard Shortcuts</span>
-          </button>
 
           <button
             role="menuitem"

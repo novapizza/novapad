@@ -3,8 +3,9 @@ import { useUIStore } from '../../store/uiStore'
 import { useConfigStore, AppConfig } from '../../store/configStore'
 import { usePluginStore, PluginSettingField } from '../../store/pluginStore'
 import { cn } from '../../lib/utils'
+import { ShortcutsSection } from './ShortcutsSection'
 
-type PrefTab = 'general' | 'editor' | 'appearance' | 'newDoc' | 'backup' | 'completion' | 'extensions'
+type PrefTab = 'general' | 'editor' | 'appearance' | 'newDoc' | 'backup' | 'completion' | 'shortcuts' | 'extensions'
 
 const STATIC_TABS: { id: PrefTab; label: string }[] = [
   { id: 'general',    label: 'General' },
@@ -13,6 +14,7 @@ const STATIC_TABS: { id: PrefTab; label: string }[] = [
   { id: 'newDoc',     label: 'New Document' },
   { id: 'backup',     label: 'Backup / AutoSave' },
   { id: 'completion', label: 'Auto-Completion' },
+  { id: 'shortcuts',  label: 'Keyboard Shortcuts' },
 ]
 
 const ENCODINGS = [
@@ -34,12 +36,25 @@ const inputCls = "bg-input border border-border rounded px-2 py-1 text-sm text-f
 export function SettingsTab() {
   const config = useConfigStore()
   const { plugins, pluginSettings, pluginConfigs, fetchPluginSettings, setPluginConfig } = usePluginStore()
-  const [activeTab, setActiveTab] = useState<PrefTab>('general')
+  const pendingCategory = useUIStore((s) => s.pendingSettingsCategory)
+  const setPendingCategory = useUIStore((s) => s.setPendingSettingsCategory)
+  const [activeTab, setActiveTab] = useState<PrefTab>(
+    () => (useUIStore.getState().pendingSettingsCategory as PrefTab | null) ?? 'general'
+  )
 
   // Fetch plugin settings schemas on mount
   useEffect(() => {
     fetchPluginSettings()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Deep-link consumer: when something asked to open Settings at a specific
+  // category (e.g. the gear menu's "Keyboard Shortcuts" entry), apply it and
+  // clear the pending flag.
+  useEffect(() => {
+    if (!pendingCategory) return
+    setActiveTab(pendingCategory as PrefTab)
+    setPendingCategory(null)
+  }, [pendingCategory, setPendingCategory])
 
   // Build dynamic tabs — add Extensions only if any enabled plugin has settings
   const enabledPluginNames = new Set(plugins.filter((p) => p.enabled).map((p) => p.name))
@@ -209,6 +224,8 @@ export function SettingsTab() {
               <CheckRow label="Word-based suggestions" checked={config.wordBasedSuggestions} onChange={(v) => set('wordBasedSuggestions', v)} />
             </div>
           )}
+
+          {activeTab === 'shortcuts' && <ShortcutsSection />}
 
           {activeTab === 'extensions' && (
             <div className="flex flex-col gap-6 max-w-[520px]">

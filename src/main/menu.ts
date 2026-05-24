@@ -192,12 +192,12 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
           click: () => win.webContents.send('editor:command', 'trimTrailingWhitespace')
         },
         {
-          label: 'Beautify (JSON / SQL / XML) — Markdown Preview',
+          label: 'Beautify',
           accelerator: 'CmdOrCtrl+Alt+Shift+M',
           click: () => win.webContents.send('editor:command', 'beautify')
         },
         {
-          label: 'Remove Duplicate Lines',
+          label: 'Remove Duplicates',
           accelerator: 'CmdOrCtrl+Alt+Shift+C',
           click: () => win.webContents.send('editor:command', 'removeDuplicates')
         },
@@ -289,7 +289,7 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
           click: (item) => win.webContents.send('ui:toggle-sidebar', item.checked)
         },
         {
-          label: 'Toggle Preview Pane',
+          label: 'Preview',
           accelerator: 'CmdOrCtrl+P',
           click: () => win.webContents.send('editor:command', 'togglePreview')
         },

@@ -45,6 +45,10 @@ export interface AppConfig {
   // What's New
   /** App version string the user was last shown the auto-open for; null = never seen. */
   lastSeenVersion: string | null
+
+  /** Keyboard-shortcut overrides keyed by command id (see shortcutCatalog).
+   *  Absent entries fall back to the catalog default. */
+  shortcuts: Record<string, string>
 }
 
 export const CONFIG_DEFAULTS: AppConfig = {
@@ -75,7 +79,8 @@ export const CONFIG_DEFAULTS: AppConfig = {
   backupDir: '',
   rememberUnsavedOnExit: true,
   snapshotIntervalMs: 7000,
-  lastSeenVersion: null
+  lastSeenVersion: null,
+  shortcuts: {}
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null

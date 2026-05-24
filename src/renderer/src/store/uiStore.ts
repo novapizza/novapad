@@ -57,6 +57,10 @@ interface UIState {
   csvViewerOpen: boolean
   csvViewerText: string
   csvViewerFileName: string
+  /** Transient: when set, the Settings tab consumes it on mount/focus and switches
+   *  to that category, then clears the value. Used to deep-link from the gear menu
+   *  and the native "Keyboard Shortcuts" menu item. */
+  pendingSettingsCategory: string | null
 
   setTheme: (t: Theme) => void
   toggleTheme: () => void
@@ -89,6 +93,7 @@ interface UIState {
   stopRecording: (steps: MacroStep[]) => void
   openCsvViewer: (csvText: string, fileName: string) => void
   closeCsvViewer: () => void
+  setPendingSettingsCategory: (cat: string | null) => void
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -119,6 +124,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   csvViewerOpen: false,
   csvViewerText: '',
   csvViewerFileName: '',
+  pendingSettingsCategory: null,
 
   setTheme: (t) => set({ theme: t }),
   toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
@@ -202,5 +208,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   startRecording: () => set({ isRecording: true, macroSteps: [] }),
   stopRecording: (steps) => set({ isRecording: false, macroSteps: steps, hasMacro: steps.length > 0 }),
   openCsvViewer: (csvText, fileName) => set({ csvViewerOpen: true, csvViewerText: csvText, csvViewerFileName: fileName }),
-  closeCsvViewer: () => set({ csvViewerOpen: false, csvViewerText: '', csvViewerFileName: '' })
+  closeCsvViewer: () => set({ csvViewerOpen: false, csvViewerText: '', csvViewerFileName: '' }),
+  setPendingSettingsCategory: (cat) => set({ pendingSettingsCategory: cat })
 }))

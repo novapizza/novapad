@@ -226,7 +226,10 @@ export default function App() {
     })
     window.api.on('menu:about',              () => useUIStore.getState().setShowAbout(true))
     window.api.on('menu:settings-open',      () => useEditorStore.getState().openVirtualTab('settings'))
-    window.api.on('menu:shortcuts-open',     () => useEditorStore.getState().openVirtualTab('shortcuts'))
+    window.api.on('menu:shortcuts-open',     () => {
+      useUIStore.getState().setPendingSettingsCategory('shortcuts')
+      useEditorStore.getState().openVirtualTab('settings')
+    })
     window.api.on('menu:whats-new-open',     () => useEditorStore.getState().openVirtualTab('whatsNew'))
     window.api.on('menu:check-for-updates',  () => { void window.api.update.check() })
     window.api.on('plugin:state-changed', () => {

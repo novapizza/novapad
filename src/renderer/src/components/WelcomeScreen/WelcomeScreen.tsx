@@ -29,29 +29,29 @@ export function WelcomeScreen({ onNewFile, onOpenFile, onOpenRecent }: WelcomeSc
 
         <div className="min-w-[340px] border border-border rounded-lg overflow-hidden bg-card">
             <button
-              className="flex items-center justify-between w-full px-4 py-3 text-sm text-foreground bg-transparent border-none cursor-pointer hover:bg-secondary transition-colors"
+              className="flex items-center justify-between w-full px-4 py-3 text-base text-foreground bg-transparent border-none cursor-pointer hover:bg-secondary transition-colors"
               onClick={onNewFile}
             >
               <span className="flex items-center gap-2.5">
                 <FilePlus size={18} className="text-muted-foreground shrink-0" />
                 New File
               </span>
-              <span className="text-sm text-muted-foreground font-mono tabular-nums">{mod} N</span>
+              <span className="text-base text-muted-foreground font-mono tabular-nums">{mod} N</span>
             </button>
             <button
-              className="flex items-center justify-between w-full px-4 py-3 text-sm text-foreground bg-transparent border-none cursor-pointer hover:bg-secondary transition-colors border-t border-border"
+              className="flex items-center justify-between w-full px-4 py-3 text-base text-foreground bg-transparent border-none cursor-pointer hover:bg-secondary transition-colors border-t border-border"
               onClick={onOpenFile}
             >
               <span className="flex items-center gap-2.5">
                 <FolderOpen size={18} className="text-muted-foreground shrink-0" />
                 Open File…
               </span>
-              <span className="text-sm text-muted-foreground font-mono tabular-nums">{mod} O</span>
+              <span className="text-base text-muted-foreground font-mono tabular-nums">{mod} O</span>
             </button>
 
             {recents.length > 0 && (
               <>
-                <div className="flex items-center gap-2.5 px-4 py-2 text-sm uppercase tracking-wider text-muted-foreground border-t border-border">
+                <div className="flex items-center gap-2.5 px-4 py-2 text-base uppercase tracking-wider text-muted-foreground border-t border-border">
                   <Clock size={18} className="shrink-0" />
                   <span>Recent</span>
                 </div>
@@ -62,13 +62,13 @@ export function WelcomeScreen({ onNewFile, onOpenFile, onOpenRecent }: WelcomeSc
                   return (
                     <button
                       key={fp}
-                      className="flex items-center w-full px-4 py-2 text-sm text-foreground bg-transparent border-none cursor-pointer hover:bg-secondary transition-colors"
+                      className="flex items-center w-full px-4 py-2 text-base text-foreground bg-transparent border-none cursor-pointer hover:bg-secondary transition-colors"
                       onClick={() => onOpenRecent([fp])}
                       title={fp}
                     >
                       <span className="flex items-center gap-2 min-w-0">
                         <span className="font-medium truncate">{name}</span>
-                        {dir && <span className="text-sm text-muted-foreground truncate">{dir}</span>}
+                        {dir && <span className="text-base text-muted-foreground truncate">{dir}</span>}
                       </span>
                     </button>
                   )
