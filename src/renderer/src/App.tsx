@@ -34,6 +34,9 @@ const JsonPreviewPane = lazy(() =>
 const CompareOverlay = lazy(() =>
   import('./components/Compare/CompareOverlay').then((m) => ({ default: m.CompareOverlay }))
 )
+const TransformOverlay = lazy(() =>
+  import('./components/Transform/TransformOverlay').then((m) => ({ default: m.TransformOverlay }))
+)
 
 /** Decide which preview component to render for a given buffer. */
 function detectPreviewKind(
@@ -83,7 +86,7 @@ export default function App() {
   const { activeId, buffers } = useEditorStore()
   const activeBuffer = buffers.find((b) => b.id === activeId)
   const activeKind = activeBuffer?.kind ?? 'file'
-  const { theme, showToolbar, showStatusBar, showBottomPanel, showSidebar, openFind, csvViewerOpen, csvViewerText, csvViewerFileName, showPreview, previewFullscreen, compareOpen } = useUIStore()
+  const { theme, showToolbar, showStatusBar, showBottomPanel, showSidebar, openFind, csvViewerOpen, csvViewerText, csvViewerFileName, showPreview, previewFullscreen, compareOpen, transformOpen } = useUIStore()
   // Auto-close the preview pane when the user switches tabs. Without this,
   // toggling preview on (say) a .md tab would leave it open across every
   // tab whose buffer type also happens to be previewable, which surprises
@@ -634,6 +637,15 @@ export default function App() {
           </div>
         }>
           <CompareOverlay />
+        </Suspense>
+      )}
+      {transformOpen && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background text-xs text-muted-foreground">
+            Loading diagram…
+          </div>
+        }>
+          <TransformOverlay />
         </Suspense>
       )}
       {previewFullscreenVisible && (

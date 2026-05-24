@@ -42,6 +42,7 @@ export const SHORTCUT_CATALOG: ShortcutDef[] = [
   { id: 'edit.toggleComment',         label: 'Toggle Comment',                  section: 'Edit', defaultKey: 'Mod+/' },
   { id: 'edit.toggleBlockComment',    label: 'Toggle Block Comment',            section: 'Edit', defaultKey: 'Mod+Shift+/' },
   { id: 'edit.beautify',              label: 'Beautify',                        section: 'Edit', defaultKey: 'Mod+Alt+Shift+M' },
+  { id: 'edit.transformSchema',       label: 'Transform schema',                section: 'Edit', defaultKey: 'Mod+Alt+Shift+K' },
   { id: 'edit.removeDuplicates',      label: 'Remove Duplicates',               section: 'Edit', defaultKey: 'Mod+Alt+Shift+C' },
   { id: 'edit.indent',                label: 'Indent Selection',                section: 'Edit', defaultKey: 'Tab' },
   { id: 'edit.outdent',               label: 'Outdent Selection',               section: 'Edit', defaultKey: 'Shift+Tab' },

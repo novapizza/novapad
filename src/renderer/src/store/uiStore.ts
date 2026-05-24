@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { SchemaModel } from '../utils/schemaParse/types'
 
 type Theme = 'light' | 'dark'
 export type BottomPanelId = 'findResults' | 'console'
@@ -66,6 +67,15 @@ interface UIState {
   compareOpen: boolean
   compareLeft: { title: string; content: string } | null
   compareRight: { title: string; content: string } | null
+  /**
+   * Fullscreen "Transform → ER Diagram" overlay state. Triggered explicitly
+   * by Ctrl+Alt+Shift+K — NOT routed through Ctrl+P preview. Source format
+   * (Prisma / DBML / DDL) is detected by content sniff at parse time.
+   */
+  transformOpen: boolean
+  transformModel: SchemaModel | null
+  transformKind: 'prisma' | 'dbml' | 'ddl' | null
+  transformTitle: string | null
   /** Transient: when set, the Settings tab consumes it on mount/focus and switches
    *  to that category, then clears the value. Used to deep-link from the gear menu
    *  and the native "Keyboard Shortcuts" menu item. */
@@ -104,6 +114,8 @@ interface UIState {
   closeCsvViewer: () => void
   openCompare: (left: { title: string; content: string }, right: { title: string; content: string }) => void
   closeCompare: () => void
+  openTransform: (model: SchemaModel, kind: 'prisma' | 'dbml' | 'ddl', title: string) => void
+  closeTransform: () => void
   setPendingSettingsCategory: (cat: string | null) => void
 }
 
@@ -138,6 +150,10 @@ export const useUIStore = create<UIState>((set, get) => ({
   compareOpen: false,
   compareLeft: null,
   compareRight: null,
+  transformOpen: false,
+  transformModel: null,
+  transformKind: null,
+  transformTitle: null,
   pendingSettingsCategory: null,
 
   setTheme: (t) => set({ theme: t }),
@@ -225,5 +241,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   closeCsvViewer: () => set({ csvViewerOpen: false, csvViewerText: '', csvViewerFileName: '' }),
   openCompare: (left, right) => set({ compareOpen: true, compareLeft: left, compareRight: right }),
   closeCompare: () => set({ compareOpen: false, compareLeft: null, compareRight: null }),
+  openTransform: (model, kind, title) =>
+    set({ transformOpen: true, transformModel: model, transformKind: kind, transformTitle: title }),
+  closeTransform: () =>
+    set({ transformOpen: false, transformModel: null, transformKind: null, transformTitle: null }),
   setPendingSettingsCategory: (cat) => set({ pendingSettingsCategory: cat })
 }))

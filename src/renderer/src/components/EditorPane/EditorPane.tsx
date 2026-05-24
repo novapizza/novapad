@@ -181,6 +181,31 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
         useUIStore.getState().togglePreview()
         break
       }
+      case 'transformToDiagram': {
+        // Ctrl+Alt+Shift+K: parse the active buffer as Prisma / DBML / DDL
+        // and open the ER-diagram overlay. Distinct from preview — chooses
+        // its parser by content sniff, not by buffer language.
+        const id = currentIdRef.current
+        const model = editor.getModel()
+        if (!id || !model) break
+        const text = model.getValue()
+        const buf = useEditorStore.getState().getBuffer(id)
+        const title = buf?.title ?? 'untitled'
+        ;(async () => {
+          const { parseSchema } = await import('../../utils/schemaParse')
+          const res = parseSchema(text)
+          if (!res.ok) {
+            useUIStore.getState().addToast(res.reason, 'warn')
+            return
+          }
+          if (res.model.tables.length === 0) {
+            useUIStore.getState().addToast('No tables found in this buffer.', 'warn')
+            return
+          }
+          useUIStore.getState().openTransform(res.model, res.kind, title)
+        })()
+        break
+      }
       case 'removeDuplicates': {
         // Ctrl+Alt+Shift+C: dedupe the current selection (or full buffer if
         // no selection). Whitespace-trim and empty-line removal applied too,
@@ -400,6 +425,13 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyM,
       () => window.dispatchEvent(new CustomEvent('editor:command', { detail: 'beautify' }))
+    )
+    // Ctrl+Alt+Shift+K: Transform → ER diagram. Parses the buffer as
+    // Prisma / DBML / DDL and opens the standalone TransformOverlay (not
+    // routed through Ctrl+P preview).
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyK,
+      () => window.dispatchEvent(new CustomEvent('editor:command', { detail: 'transformToDiagram' }))
     )
     // Ctrl+P (Cmd+P on macOS): toggle the right-side preview pane. The pane
     // itself decides what to render based on the active buffer's language /

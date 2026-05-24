@@ -141,6 +141,7 @@ export function MenuBar({
       { separator: true, label: '' },
       { label: 'Trim Trailing Whitespace', action: editorCmd('trimTrailingWhitespace') },
       { label: 'Beautify', shortcut: `${mod}+${alt}+Shift+M`, action: editorCmd('beautify') },
+      { label: 'Transform schema', shortcut: `${mod}+${alt}+Shift+K`, action: editorCmd('transformToDiagram') },
       { label: 'Remove Duplicates', shortcut: `${mod}+${alt}+Shift+C`, action: editorCmd('removeDuplicates') },
       { label: 'Indent Selection', shortcut: 'Tab', action: editorCmd('indentSelection') },
       { label: 'Outdent Selection', shortcut: 'Shift+Tab', action: editorCmd('outdentSelection') },

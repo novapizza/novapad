@@ -197,6 +197,11 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
           click: () => win.webContents.send('editor:command', 'beautify')
         },
         {
+          label: 'Transform schema',
+          accelerator: 'CmdOrCtrl+Alt+Shift+K',
+          click: () => win.webContents.send('editor:command', 'transformToDiagram')
+        },
+        {
           label: 'Remove Duplicates',
           accelerator: 'CmdOrCtrl+Alt+Shift+C',
           click: () => win.webContents.send('editor:command', 'removeDuplicates')
