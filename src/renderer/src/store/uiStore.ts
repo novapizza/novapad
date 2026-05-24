@@ -57,6 +57,15 @@ interface UIState {
   csvViewerOpen: boolean
   csvViewerText: string
   csvViewerFileName: string
+  /**
+   * Fullscreen "Compare with…" overlay state. Triggered from the tab
+   * right-click submenu; renders a side-by-side / unified diff between two
+   * arbitrary buffers. Kept in uiStore (not editorStore) because the source
+   * tabs themselves don't change — this is a transient view.
+   */
+  compareOpen: boolean
+  compareLeft: { title: string; content: string } | null
+  compareRight: { title: string; content: string } | null
   /** Transient: when set, the Settings tab consumes it on mount/focus and switches
    *  to that category, then clears the value. Used to deep-link from the gear menu
    *  and the native "Keyboard Shortcuts" menu item. */
@@ -93,6 +102,8 @@ interface UIState {
   stopRecording: (steps: MacroStep[]) => void
   openCsvViewer: (csvText: string, fileName: string) => void
   closeCsvViewer: () => void
+  openCompare: (left: { title: string; content: string }, right: { title: string; content: string }) => void
+  closeCompare: () => void
   setPendingSettingsCategory: (cat: string | null) => void
 }
 
@@ -124,6 +135,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   csvViewerOpen: false,
   csvViewerText: '',
   csvViewerFileName: '',
+  compareOpen: false,
+  compareLeft: null,
+  compareRight: null,
   pendingSettingsCategory: null,
 
   setTheme: (t) => set({ theme: t }),
@@ -209,5 +223,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   stopRecording: (steps) => set({ isRecording: false, macroSteps: steps, hasMacro: steps.length > 0 }),
   openCsvViewer: (csvText, fileName) => set({ csvViewerOpen: true, csvViewerText: csvText, csvViewerFileName: fileName }),
   closeCsvViewer: () => set({ csvViewerOpen: false, csvViewerText: '', csvViewerFileName: '' }),
+  openCompare: (left, right) => set({ compareOpen: true, compareLeft: left, compareRight: right }),
+  closeCompare: () => set({ compareOpen: false, compareLeft: null, compareRight: null }),
   setPendingSettingsCategory: (cat) => set({ pendingSettingsCategory: cat })
 }))

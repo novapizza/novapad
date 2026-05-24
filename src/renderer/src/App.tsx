@@ -28,13 +28,19 @@ const SqlPlanPreviewPane = lazy(() =>
 const TableLensPreviewPane = lazy(() =>
   import('./components/CsvViewer/TableLensPreviewPane').then((m) => ({ default: m.TableLensPreviewPane }))
 )
+const JsonPreviewPane = lazy(() =>
+  import('./components/JsonPreview/JsonPreviewPane').then((m) => ({ default: m.JsonPreviewPane }))
+)
+const CompareOverlay = lazy(() =>
+  import('./components/Compare/CompareOverlay').then((m) => ({ default: m.CompareOverlay }))
+)
 
 /** Decide which preview component to render for a given buffer. */
 function detectPreviewKind(
   language: string | null | undefined,
   filePath: string | null | undefined,
   content: string | null | undefined
-): 'markdown' | 'sqlplan' | 'csv' | null {
+): 'markdown' | 'sqlplan' | 'csv' | 'json' | null {
   if (language === 'markdown') return 'markdown'
   // .csv / .tsv extension wins (Monaco may load these as plain text).
   const ext = filePath?.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1]
@@ -48,6 +54,14 @@ function detectPreviewKind(
     if (/<ShowPlanXML|http:\/\/schemas\.microsoft\.com\/sqlserver\/2004\/07\/showplan/.test(head)) {
       return 'sqlplan'
     }
+  }
+  // JSON: either Monaco language is json, or buffer body starts with { or [.
+  // The body-sniff covers untitled tabs where the user just pasted raw JSON
+  // before Magika has refined the language.
+  if (language === 'json') return 'json'
+  if (content) {
+    const head = content.trimStart().slice(0, 1)
+    if (head === '{' || head === '[') return 'json'
   }
   return null
 }
@@ -69,7 +83,7 @@ export default function App() {
   const { activeId, buffers } = useEditorStore()
   const activeBuffer = buffers.find((b) => b.id === activeId)
   const activeKind = activeBuffer?.kind ?? 'file'
-  const { theme, showToolbar, showStatusBar, showBottomPanel, showSidebar, openFind, csvViewerOpen, csvViewerText, csvViewerFileName, showPreview, previewFullscreen } = useUIStore()
+  const { theme, showToolbar, showStatusBar, showBottomPanel, showSidebar, openFind, csvViewerOpen, csvViewerText, csvViewerFileName, showPreview, previewFullscreen, compareOpen } = useUIStore()
   // Auto-close the preview pane when the user switches tabs. Without this,
   // toggling preview on (say) a .md tab would leave it open across every
   // tab whose buffer type also happens to be previewable, which surprises
@@ -583,6 +597,7 @@ export default function App() {
                           {previewKind === 'markdown' && <MarkdownPreviewPane />}
                           {previewKind === 'sqlplan' && <SqlPlanPreviewPane />}
                           {previewKind === 'csv' && <TableLensPreviewPane />}
+                          {previewKind === 'json' && <JsonPreviewPane />}
                         </Suspense>
                       </Panel>
                     </>
@@ -612,6 +627,15 @@ export default function App() {
       <FindReplaceDialog />
       <AboutDialog />
       {csvViewerOpen && <CsvViewerOverlay csvText={csvViewerText} fileName={csvViewerFileName} />}
+      {compareOpen && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background text-xs text-muted-foreground">
+            Loading compare…
+          </div>
+        }>
+          <CompareOverlay />
+        </Suspense>
+      )}
       {previewFullscreenVisible && (
         <Suspense fallback={
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-background text-xs text-muted-foreground">
@@ -621,6 +645,7 @@ export default function App() {
           {previewKind === 'markdown' && <MarkdownPreviewPane />}
           {previewKind === 'sqlplan' && <SqlPlanPreviewPane />}
           {previewKind === 'csv' && <TableLensPreviewPane />}
+          {previewKind === 'json' && <JsonPreviewPane />}
         </Suspense>
       )}
       {dragActive && <DropOverlay />}

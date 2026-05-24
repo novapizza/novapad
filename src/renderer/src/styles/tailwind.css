@@ -94,6 +94,16 @@
     --sidebar-accent-foreground: 220 20% 15%;
     --sidebar-border: 220 13% 87%;
     --sidebar-ring: 215 80% 50%;
+
+    /* JSON syntax tokens (Notepad++ palette). Light theme uses saturated mid
+     * shades so contrast is strong on the near-white preview background.
+     * The .dark block below switches to pastel-300 equivalents. */
+    --tok-key:    215 80% 40%;
+    --tok-string: 145 65% 32%;
+    --tok-bool:   262 65% 50%;
+    --tok-null:   215 10% 45%;
+    --tok-num:     24 85% 45%;
+    --tok-brace:  215 15% 35%;
   }
 
   .dark {
@@ -151,7 +161,29 @@
     --sidebar-accent-foreground: 220 14% 90%;
     --sidebar-border: 220 16% 20%;
     --sidebar-ring: 215 80% 55%;
+
+    --tok-key:    213 95% 78%;
+    --tok-string: 142 70% 75%;
+    --tok-bool:   262 90% 80%;
+    --tok-null:   215 14% 65%;
+    --tok-num:     24 85% 72%;
+    --tok-brace:  215 15% 75%;
   }
+}
+
+@layer components {
+  /* Syntax-highlight token classes used by JsonPreviewPane's highlightJson /
+   * highlightTs (output is injected via dangerouslySetInnerHTML, so these
+   * have to be raw CSS classes — Tailwind utility classes inside the HTML
+   * string aren't extracted by the JIT). */
+  .json-tok-key    { color: hsl(var(--tok-key));    }
+  .json-tok-string { color: hsl(var(--tok-string)); }
+  .json-tok-bool   { color: hsl(var(--tok-bool));   }
+  .json-tok-null   { color: hsl(var(--tok-null));   }
+  .json-tok-num    { color: hsl(var(--tok-num));    }
+  .json-tok-brace  { color: hsl(var(--tok-brace));  }
+  .json-tok-keyword { color: hsl(var(--tok-bool)); font-weight: 700; }
+  .json-tok-type    { color: hsl(var(--tok-string)); }
 }
 
 @layer base {

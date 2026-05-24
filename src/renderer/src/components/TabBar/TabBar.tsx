@@ -6,8 +6,12 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
 } from '../ui/context-menu'
 import { useEditorStore } from '../../store/editorStore'
+import { useUIStore } from '../../store/uiStore'
 import { cn } from '../../lib/utils'
 
 interface TabBarProps {
@@ -93,6 +97,19 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile }) => {
   const revealInExplorer = (id: string) => {
     const buf = buffers.find((b) => b.id === id)
     if (buf?.filePath) window.api.file.reveal(buf.filePath)
+  }
+
+  // "Compare with…" pulls live content out of each buffer's Monaco model so
+  // unsaved edits show up in the diff (falling back to the persisted `content`
+  // for ghost / not-yet-loaded buffers).
+  const openCompare = useUIStore.getState().openCompare
+  const compareWith = (leftId: string, rightId: string) => {
+    const a = buffers.find((b) => b.id === leftId)
+    const b = buffers.find((b) => b.id === rightId)
+    if (!a || !b) return
+    const aContent = a.model?.getValue() ?? a.content ?? ''
+    const bContent = b.model?.getValue() ?? b.content ?? ''
+    openCompare({ title: a.title, content: aContent }, { title: b.title, content: bContent })
   }
 
   if (buffers.length === 0) return null
@@ -189,13 +206,42 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile }) => {
               <ContextMenuItem onClick={() => onClose?.(buf.id)}>Close</ContextMenuItem>
               <ContextMenuItem onClick={() => closeOthers(buf.id)}>Close Others</ContextMenuItem>
               <ContextMenuItem onClick={() => closeAll()}>Close All</ContextMenuItem>
-              {!isVirtual && (
-                <>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem onClick={() => copyPath(buf.id)}>Copy File Path</ContextMenuItem>
-                  <ContextMenuItem onClick={() => revealInExplorer(buf.id)}>Reveal in Explorer</ContextMenuItem>
-                </>
-              )}
+              {!isVirtual && (() => {
+                // Only file buffers are eligible — virtual tabs (settings,
+                // plugins, etc.) have no comparable content. Disable the
+                // entry when there's nothing else open to diff against.
+                const otherFileBuffers = buffers.filter(
+                  (b) => b.id !== buf.id && b.kind === 'file'
+                )
+                return (
+                  <>
+                    <ContextMenuSeparator />
+                    {otherFileBuffers.length === 0 ? (
+                      <ContextMenuItem disabled>
+                        Compare with… <span className="ml-auto text-[10px] opacity-60">open another file</span>
+                      </ContextMenuItem>
+                    ) : (
+                      <ContextMenuSub>
+                        <ContextMenuSubTrigger>Compare with…</ContextMenuSubTrigger>
+                        <ContextMenuSubContent className="w-56" data-testid="compare-with-submenu">
+                          {otherFileBuffers.map((other) => (
+                            <ContextMenuItem
+                              key={other.id}
+                              onClick={() => compareWith(buf.id, other.id)}
+                              data-testid={`compare-with-${other.title}`}
+                            >
+                              <span className="truncate">{other.title}</span>
+                            </ContextMenuItem>
+                          ))}
+                        </ContextMenuSubContent>
+                      </ContextMenuSub>
+                    )}
+                    <ContextMenuSeparator />
+                    <ContextMenuItem onClick={() => copyPath(buf.id)}>Copy File Path</ContextMenuItem>
+                    <ContextMenuItem onClick={() => revealInExplorer(buf.id)}>Reveal in Explorer</ContextMenuItem>
+                  </>
+                )
+              })()}
             </ContextMenuContent>
           </ContextMenu>
           )
