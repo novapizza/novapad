@@ -41,10 +41,10 @@ test.describe('1. MenuBar', () => {
     await expect(page.locator('[data-testid="menubar"]')).toBeVisible()
   })
 
-  test('1.2 MenuBar displays app logo "N+" and brand name "NovaPad"', async ({ page }) => {
+  test('1.2 MenuBar does not display the NovaPad brand badge on Windows/Linux', async ({ page }) => {
     const menubar = page.locator('[data-testid="menubar"]')
-    await expect(menubar.getByText('NovaPad')).toBeVisible()
-    await expect(menubar.getByText('N+')).toBeVisible()
+    await expect(menubar.getByText('NovaPad')).toHaveCount(0)
+    await expect(menubar.getByText('N+')).toHaveCount(0)
   })
 
   test('1.3 MenuBar has File, Edit, Search, View menu buttons', async ({ page }) => {

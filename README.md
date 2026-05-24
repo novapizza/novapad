@@ -8,20 +8,27 @@ A lightweight, fast, and modern text editor for Windows and macOS. Built on Elec
 
 - **Monaco-powered editor** — same engine as VS Code, with syntax highlighting for ~70 languages, IntelliSense, bracket-pair colorization, and folding.
 - **Auto language detection** — extension-based on load, then refined by [Magika](https://github.com/google/magika) on load, on save, and on paste, so highlighting tracks the actual content (paste minified JSON into a `.txt` and it becomes JSON automatically).
-- **Beautify (JSON / SQL / XML)** — `Ctrl+Alt+Shift+M` (`Cmd+Alt+Shift+M` on macOS) pretty-prints the current selection (or whole document) as JSON, SQL, or XML. Format is auto-detected from the buffer language and content.
+- **Beautify (JSON / SQL / XML)** — `Ctrl+Alt+Shift+M` (`Cmd+Alt+Shift+M` on macOS) pretty-prints the current selection (or whole document). Format auto-detected from buffer language and content.
+- **Smart SQL formatter** — EF Core log–aware: paste a captured `info: Microsoft.EntityFrameworkCore...` block and the formatter strips the log scaffolding and pretty-prints the embedded SQL.
+- **JSON Mighty preview pane** — `Ctrl+P` on a JSON buffer opens a live, tabbed inspector: Format · Repair (jsonrepair) · Diagram · Extract by path · Diff against another buffer · Schema (ajv-validated) · TS interfaces · Unescape.
+- **Schema → ER diagram** — `Ctrl+Alt+Shift+K` transforms a Prisma / DBML / DDL schema in the active buffer into a fullscreen ER diagram with pan/zoom and foreign-key edges.
+- **Compare with…** — right-click a tab → *Compare with* → pick another open buffer. Fullscreen diff overlay with side-by-side / unified views, inline word-level highlights, ignore-whitespace / ignore-case toggles, and patch copy-out.
+- **Live preview panes** for Markdown (GFM + highlight.js), SQL execution plans (EF Core–aware analyzer), and CSV (virtualized TableLens for huge files). All open with `Ctrl+P`, follow the active buffer, and support fullscreen toggle.
+- **Find / Replace / Find in Files** — regex, case, whole-word, and "Match X of Y" counter with vivid highlight.
 - **Tab UX**
   - Double-click the tab bar to open a new untitled document.
-  - Drag-to-reorder, middle-click to close, right-click for context actions.
-- **File-aware Save dialog** — when you save an untitled buffer, the dialog pre-selects the right file type and appends the suggested extension based on the detected language.
-- **CSV TableLens viewer** — large CSVs render as a virtualized table for fast browsing.
-- **Plugin system** — VS Code-style extension manager; plugins load from `~/.config/notepad-and-more/plugins/`.
+  - Drag-to-reorder, middle-click to close, right-click for context actions (close others, copy path, *Compare with…*, reveal in file manager).
+  - Undo-aware dirty flag — undoing back to the on-disk state clears the dot.
+- **File-aware Save dialog** — when you save an untitled buffer, the dialog pre-selects the file type and appends the suggested extension based on the detected language.
+- **In-app Settings** — theme, layout, editor options, and a full **Shortcuts editor** that lets you rebind any command and reset to defaults.
+- **Welcome screen + What's New tab** — recent files + pinned actions on launch; auto-opened changelog after updates.
+- **Plugin system** — VS Code-style extension manager; plugins load from `~/.config/notepad-and-more/plugins/`. Plugins can register commands and contribute menu items.
 - **Native OS integration**
   - Registered for `Open With` on Windows and macOS for ~50 text/source extensions.
   - Open files from Explorer / Finder; subsequent opens forward to the running instance.
   - Recent Files menu entries on Windows and macOS Dock.
-- **Session restore** — buffers, cursor positions, and workspace folder are restored on launch.
+- **Session restore** — buffers, cursor positions, view state, and workspace folder are restored on launch.
 - **Auto-update** via electron-updater (GitHub Releases).
-- **Find / Replace / Find in Files** with regex support.
 
 ## Install
 
@@ -65,7 +72,11 @@ npm run test:e2e:report   # open the HTML report from the last run
 | `Ctrl/Cmd + W` | Close tab |
 | `Ctrl/Cmd + F` / `Ctrl/Cmd + H` | Find / Replace |
 | `Ctrl/Cmd + Shift + F` | Find in Files |
+| `Ctrl/Cmd + P` | Toggle preview pane (JSON / Markdown / SQL plan / CSV) |
 | `Ctrl/Cmd + Alt + Shift + M` | Beautify (JSON / SQL / XML) |
+| `Ctrl/Cmd + Alt + Shift + K` | Transform schema → ER diagram (Prisma / DBML / DDL) |
+| `Ctrl/Cmd + Alt + Shift + C` | Remove duplicate lines |
+| `Ctrl/Cmd + Shift + U` / `Ctrl/Cmd + Shift + L` | UPPERCASE / lowercase |
 | `Ctrl/Cmd + /` | Toggle line comment |
 | `Ctrl/Cmd + D` | Duplicate line |
 | `Alt + Up/Down` | Move line up/down |
@@ -73,7 +84,7 @@ npm run test:e2e:report   # open the HTML report from the last run
 | `Ctrl/Cmd + Tab` / `Ctrl/Cmd + Shift + Tab` | Next / Previous tab |
 | `Alt + Left/Right` | Navigation history back/forward |
 
-The full list is in **Help → Keyboard Shortcuts**.
+The full list is in **Settings → Shortcuts**, where every binding is editable.
 
 ## Architecture
 
