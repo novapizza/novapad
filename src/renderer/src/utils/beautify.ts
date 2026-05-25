@@ -12,14 +12,17 @@ function loadSqlFormatter() {
 const SQL_LANGS = new Set(['sql', 'mysql', 'pgsql', 'plsql', 'tsql'])
 const XML_LANGS = new Set(['xml', 'html', 'xhtml', 'svg'])
 
-/** Map Monaco language ID → sql-formatter dialect. Falls back to generic 'sql'. */
+/** Map Monaco language ID → sql-formatter dialect. Defaults to 'tsql' because
+ *  it understands [bracketed] identifiers, TOP, and @__p_N parameter names
+ *  (very common in EF Core / SQL Server logs) where the generic 'sql' dialect
+ *  bails out and leaves long single-line output. */
 function sqlDialect(language?: string | null): string {
   switch (language) {
     case 'mysql': return 'mysql'
     case 'pgsql': return 'postgresql'
     case 'plsql': return 'plsql'
     case 'tsql': return 'tsql'
-    default: return 'sql'
+    default: return 'tsql'
   }
 }
 
