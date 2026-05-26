@@ -9,4 +9,6 @@ export function registerUpdateHandlers(manager: UpdateManager): void {
   ipcMain.handle('update:install', () => {
     manager.quitAndInstall()
   })
+
+  ipcMain.handle('update:capable', () => manager.isCapable())
 }

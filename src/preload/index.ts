@@ -91,7 +91,9 @@ const api = {
     /** Trigger a manual update check. Renderer should show feedback toasts. */
     check: (): Promise<void> => ipcRenderer.invoke('update:check'),
     /** Quit the app and install the downloaded update. */
-    install: (): Promise<void> => ipcRenderer.invoke('update:install')
+    install: (): Promise<void> => ipcRenderer.invoke('update:install'),
+    /** Query whether auto-update is capable (packaged + writable install dir). */
+    capable: (): Promise<boolean> => ipcRenderer.invoke('update:capable')
   },
 
   // IPC event listeners (main -> renderer)

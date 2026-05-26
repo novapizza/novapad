@@ -201,14 +201,10 @@ app.whenReady().then(() => {
   registerSearchHandlers(mainWindow!)
   registerWatchHandlers(mainWindow!)
 
-  // Auto-update: check on startup (silent) + expose IPC for manual check/install
+  // Auto-update: write-access check, periodic checks, silent install on hide
   const updateManager = new UpdateManager(mainWindow!)
   registerUpdateHandlers(updateManager)
-  if (app.isPackaged && process.env['E2E_TEST'] !== '1') {
-    setTimeout(() => {
-      void updateManager.checkForUpdates(false)
-    }, 5000)
-  }
+  void updateManager.init()
 
   // Load plugins BEFORE buildMenu so plugin menu items are included in the initial build.
   // Plugins register menu items via addPluginMenuItem which populates a registry; since
