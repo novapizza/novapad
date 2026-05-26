@@ -338,6 +338,28 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
             .addToast('Cannot beautify — unrecognized format (JSON / SQL / XML / Markdown).', 'warn')
           break
         }
+
+        // Auto-enable word wrap when the buffer has any pathologically long
+        // line (e.g. minified JSON pasted as a single ~100KB line). The
+        // horizontal scrollbar on those buffers is unusable, and a formatted
+        // result can still contain long string values — so we leave wrap on
+        // rather than restoring afterwards. Persisted via configStore so the
+        // menu checkbox and next launch stay in sync.
+        if (!cfg.wordWrap) {
+          const lineCount = model.getLineCount()
+          let hasLongLine = false
+          for (let line = 1; line <= lineCount; line++) {
+            if (model.getLineLength(line) > 500) {
+              hasLongLine = true
+              break
+            }
+          }
+          if (hasLongLine) {
+            useConfigStore.getState().setProp('wordWrap', true)
+            useUIStore.getState().setWordWrap(true)
+          }
+        }
+
         // beautify() is now async because the SQL path lazy-loads sql-formatter
         // (~1.6 MB) into its own chunk on first use, keeping the main bundle lean.
         ;(async () => {
