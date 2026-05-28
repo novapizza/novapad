@@ -245,9 +245,12 @@ fileAssociations:
 
 win:
   icon: resources/icons/win/icon.ico
+  artifactName: "${productName}-Setup-${version}-${arch}.${ext}"
   target:
     - target: nsis
-      arch: [x64, arm64]
+      arch: [x64]
+    - target: nsis
+      arch: [arm64]
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
