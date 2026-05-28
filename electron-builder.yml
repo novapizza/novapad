@@ -245,7 +245,7 @@ fileAssociations:
 
 win:
   icon: resources/icons/win/icon.ico
-  artifactName: "${productName} Setup ${version}.${ext}"
+  artifactName: "${productName}-Setup-${version}.${ext}"
   target:
     - target: nsis
       arch: [x64]
