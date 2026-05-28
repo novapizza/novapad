@@ -235,14 +235,30 @@ export default function JsonDiagram({ data }: JsonDiagramProps) {
   const diagramTree = useMemo<DiagramTree>(() => buildDiagramTree(data), [data])
   const layout = useMemo(() => applyLayout(diagramTree, collapsedIds), [diagramTree, collapsedIds])
 
+  // IDs of every node that *has* children — used to start the diagram fully
+  // collapsed so big JSON only renders top-level cards on first paint. Without
+  // this, a 5k-node payload mounts 5k <foreignObject>s up front and freezes
+  // the renderer for seconds. User drills in by clicking the ▶ chevrons.
+  const initialCollapsedIds = useMemo(() => {
+    const ids = new Set<string>()
+    const walk = (n: DiagramNode) => {
+      if (n.children.length > 0) {
+        ids.add(n.id)
+        for (const c of n.children) walk(c)
+      }
+    }
+    for (const top of diagramTree.topNodes) walk(top)
+    return ids
+  }, [diagramTree])
+
   useEffect(() => {
     startTransition(() => {
-      setCollapsedIds(new Set())
+      setCollapsedIds(new Set(initialCollapsedIds))
       setPan({ x: 40, y: 40 })
       setZoom(1.0)
     })
     pendingFitRef.current = true
-  }, [data])
+  }, [data, initialCollapsedIds])
 
   useEffect(() => {
     if (!pendingFitRef.current) return
@@ -376,7 +392,7 @@ export default function JsonDiagram({ data }: JsonDiagramProps) {
   return (
     <div className="flex flex-col h-full">
       {layout.nodes.length > 200 && (
-        <div className="mb-2 mx-3 mt-2 flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded text-amber-600 dark:text-amber-300 text-xs">
+        <div className="mb-2 mx-3 mt-2 flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded text-amber-600 dark:text-amber-300 text-[13px]">
           <span className="font-bold">⚠ Large dataset</span> — {layout.nodes.length} nodes. Collapse branches for smoother panning.
         </div>
       )}
@@ -390,7 +406,7 @@ export default function JsonDiagram({ data }: JsonDiagramProps) {
       >
         {isPending && (
           <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-            <div className="bg-background border border-border rounded px-3 py-1.5 text-xs text-muted-foreground shadow-md">
+            <div className="bg-background border border-border rounded px-3 py-1.5 text-[13px] text-muted-foreground shadow-md">
               Computing layout…
             </div>
           </div>
@@ -399,7 +415,7 @@ export default function JsonDiagram({ data }: JsonDiagramProps) {
         <div className="absolute top-3 right-3 z-10 flex flex-col gap-1" onPointerDown={(e) => e.stopPropagation()}>
           <button
             onClick={() => setZoom((z) => Math.min(2.5, z + 0.1))}
-            className="w-7 h-7 bg-background border border-border rounded text-foreground text-xs font-bold hover:bg-secondary flex items-center justify-center shadow-sm"
+            className="w-7 h-7 bg-background border border-border rounded text-foreground text-[13px] font-bold hover:bg-secondary flex items-center justify-center shadow-sm"
           >
             +
           </button>
@@ -411,14 +427,14 @@ export default function JsonDiagram({ data }: JsonDiagramProps) {
           </button>
           <button
             onClick={() => setZoom((z) => Math.max(0.15, z - 0.1))}
-            className="w-7 h-7 bg-background border border-border rounded text-foreground text-xs font-bold hover:bg-secondary flex items-center justify-center shadow-sm"
+            className="w-7 h-7 bg-background border border-border rounded text-foreground text-[13px] font-bold hover:bg-secondary flex items-center justify-center shadow-sm"
           >
             -
           </button>
         </div>
 
         <div
-          className="absolute bottom-3 right-3 z-10 text-[10px] text-muted-foreground"
+          className="absolute bottom-3 right-3 z-10 text-[11px] text-muted-foreground"
           onPointerDown={(e) => e.stopPropagation()}
         >
           {Math.round(zoom * 100)}%
