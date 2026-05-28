@@ -236,20 +236,77 @@ function escHtml(s: string): string {
 // Token classes are defined in styles/tailwind.css and adapt to light/dark
 // theme via CSS variables (the inline-color version washed out on the light
 // preview background — see Notepad++ palette tokens).
+// Linear-scan tokenizer (no regex backtracking, no recursion). Prior versions
+// used a single global-replace regex with `(?:X|Y)*` over the string body,
+// which made V8's irregexp engine stack-overflow on long string values or
+// long runs of escape sequences (RangeError: Maximum call stack size).
 export function highlightJson(json: string): string {
-  const safe = escHtml(json)
-  return safe.replace(
-    /("(?:\\.|[^"\\])*")(\s*:)|("(?:\\.|[^"\\])*")|(true|false|null)|(-?\d+\.?\d*(?:[eE][+-]?\d+)?)|([{}[\]])/g,
-    (_m, key, colon, strVal, bool, num, brace) => {
-      if (key) return `<span class="json-tok-key">${key}</span>${colon}`
-      if (strVal) return `<span class="json-tok-string">${strVal}</span>`
-      if (bool === 'true' || bool === 'false') return `<span class="json-tok-bool">${bool}</span>`
-      if (bool === 'null') return `<span class="json-tok-null">${bool}</span>`
-      if (num) return `<span class="json-tok-num">${num}</span>`
-      if (brace) return `<span class="json-tok-brace">${brace}</span>`
-      return _m
+  const len = json.length
+  let out = ''
+  let i = 0
+  const isDigit = (ch: string): boolean => ch >= '0' && ch <= '9'
+  const isWs = (ch: string): boolean => ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r'
+
+  while (i < len) {
+    const c = json[i]
+    if (c === '"') {
+      // Scan to end of string (handles \\ and \").
+      let j = i + 1
+      while (j < len) {
+        const cj = json[j]
+        if (cj === '\\') {
+          j += 2
+        } else if (cj === '"') {
+          j++
+          break
+        } else {
+          j++
+        }
+      }
+      const raw = json.slice(i, j)
+      // Look past whitespace for `:` to classify as key vs value.
+      let k = j
+      while (k < len && isWs(json[k])) k++
+      if (k < len && json[k] === ':') {
+        out += `<span class="json-tok-key">${escHtml(raw)}</span>` + escHtml(json.slice(j, k + 1))
+        i = k + 1
+      } else {
+        out += `<span class="json-tok-string">${escHtml(raw)}</span>`
+        i = j
+      }
+    } else if (c === '{' || c === '}' || c === '[' || c === ']') {
+      out += `<span class="json-tok-brace">${c}</span>`
+      i++
+    } else if (c === 't' && json.substr(i, 4) === 'true') {
+      out += '<span class="json-tok-bool">true</span>'
+      i += 4
+    } else if (c === 'f' && json.substr(i, 5) === 'false') {
+      out += '<span class="json-tok-bool">false</span>'
+      i += 5
+    } else if (c === 'n' && json.substr(i, 4) === 'null') {
+      out += '<span class="json-tok-null">null</span>'
+      i += 4
+    } else if (c === '-' || isDigit(c)) {
+      let j = i
+      if (json[j] === '-') j++
+      while (j < len && isDigit(json[j])) j++
+      if (j < len && json[j] === '.') {
+        j++
+        while (j < len && isDigit(json[j])) j++
+      }
+      if (j < len && (json[j] === 'e' || json[j] === 'E')) {
+        j++
+        if (j < len && (json[j] === '+' || json[j] === '-')) j++
+        while (j < len && isDigit(json[j])) j++
+      }
+      out += `<span class="json-tok-num">${json.slice(i, j)}</span>`
+      i = j
+    } else {
+      out += escHtml(c)
+      i++
     }
-  )
+  }
+  return out
 }
 
 export function highlightTs(code: string): string {
