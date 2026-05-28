@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Maximize2, Minimize2 as MinifyIcon, TreePine, Type } from 'lucide-react'
-import { CopyButton, ErrorRow, HighlightedJsonOutput, JsonTreeNode } from './shared'
+import {
+  ChevronDown, ChevronUp, Maximize2, Minimize2 as MinifyIcon,
+  Search as SearchIcon, TreePine, Type, X,
+} from 'lucide-react'
+import {
+  ACTIVE_MATCH_DOM_ID, CopyButton, ErrorRow, HighlightedJsonOutput, JsonTreeNode, collectMatches,
+} from './shared'
 
 export function FormatTab({ content }: { content: string }) {
   const [indent, setIndent] = useState<2 | 4 | 'tab'>(2)
@@ -15,6 +20,14 @@ export function FormatTab({ content }: { content: string }) {
   const [parseError, setParseError] = useState<string | null>(null)
   const [output, setOutput] = useState('')
   const [busy, setBusy] = useState(false)
+  // Search is committed on Enter rather than running on every keystroke.
+  // `searchInput` is the live input value; `query` is the committed needle
+  // that actually drives the walk + active-match navigation. Splitting them
+  // keeps typing snappy on huge payloads (no walk per character) and lines
+  // up with the Ctrl+F idiom users expect.
+  const [searchInput, setSearchInput] = useState('')
+  const [query, setQuery] = useState('')
+  const [activeIdx, setActiveIdx] = useState(0)
 
   const indentVal = (): string | number => (indent === 'tab' ? '\t' : indent)
 
@@ -95,6 +108,76 @@ export function FormatTab({ content }: { content: string }) {
     return `${Object.keys(parsed as Record<string, unknown>).length.toLocaleString()} keys`
   }, [parsed])
 
+  // Ordered list of search hits. Recomputed only when the parse result or
+  // committed query changes — typing into the input does not trigger this
+  // walk. Skipped entirely in Text view since highlighting only flows
+  // through JsonTreeNode.
+  const needle = query.trim().toLowerCase()
+  const matches = useMemo(() => {
+    if (view !== 'tree' || !needle || parsed === null || typeof parsed !== 'object') {
+      return []
+    }
+    return collectMatches(parsed, needle)
+  }, [parsed, needle, view])
+  const matchCount = matches.length
+  // Clamp activeIdx if the match set shrank (e.g. the file changed under us
+  // while a query was committed). If there are no matches at all, fall back
+  // to 0 so the counter shows "0 / 0".
+  const safeActiveIdx = matchCount === 0 ? 0 : Math.min(activeIdx, matchCount - 1)
+  const activeMatch = matchCount > 0 ? matches[safeActiveIdx] : null
+  // Force-expand only the active match's ancestor chain. Other matches stay
+  // collapsed in the tree — the user reaches them by clicking next/prev.
+  const forceExpandSet = useMemo(() => {
+    return new Set<object>(activeMatch ? activeMatch.ancestors : [])
+  }, [activeMatch])
+  const activeKey = activeMatch
+    ? { parent: activeMatch.parent, key: activeMatch.key, kind: activeMatch.kind }
+    : null
+
+  // Scroll the focused match into view after the tree commits the new
+  // expand state. The element with ACTIVE_MATCH_DOM_ID is rendered by
+  // whichever JsonTreeNode matches (parent + key); if its ancestors aren't
+  // yet expanded the id won't be in the DOM, which is why this runs after
+  // render rather than during.
+  useEffect(() => {
+    if (!activeMatch) return
+    const el = document.getElementById(ACTIVE_MATCH_DOM_ID)
+    if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [activeMatch])
+
+  function commitSearch() {
+    const trimmed = searchInput.trim()
+    if (!trimmed) {
+      setQuery('')
+      setActiveIdx(0)
+      return
+    }
+    if (trimmed.toLowerCase() === needle && matchCount > 0) {
+      // Same query — step to next match (wrap at the end).
+      setActiveIdx((i) => (i + 1) % matchCount)
+    } else {
+      // New query — commit it and reset to the first match.
+      setQuery(trimmed)
+      setActiveIdx(0)
+    }
+  }
+
+  function stepPrev() {
+    if (matchCount === 0) return
+    setActiveIdx((i) => (i - 1 + matchCount) % matchCount)
+  }
+
+  function stepNext() {
+    if (matchCount === 0) return
+    setActiveIdx((i) => (i + 1) % matchCount)
+  }
+
+  function clearSearch() {
+    setSearchInput('')
+    setQuery('')
+    setActiveIdx(0)
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-secondary/10 flex-wrap">
@@ -168,7 +251,69 @@ export function FormatTab({ content }: { content: string }) {
             {`Parsing ${sizeMB.toFixed(1)} MB…`}
           </span>
         )}
-        <div className="ml-auto">
+        {view === 'tree' && (
+          <div className="ml-auto flex items-center gap-1 bg-secondary rounded px-2 py-0.5 min-w-[200px] focus-within:ring-1 focus-within:ring-primary">
+            <SearchIcon size={11} className="text-muted-foreground shrink-0" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  if (e.shiftKey) stepPrev()
+                  else commitSearch()
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  clearSearch()
+                }
+              }}
+              placeholder="Search — Enter to find"
+              aria-label="Search nodes"
+              className="bg-transparent outline-none text-[12px] font-mono text-foreground placeholder:text-muted-foreground flex-1 min-w-0"
+            />
+            {needle && (
+              <span
+                className="text-[11px] text-muted-foreground tabular-nums shrink-0"
+                title={`${matchCount.toLocaleString()} match${matchCount === 1 ? '' : 'es'}`}
+              >
+                {matchCount === 0 ? '0 / 0' : `${(safeActiveIdx + 1).toLocaleString()} / ${matchCount.toLocaleString()}`}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={stepPrev}
+              disabled={matchCount === 0}
+              aria-label="Previous match"
+              title="Previous match (Shift+Enter)"
+              className="p-0.5 rounded hover:bg-background/60 text-muted-foreground hover:text-foreground shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronUp size={11} />
+            </button>
+            <button
+              type="button"
+              onClick={stepNext}
+              disabled={matchCount === 0}
+              aria-label="Next match"
+              title="Next match (Enter)"
+              className="p-0.5 rounded hover:bg-background/60 text-muted-foreground hover:text-foreground shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronDown size={11} />
+            </button>
+            {(searchInput || query) && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                aria-label="Clear search"
+                title="Clear search (Esc)"
+                className="p-0.5 rounded hover:bg-background/60 text-muted-foreground hover:text-foreground shrink-0"
+              >
+                <X size={11} />
+              </button>
+            )}
+          </div>
+        )}
+        <div className={view === 'tree' ? '' : 'ml-auto'}>
           <CopyButton text={output} />
         </div>
       </div>
@@ -184,7 +329,14 @@ export function FormatTab({ content }: { content: string }) {
           parsed === null ? (
             <p className="text-muted-foreground text-[13px] italic">{'// Tree will render here once JSON parses…'}</p>
           ) : (
-            <JsonTreeNode value={parsed} depth={0} />
+            <JsonTreeNode
+              value={parsed}
+              depth={0}
+              search={needle}
+              forceExpandSet={forceExpandSet}
+              activeKey={activeKey}
+              parentRef={null}
+            />
           )
         ) : (
           <HighlightedJsonOutput value={output} />
