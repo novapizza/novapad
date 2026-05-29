@@ -1,5 +1,7 @@
-; Custom NSIS hooks for NovaPad — picked up automatically by electron-builder
-; from build/installer.nsh.
+; Custom NSIS hooks for NovaPad. Wired up via `nsis.include: build/installer.nsh`
+; in electron-builder.yml — NOT auto-discovered, because this project sets
+; `directories.buildResources: resources`, so electron-builder's default lookup
+; (resources/installer.nsh) would miss this file.
 ;
 ; Why this file exists:
 ;   electron-builder's `fileAssociations` field adds the app to Windows'

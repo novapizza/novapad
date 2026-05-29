@@ -254,6 +254,12 @@ win:
     - target: nsis
       arch: [x64]
 nsis:
+  # buildResources is `resources` (above), so electron-builder's auto-discovery
+  # looks for resources/installer.nsh and silently skips our script at
+  # build/installer.nsh. Point `include` at it explicitly — the path resolves
+  # relative to the project dir. Without this, the custom shell verbs
+  # ("Edit with NovaPad", etc.) never get written to the registry.
+  include: build/installer.nsh
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
