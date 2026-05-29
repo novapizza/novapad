@@ -15,6 +15,10 @@ directories:
 
 files:
   - out/**/*
+  # Strip source maps shipped by third-party prod-deps (sql-formatter, ajv,
+  # electron-updater, jsonrepair, …) — ~400+ *.map files that bloat app.asar
+  # and are never read at runtime (only a debugger consults them).
+  - "!**/*.map"
   # Vite/Rollup bundles all renderer imports into out/renderer/assets/index-*.js,
   # and main bundles fast-xml-parser via the electron-vite externalize-exclude.
   # electron-builder still copies every prod-dep tree into app.asar by default,

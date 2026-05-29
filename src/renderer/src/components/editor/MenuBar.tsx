@@ -139,8 +139,12 @@ export function MenuBar({
       { label: '&Paste', icon: <Clipboard size={18} />, shortcut: `${mod}+V`, action: () => document.execCommand('paste') },
       { separator: true, label: '' },
       { label: 'Select &All', icon: <SquareDashedMousePointer size={18} />, shortcut: `${mod}+A`, action: () => document.execCommand('selectAll') },
-      { label: '&Begin/End Select', shortcut: `${mod}+Shift+B`, disabled: true, action: editorCmd('beginEndSelect') },
-      { label: 'Begin/End Select in Co&lumn Mode', shortcut: `${mod}+Shift+${alt}+B`, disabled: true, action: editorCmd('beginEndSelectColumn') },
+      {
+        label: '&Begin/End Select', submenu: [
+          { label: '&Select', shortcut: `${mod}+Shift+B`, disabled: true, action: editorCmd('beginEndSelect') },
+          { label: 'Co&lumn Mode', shortcut: `${mod}+Shift+${alt}+B`, disabled: true, action: editorCmd('beginEndSelectColumn') },
+        ],
+      },
       { separator: true, label: '' },
       {
         label: 'Line &Operations', submenu: [
@@ -166,8 +170,8 @@ export function MenuBar({
       { separator: true, label: '' },
       { label: 'Tri&m Trailing Whitespace', action: editorCmd('trimTrailingWhitespace') },
       { label: 'Beauti&fy', shortcut: `${mod}+${alt}+Shift+M`, action: editorCmd('beautify') },
-      { label: 'Transform sc&hema', shortcut: `${mod}+${alt}+Shift+K`, action: editorCmd('transformToDiagram') },
-      { label: 'Remove Du&plicates', shortcut: `${mod}+${alt}+Shift+C`, action: editorCmd('removeDuplicates') },
+      { label: 'Trans&form', shortcut: `${mod}+${alt}+Shift+K`, action: editorCmd('transformToDiagram') },
+      { label: 'Dedu&plicate', shortcut: `${mod}+${alt}+Shift+C`, action: editorCmd('removeDuplicates') },
       { label: '&Indent Selection', shortcut: 'Tab', action: editorCmd('indentSelection') },
       { label: 'Out&dent Selection', shortcut: 'Shift+Tab', action: editorCmd('outdentSelection') },
     ],

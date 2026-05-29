@@ -144,15 +144,20 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
         { role: 'selectAll' as const },
         {
           label: 'Begin/End Select',
-          accelerator: 'CmdOrCtrl+Shift+B',
-          enabled: false,
-          click: () => win.webContents.send('editor:command', 'beginEndSelect')
-        },
-        {
-          label: 'Begin/End Select in Column Mode',
-          accelerator: 'CmdOrCtrl+Shift+Alt+B',
-          enabled: false,
-          click: () => win.webContents.send('editor:command', 'beginEndSelectColumn')
+          submenu: [
+            {
+              label: 'Select',
+              accelerator: 'CmdOrCtrl+Shift+B',
+              enabled: false,
+              click: () => win.webContents.send('editor:command', 'beginEndSelect')
+            },
+            {
+              label: 'Column Mode',
+              accelerator: 'CmdOrCtrl+Shift+Alt+B',
+              enabled: false,
+              click: () => win.webContents.send('editor:command', 'beginEndSelectColumn')
+            }
+          ]
         },
         { type: 'separator' },
         {
@@ -197,12 +202,12 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
           click: () => win.webContents.send('editor:command', 'beautify')
         },
         {
-          label: 'Transform schema',
+          label: 'Transform',
           accelerator: 'CmdOrCtrl+Alt+Shift+K',
           click: () => win.webContents.send('editor:command', 'transformToDiagram')
         },
         {
-          label: 'Remove Duplicates',
+          label: 'Deduplicate',
           accelerator: 'CmdOrCtrl+Alt+Shift+C',
           click: () => win.webContents.send('editor:command', 'removeDuplicates')
         },
