@@ -214,6 +214,11 @@
   .viewport-highlight {
     background: hsl(var(--primary) / 0.15);
   }
+  .eol-marker {
+    color: hsl(var(--muted-foreground) / 0.55);
+    font-size: 0.85em;
+    margin-left: 2px;
+  }
 
   /* ── Markdown Preview pane (react-markdown output) ──────────────────────── */
   .markdown-body { color: hsl(var(--foreground)); line-height: 1.65; font-size: 14px; }

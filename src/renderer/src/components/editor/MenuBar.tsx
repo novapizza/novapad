@@ -5,9 +5,11 @@ import {
   Search, Replace, FolderSearch,
   PanelLeftClose, PanelLeft,
   RotateCcw, ChevronRight, Clock,
+  Settings as SettingsIcon, Sun, Moon, Keyboard,
 } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { useEditorStore } from '../../store/editorStore'
+import { useConfigStore } from '../../store/configStore'
 import { usePluginStore } from '../../store/pluginStore'
 import { isMacOS, isWindows, shortcutMod, shortcutAlt } from '../../utils/platform'
 import { MnemonicLabel, parseMnemonic } from '../../utils/mnemonic'
@@ -63,9 +65,11 @@ export function MenuBar({
   const menuRef = useRef<HTMLDivElement>(null)
   const {
     showToolbar, showStatusBar, showSidebar,
-    wordWrap, renderWhitespace, indentationGuides, columnSelectMode,
+    wordWrap, renderWhitespace, showEOL, showNonPrinting, showControlChars,
+    indentationGuides, columnSelectMode, theme,
     setShowToolbar, setShowStatusBar, setShowSidebar,
-    setWordWrap, setRenderWhitespace, setIndentationGuides, setColumnSelectMode,
+    setWordWrap, setRenderWhitespace, setShowEOL, setShowNonPrinting, setShowControlChars,
+    setIndentationGuides, setColumnSelectMode,
   } = useUIStore()
   const dynamicMenuItems = usePluginStore((s) => s.dynamicMenuItems)
 
@@ -193,14 +197,44 @@ export function MenuBar({
           window.dispatchEvent(new CustomEvent('editor:set-option-local', { detail: { wordWrap: v ? 'on' : 'off' } }))
         },
       },
-      {
-        label: 'Show W&hitespace', checked: renderWhitespace,
-        action: () => {
-          const v = !renderWhitespace
+      (() => {
+        const setSpaceTab = (v: boolean) => {
           setRenderWhitespace(v)
           window.dispatchEvent(new CustomEvent('editor:set-option-local', { detail: { renderWhitespace: v ? 'all' : 'none' } }))
-        },
-      },
+        }
+        const setEOL = (v: boolean) => {
+          setShowEOL(v)
+          window.dispatchEvent(new CustomEvent('editor:set-eol-marker', { detail: v }))
+        }
+        const setNonPrinting = (v: boolean) => {
+          setShowNonPrinting(v)
+          window.dispatchEvent(new CustomEvent('editor:set-option-local', { detail: { renderControlCharacters: v } }))
+        }
+        const setControlChars = (v: boolean) => {
+          setShowControlChars(v)
+          window.dispatchEvent(new CustomEvent('editor:set-option-local', {
+            detail: { unicodeHighlight: { invisibleCharacters: v, ambiguousCharacters: v } },
+          }))
+        }
+        const allOn = renderWhitespace && showEOL && showNonPrinting && showControlChars
+        return {
+          label: 'Show &Symbol',
+          submenu: [
+            { label: 'Show Space and &Tab', checked: renderWhitespace, action: () => setSpaceTab(!renderWhitespace) },
+            { label: 'Show &End of Line', checked: showEOL, action: () => setEOL(!showEOL) },
+            { label: 'Show &Non-Printing Characters', checked: showNonPrinting, action: () => setNonPrinting(!showNonPrinting) },
+            { label: 'Show &Control Characters && Unicode EOL', checked: showControlChars, action: () => setControlChars(!showControlChars) },
+            { separator: true, label: '' },
+            {
+              label: 'Show &All Characters', checked: allOn,
+              action: () => {
+                const v = !allOn
+                setSpaceTab(v); setEOL(v); setNonPrinting(v); setControlChars(v)
+              },
+            },
+          ],
+        }
+      })(),
       {
         label: 'Show I&ndentation Guides', checked: indentationGuides,
         action: () => {
@@ -240,6 +274,31 @@ export function MenuBar({
         ? [{ separator: true, label: '' } as MenuItem, ...dynamicPluginMenu]
         : []),
     ],
+    Settings: (() => {
+      const openCategory = (cat: string | null) => {
+        if (cat) useUIStore.getState().setPendingSettingsCategory(cat)
+        useEditorStore.getState().openVirtualTab('settings')
+      }
+      const toggleTheme = () => {
+        useUIStore.getState().toggleTheme()
+        useConfigStore.getState().setProp('theme', useUIStore.getState().theme)
+      }
+      const themeLabel = theme === 'dark' ? 'Toggle &Light Mode' : 'Toggle &Dark Mode'
+      const ThemeIcon = theme === 'dark' ? Sun : Moon
+      return [
+        { label: '&Settings...', icon: <SettingsIcon size={18} />, shortcut: `${mod}+,`, action: () => openCategory(null) },
+        { separator: true, label: '' },
+        { label: '&General', action: () => openCategory('general') },
+        { label: '&Editor', action: () => openCategory('editor') },
+        { label: '&Appearance', action: () => openCategory('appearance') },
+        { label: '&New Document', action: () => openCategory('newDoc') },
+        { label: '&Backup', action: () => openCategory('backup') },
+        { label: 'Auto-Co&mpletion', action: () => openCategory('completion') },
+        { label: '&Keyboard Shortcuts', icon: <Keyboard size={18} />, action: () => openCategory('shortcuts') },
+        { separator: true, label: '' },
+        { label: themeLabel, icon: <ThemeIcon size={18} />, action: toggleTheme },
+      ]
+    })(),
     Window: [
       { label: '&Minimize', action: () => window.dispatchEvent(new CustomEvent('window:minimize')) },
       { label: '&Zoom', action: () => window.dispatchEvent(new CustomEvent('window:zoom')) },
@@ -263,6 +322,7 @@ export function MenuBar({
     { key: 'View', label: '&View' },
     { key: 'Macro', label: '&Macro' },
     { key: 'Plugins', label: '&Plugins' },
+    { key: 'Settings', label: 'Se&ttings' },
     { key: 'Window', label: '&Window' },
     { key: 'Help', label: '&Help' },
   ]

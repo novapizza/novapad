@@ -13,6 +13,9 @@ export type UIToggleKey =
   | 'showSidebar'
   | 'wordWrap'
   | 'renderWhitespace'
+  | 'showEOL'
+  | 'showNonPrinting'
+  | 'showControlChars'
   | 'indentationGuides'
   | 'columnSelectMode'
   | 'splitView'
@@ -24,6 +27,9 @@ interface UIState {
   showSidebar: boolean
   wordWrap: boolean
   renderWhitespace: boolean
+  showEOL: boolean
+  showNonPrinting: boolean
+  showControlChars: boolean
   indentationGuides: boolean
   columnSelectMode: boolean
   splitView: boolean
@@ -88,6 +94,9 @@ interface UIState {
   setShowSidebar: (v: boolean, fromMain?: boolean) => void
   setWordWrap: (v: boolean, fromMain?: boolean) => void
   setRenderWhitespace: (v: boolean, fromMain?: boolean) => void
+  setShowEOL: (v: boolean, fromMain?: boolean) => void
+  setShowNonPrinting: (v: boolean, fromMain?: boolean) => void
+  setShowControlChars: (v: boolean, fromMain?: boolean) => void
   setIndentationGuides: (v: boolean, fromMain?: boolean) => void
   setColumnSelectMode: (v: boolean, fromMain?: boolean) => void
   setSplitView: (v: boolean, fromMain?: boolean) => void
@@ -126,6 +135,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   showSidebar: false,
   wordWrap: false,
   renderWhitespace: false,
+  showEOL: false,
+  showNonPrinting: false,
+  showControlChars: false,
   indentationGuides: true,
   columnSelectMode: false,
   splitView: false,
@@ -180,6 +192,18 @@ export const useUIStore = create<UIState>((set, get) => ({
   setRenderWhitespace: (v, fromMain) => {
     set({ renderWhitespace: v })
     if (!fromMain) get().syncToggleToMain('renderWhitespace', v)
+  },
+  setShowEOL: (v, fromMain) => {
+    set({ showEOL: v })
+    if (!fromMain) get().syncToggleToMain('showEOL', v)
+  },
+  setShowNonPrinting: (v, fromMain) => {
+    set({ showNonPrinting: v })
+    if (!fromMain) get().syncToggleToMain('showNonPrinting', v)
+  },
+  setShowControlChars: (v, fromMain) => {
+    set({ showControlChars: v })
+    if (!fromMain) get().syncToggleToMain('showControlChars', v)
   },
   setIndentationGuides: (v, fromMain) => {
     set({ indentationGuides: v })

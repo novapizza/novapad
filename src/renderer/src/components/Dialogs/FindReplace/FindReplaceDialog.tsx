@@ -162,6 +162,38 @@ export function FindReplaceDialog() {
   const [fifFilter, setFifFilter] = useState('*.*')
   const [fifRecursive, setFifRecursive] = useState(true)
   const findInputRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
+  const dragStartRef = useRef<{ mouseX: number; mouseY: number; dialogX: number; dialogY: number } | null>(null)
+
+  // Reset position to centered each time the dialog opens.
+  useEffect(() => { if (showFindReplace) setPosition(null) }, [showFindReplace])
+
+  const handleTitleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Allow the close button (and any other interactive control in the title bar) to keep working.
+    if ((e.target as HTMLElement).closest('button')) return
+    if (e.button !== 0) return
+    const rect = dialogRef.current?.getBoundingClientRect()
+    if (!rect) return
+    e.preventDefault()
+    dragStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, dialogX: rect.left, dialogY: rect.top }
+    const onMove = (ev: MouseEvent) => {
+      const s = dragStartRef.current
+      if (!s) return
+      const w = dialogRef.current?.offsetWidth ?? 0
+      const h = dialogRef.current?.offsetHeight ?? 0
+      const x = Math.max(0, Math.min(s.dialogX + (ev.clientX - s.mouseX), window.innerWidth - w))
+      const y = Math.max(0, Math.min(s.dialogY + (ev.clientY - s.mouseY), window.innerHeight - h))
+      setPosition({ x, y })
+    }
+    const onUp = () => {
+      dragStartRef.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
 
   useEffect(() => {
     if (showFindReplace) {
@@ -283,10 +315,18 @@ export function FindReplaceDialog() {
   return (
     <div className="fixed inset-0 z-[9000] pointer-events-none">
       <div
-        className="fixed z-[9001] bg-popover border border-border rounded-lg shadow-2xl min-w-[480px] max-w-[640px] flex flex-col pointer-events-auto left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+        ref={dialogRef}
+        className={cn(
+          'fixed z-[9001] bg-popover border border-border rounded-lg shadow-2xl min-w-[480px] max-w-[640px] flex flex-col pointer-events-auto',
+          position === null && 'left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
+        )}
+        style={position ? { left: position.x, top: position.y } : undefined}
       >
-        {/* Title bar */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+        {/* Title bar (drag handle) */}
+        <div
+          className="flex items-center justify-between px-3 py-2 border-b border-border cursor-move select-none"
+          onMouseDown={handleTitleMouseDown}
+        >
           <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Find &amp; Replace</span>
           <button className="bg-transparent border-none cursor-pointer text-muted-foreground text-sm w-6 h-6 flex items-center justify-center rounded hover:bg-secondary hover:text-foreground" onClick={closeFind} tabIndex={-1} title="Close (Esc)">✕</button>
         </div>

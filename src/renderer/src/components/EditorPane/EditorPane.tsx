@@ -776,6 +776,10 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
         ui.setIndentationGuides(!!(opts.guides as { indentation: boolean }).indentation, fromMain)
       }
       if ('columnSelection' in opts) ui.setColumnSelectMode(!!opts.columnSelection, fromMain)
+      if ('renderControlCharacters' in opts) ui.setShowNonPrinting(!!opts.renderControlCharacters, fromMain)
+      if (opts.unicodeHighlight && typeof opts.unicodeHighlight === 'object' && 'invisibleCharacters' in opts.unicodeHighlight) {
+        ui.setShowControlChars(!!(opts.unicodeHighlight as { invisibleCharacters: boolean }).invisibleCharacters, fromMain)
+      }
     }
     // From native menu (IPC)
     const unsub = window.api.on('editor:set-option', (...args: unknown[]) => {
@@ -789,6 +793,71 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
     return () => {
       unsub()
       window.removeEventListener('editor:set-option-local', handleLocalOption)
+    }
+  }, [])
+
+  // EOL-marker overlay: when "Show End of Line" is on, render a faint
+  // LF/CRLF/CR marker after each line. Bound to current model; refreshes on
+  // model swap, content change, and toggle. Capped at 50k lines for perf.
+  useEffect(() => {
+    let enabled = false
+    let collection: monaco.editor.IEditorDecorationsCollection | null = null
+    let contentSub: monaco.IDisposable | null = null
+    let modelSub: monaco.IDisposable | null = null
+
+    const rebuild = () => {
+      const editor = editorRef.current
+      if (!editor) return
+      if (!collection) collection = editor.createDecorationsCollection()
+      const model = editor.getModel()
+      if (!enabled || !model) { collection.clear(); return }
+      const eol = model.getEOL()
+      const marker = eol === '\r\n' ? '↵' : eol === '\r' ? '↵' : '↵'
+      const lineCount = Math.min(model.getLineCount(), 50000)
+      const decs: monaco.editor.IModelDeltaDecoration[] = []
+      for (let line = 1; line < lineCount; line++) {
+        const col = model.getLineMaxColumn(line)
+        decs.push({
+          range: new monaco.Range(line, col, line, col),
+          options: { after: { content: marker, inlineClassName: 'eol-marker' } },
+        })
+      }
+      collection.set(decs)
+    }
+
+    const bindModel = () => {
+      contentSub?.dispose()
+      const model = editorRef.current?.getModel()
+      contentSub = model?.onDidChangeContent(() => rebuild()) ?? null
+      rebuild()
+    }
+
+    const onEvt = (e: Event) => {
+      // Store toggle was already set by MenuBar before dispatching this event.
+      enabled = !!(e as CustomEvent).detail
+      rebuild()
+    }
+    window.addEventListener('editor:set-eol-marker', onEvt)
+    // From native menu (IPC)
+    const unsubIpc = window.api.on('editor:set-eol-marker', (...args: unknown[]) => {
+      enabled = !!args[0]
+      useUIStore.getState().setShowEOL(enabled, true)
+      rebuild()
+    })
+
+    // The editor may not yet be created on first render — defer binding.
+    const timer = window.setTimeout(() => {
+      modelSub = editorRef.current?.onDidChangeModel(bindModel) ?? null
+      bindModel()
+    }, 0)
+
+    return () => {
+      window.removeEventListener('editor:set-eol-marker', onEvt)
+      unsubIpc()
+      window.clearTimeout(timer)
+      contentSub?.dispose()
+      modelSub?.dispose()
+      collection?.clear()
     }
   }, [])
 

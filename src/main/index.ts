@@ -279,6 +279,9 @@ const toggleKeyToMenuId: Record<string, string> = {
   showSidebar: 'toggle-sidebar',
   wordWrap: 'toggle-word-wrap',
   renderWhitespace: 'toggle-whitespace',
+  showEOL: 'toggle-show-eol',
+  showNonPrinting: 'toggle-show-non-printing',
+  showControlChars: 'toggle-show-control-chars',
   indentationGuides: 'toggle-indent-guides',
   columnSelectMode: 'column-select',
   splitView: 'toggle-split-view'

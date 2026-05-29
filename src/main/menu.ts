@@ -308,11 +308,55 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
           click: (item) => win.webContents.send('editor:set-option', { wordWrap: item.checked ? 'on' : 'off' })
         },
         {
-          id: 'toggle-whitespace',
-          label: 'Show Whitespace',
-          type: 'checkbox',
-          checked: false,
-          click: (item) => win.webContents.send('editor:set-option', { renderWhitespace: item.checked ? 'all' : 'none' })
+          label: 'Show Symbol',
+          submenu: [
+            {
+              id: 'toggle-whitespace',
+              label: 'Show Space and Tab',
+              type: 'checkbox',
+              checked: false,
+              click: (item) => win.webContents.send('editor:set-option', { renderWhitespace: item.checked ? 'all' : 'none' })
+            },
+            {
+              id: 'toggle-show-eol',
+              label: 'Show End of Line',
+              type: 'checkbox',
+              checked: false,
+              click: (item) => win.webContents.send('editor:set-eol-marker', item.checked)
+            },
+            {
+              id: 'toggle-show-non-printing',
+              label: 'Show Non-Printing Characters',
+              type: 'checkbox',
+              checked: false,
+              click: (item) => win.webContents.send('editor:set-option', { renderControlCharacters: item.checked })
+            },
+            {
+              id: 'toggle-show-control-chars',
+              label: 'Show Control Characters & Unicode EOL',
+              type: 'checkbox',
+              checked: false,
+              click: (item) => win.webContents.send('editor:set-option', {
+                unicodeHighlight: { invisibleCharacters: item.checked, ambiguousCharacters: item.checked }
+              })
+            },
+            { type: 'separator' },
+            {
+              id: 'toggle-show-all-chars',
+              label: 'Show All Characters',
+              type: 'checkbox',
+              checked: false,
+              click: (item) => {
+                const v = item.checked
+                win.webContents.send('editor:set-option', { renderWhitespace: v ? 'all' : 'none' })
+                win.webContents.send('editor:set-eol-marker', v)
+                win.webContents.send('editor:set-option', { renderControlCharacters: v })
+                win.webContents.send('editor:set-option', {
+                  unicodeHighlight: { invisibleCharacters: v, ambiguousCharacters: v }
+                })
+              }
+            },
+          ]
         },
         {
           id: 'toggle-indent-guides',
