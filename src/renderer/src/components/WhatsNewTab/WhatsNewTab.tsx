@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Sparkles } from 'lucide-react'
+import { getReleaseNote } from './releaseNotes'
 
 export function WhatsNewTab() {
   const [version, setVersion] = useState<string>('')
@@ -19,6 +20,9 @@ export function WhatsNewTab() {
     }
   }, [])
 
+  // Resolve the notes for the running version (exact match, else newest).
+  const note = getReleaseNote(version)
+
   return (
     <div className="flex flex-col flex-1 h-full overflow-hidden bg-background" data-testid="whatsnew-tab">
       <div className="px-4 py-3 border-b border-border">
@@ -36,66 +40,24 @@ export function WhatsNewTab() {
             </div>
           </header>
 
-          <p className="text-base text-foreground leading-relaxed mb-4">
-            A big maintenance and polish drop. The installer is dramatically smaller, your
-            unsaved scratch tabs survive a crash, file associations actually work, and the
-            plugin system grew up. Less ceremony, more editing.
-          </p>
+          {note ? (
+            <>
+              <p className="text-base text-foreground leading-relaxed mb-4">{note.summary}</p>
 
-          <h3 className="text-base font-semibold text-foreground mt-8 mb-3">What's New</h3>
-          <ul className="space-y-4">
-            <li className="text-base text-foreground leading-relaxed">
-              <span className="font-semibold">Slimmer installer:</span> A round of
-              bundle-excludes (TensorFlow, Monaco, Magika, and friends) shrank both
-              builds — the Windows NSIS dropped from
-              <span className="font-mono text-sm"> 254&nbsp;MB</span> to
-              <span className="font-mono text-sm"> 93&nbsp;MB</span> (-63%), and the
-              macOS dmg slimmed down by the same cuts. Your bandwidth and your SSD
-              both said thanks.
-            </li>
-            <li className="text-base text-foreground leading-relaxed">
-              <span className="font-semibold">Notepad++-style snapshot &amp; restore:</span>{' '}
-              Unsaved buffers are persisted to disk and brought back exactly as you left them
-              after a relaunch — even untitled scratch tabs, even after a crash.
-            </li>
-            <li className="text-base text-foreground leading-relaxed">
-              <span className="font-semibold">File associations &amp; Open&nbsp;With:</span>{' '}
-              Register the app as a handler for common text formats. Windows "Open with /
-              Edit with" and macOS "Open With → NovaPad" both surface NovaPad in the OS
-              file menu.
-            </li>
-            <li className="text-base text-foreground leading-relaxed">
-              <span className="font-semibold">Auto-update:</span> Built on electron-updater —
-              new versions land in the background and prompt you to restart, no more manual
-              installer hunts.
-            </li>
-            <li className="text-base text-foreground leading-relaxed">
-              <span className="font-semibold">Plugin Manager, redesigned:</span> Plugins now
-              live in a full VS&nbsp;Code-style page (not a tiny dialog), with a dedicated
-              detail view per plugin.
-            </li>
-            <li className="text-base text-foreground leading-relaxed">
-              <span className="font-semibold">Smarter file detection:</span> Google's Magika
-              ML model identifies file types by content, not extension — so a mislabeled
-              <span className="font-mono text-sm"> .txt</span> still gets the right syntax
-              highlighting.
-            </li>
-            <li className="text-base text-foreground leading-relaxed">
-              <span className="font-semibold">TableLens CSV viewer:</span> Open a
-              <span className="font-mono text-sm"> .csv</span> and get a real table view with
-              sorting and column sizing — no more squinting at commas.
-            </li>
-            <li className="text-base text-foreground leading-relaxed">
-              <span className="font-semibold">Beautify everywhere:</span> Format JSON, SQL,
-              and XML alongside the existing formatters. Paste detection now figures out the
-              language for you.
-            </li>
-            <li className="text-base text-foreground leading-relaxed">
-              <span className="font-semibold">Quality of life:</span> Full file path in the
-              status bar, double-click the tab strip to open a new document, and a pile of
-              dialog and session-restore fixes you'll only notice because nothing breaks.
-            </li>
-          </ul>
+              <h3 className="text-base font-semibold text-foreground mt-8 mb-3">What's New</h3>
+              <ul className="space-y-4">
+                {note.highlights.map((item) => (
+                  <li key={item.title} className="text-base text-foreground leading-relaxed">
+                    <span className="font-semibold">{item.title}:</span> {item.body}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p className="text-base text-muted-foreground leading-relaxed">
+              Release notes for this version aren't available yet.
+            </p>
+          )}
         </article>
       </div>
     </div>

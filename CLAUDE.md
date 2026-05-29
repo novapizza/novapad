@@ -19,6 +19,49 @@ npm run test:e2e:headed    # With visible Electron window
 npm run test:e2e:report    # Open HTML report
 ```
 
+## Security Review — required before every commit & push
+
+Before running `git commit` or `git push`, you MUST run the `/security-review` skill on the
+pending changes and resolve (or explicitly justify in the commit message) any findings. This
+applies to **all** changes, no exceptions — do not commit or push code that has not passed
+security review.
+
+- Run `/security-review` after staging, before the commit.
+- For a deeper pre-PR pass, `/ultrareview` (user-triggered, billed) runs a multi-agent cloud
+  review of the branch.
+
+> **Enforcement scope:** This rule binds Claude Code sessions. It does **not** automatically
+> bind manual `git` commits made outside a Claude session. For hard enforcement on every
+> commit/push regardless of who runs it, add a git hook or CI check — tracked in
+> `.docs/features/security-hardening/plan.md` (Phase 5).
+
+## Release Notes — keep in sync on every commit
+
+The "What's New" tab is driven by a per-version content map in
+`src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`. The top entry of `RELEASE_NOTES`
+is the **in-progress** release (its `version` must equal the current `package.json` version).
+
+Whenever you make a commit that changes **user-facing behavior** (features, UX, notable fixes),
+you MUST update the release notes in the same commit:
+
+- **No version bump:** edit the top `RELEASE_NOTES` entry — add or adjust a `highlights` item
+  describing the change. Skip purely internal commits (refactors, tests, CI, deps) that a user
+  would never notice.
+- **`package.json` version was bumped:** refresh `releaseNotes.tsx` first — add a **new** entry
+  at the top of `RELEASE_NOTES` with `version` set to the new `package.json` version, then
+  record this commit's changes under it. Leave older entries in place.
+
+Rules:
+- `RELEASE_NOTES[0].version` must always match `package.json`'s `version`. If they drift, the
+  tab falls back to the newest existing entry and ships **stale notes under a new version
+  number** — the exact bug this map was built to prevent.
+- Bodies are `ReactNode`, so write real JSX (bold lead-ins, `<span className="font-mono">`
+  for sizes/paths, links). Keep the array sorted newest-first.
+
+> **Enforcement scope:** This rule binds Claude Code sessions, same as Security Review above.
+> For hard enforcement, add a CI check asserting `RELEASE_NOTES[0].version === package.json
+> version`.
+
 ## E2E Testing (Playwright + Test Agents)
 
 ### Test Agents workflow (run once to initialize)
