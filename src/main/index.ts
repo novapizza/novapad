@@ -133,7 +133,11 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      // Electron defaults this to true, which loads a Hunspell dictionary
+      // (~30-50 MB resident per BrowserWindow). We don't surface a spellcheck
+      // UI anywhere, so opt out.
+      spellcheck: false
     }
   })
 
@@ -178,7 +182,10 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   if (process.platform === 'win32') {
-    app.setAppUserModelId('com.notepadandmore.app')
+    // Must match electron-builder.yml's `appId`. Windows uses this for taskbar
+    // grouping, jump lists, and toast notifications — when it differs from
+    // the packaged appId, dev and packaged builds are treated as separate apps.
+    app.setAppUserModelId('com.novapad.app')
   }
 
   // Cold-launch arg handling: when Windows/Linux "Open with NovaPad" (file or

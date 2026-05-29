@@ -669,11 +669,15 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
     setLoadingSize(null)
     if (buf.model) {
       editor.setModel(buf.model)
-      // Prefer live viewState, fall back to savedViewState from session
+      // Prefer live viewState, fall back to savedViewState from session.
+      // After consuming savedViewState, drop it — subsequent saves use the
+      // live viewState captured from the editor, so retaining a second
+      // serialized copy per buffer wastes memory across many open tabs.
       if (buf.viewState) {
         editor.restoreViewState(buf.viewState)
       } else if (buf.savedViewState) {
         try { editor.restoreViewState(buf.savedViewState as monaco.editor.ICodeEditorViewState) } catch { /* ignore */ }
+        updateBuffer(activeId, { savedViewState: null })
       }
       restoreDecorations(activeId)
 
@@ -715,9 +719,9 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
   }, [activeId, activeBufLoaded, getBuffer, updateBuffer, restoreDecorations, loadBuffer])
 
   // Handle editor commands from menu (IPC from native menu + CustomEvent from custom MenuBar/context menu)
-  // Run once: window.api.on has no per-listener removal, so re-registering on every
-  // dispatchCommand identity change leaked listeners — one keypress fired N times,
-  // which broke state-toggling commands like Begin/End Select.
+  // Hold dispatchCommand in a ref so the IPC listener stays registered exactly
+  // once across renders — re-binding on dispatchCommand identity change would
+  // leak listeners and cause Begin/End-Select to toggle N times per keypress.
   const dispatchCommandRef = useRef(dispatchCommand)
   useEffect(() => { dispatchCommandRef.current = dispatchCommand }, [dispatchCommand])
   useEffect(() => {
@@ -727,9 +731,12 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
     const customHandler = (e: Event) => {
       dispatchCommandRef.current((e as CustomEvent<string>).detail)
     }
-    window.api.on('editor:command', ipcHandler)
+    const unsub = window.api.on('editor:command', ipcHandler)
     window.addEventListener('editor:command', customHandler)
-    return () => window.removeEventListener('editor:command', customHandler)
+    return () => {
+      unsub()
+      window.removeEventListener('editor:command', customHandler)
+    }
   }, [])
 
   // Handle macro:replay-command from macro playback (avoids IPC round-trip)
@@ -743,17 +750,18 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
 
   // Handle macro IPC events
   useEffect(() => {
-    window.api.on('macro:start-record', () => {
+    const unsubStart = window.api.on('macro:start-record', () => {
       const editor = editorRef.current
       if (editor) macroStart(editor)
     })
-    window.api.on('macro:stop-record', () => {
+    const unsubStop = window.api.on('macro:stop-record', () => {
       macroStop()
     })
-    window.api.on('macro:playback', () => {
+    const unsubPlay = window.api.on('macro:playback', () => {
       const editor = editorRef.current
       if (editor) macroPlayback(editor)
     })
+    return () => { unsubStart(); unsubStop(); unsubPlay() }
   }, [macroStart, macroStop, macroPlayback])
 
   // Handle editor option changes from menu
@@ -770,7 +778,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
       if ('columnSelection' in opts) ui.setColumnSelectMode(!!opts.columnSelection, fromMain)
     }
     // From native menu (IPC)
-    window.api.on('editor:set-option', (...args: unknown[]) => {
+    const unsub = window.api.on('editor:set-option', (...args: unknown[]) => {
       applyEditorOptions(args[0] as monaco.editor.IEditorOptions, true)
     })
     // From custom MenuBar (CustomEvent)
@@ -778,7 +786,10 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
       applyEditorOptions((e as CustomEvent).detail as monaco.editor.IEditorOptions)
     }
     window.addEventListener('editor:set-option-local', handleLocalOption)
-    return () => window.removeEventListener('editor:set-option-local', handleLocalOption)
+    return () => {
+      unsub()
+      window.removeEventListener('editor:set-option-local', handleLocalOption)
+    }
   }, [])
 
   // Handle EOL change from menu (IPC) or status bar click (CustomEvent)
@@ -796,9 +807,12 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
     }
     const ipcHandler = (...args: unknown[]) => applyEol(args[0] as EOLType)
     const customHandler = (e: Event) => applyEol((e as CustomEvent<EOLType>).detail)
-    window.api.on('editor:set-eol', ipcHandler)
+    const unsub = window.api.on('editor:set-eol', ipcHandler)
     window.addEventListener('editor:set-eol', customHandler)
-    return () => window.removeEventListener('editor:set-eol', customHandler)
+    return () => {
+      unsub()
+      window.removeEventListener('editor:set-eol', customHandler)
+    }
   }, [updateBuffer])
 
   // Handle encoding change from menu (IPC) or status bar click (CustomEvent)
@@ -812,9 +826,12 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
     }
     const ipcHandler = (...args: unknown[]) => applyEncoding(args[0] as string)
     const customHandler = (e: Event) => applyEncoding((e as CustomEvent<string>).detail)
-    window.api.on('editor:set-encoding', ipcHandler)
+    const unsub = window.api.on('editor:set-encoding', ipcHandler)
     window.addEventListener('editor:set-encoding', customHandler)
-    return () => window.removeEventListener('editor:set-encoding', customHandler)
+    return () => {
+      unsub()
+      window.removeEventListener('editor:set-encoding', customHandler)
+    }
   }, [updateBuffer])
 
   // Handle language change from menu (IPC + CustomEvent)
@@ -826,10 +843,13 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
         updateBuffer(buf.id, { language: lang })
       }
     }
-    window.api.on('editor:set-language', (...args: unknown[]) => applyLanguage(args[0] as string))
+    const unsub = window.api.on('editor:set-language', (...args: unknown[]) => applyLanguage(args[0] as string))
     const handleLocalLang = (e: Event) => applyLanguage((e as CustomEvent<string>).detail)
     window.addEventListener('editor:set-language-local', handleLocalLang)
-    return () => window.removeEventListener('editor:set-language-local', handleLocalLang)
+    return () => {
+      unsub()
+      window.removeEventListener('editor:set-language-local', handleLocalLang)
+    }
   }, [getBuffer, updateBuffer])
 
   // Handle go-to-line from status bar Quick Pick
@@ -848,21 +868,21 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
 
   // Handle plugin API requests that need editor access
   useEffect(() => {
-    window.api.on('plugin:editor-get-text', () => {
+    const unsubGetText = window.api.on('plugin:editor-get-text', () => {
       const buf = currentIdRef.current ? getBuffer(currentIdRef.current) : null
       window.api.send('plugin:editor-get-text:reply', buf?.model?.getValue() ?? '')
     })
-    window.api.on('plugin:editor-get-selection', () => {
+    const unsubGetSel = window.api.on('plugin:editor-get-selection', () => {
       const editor = editorRef.current
       const selection = editor?.getSelection()
       const text = selection ? editor?.getModel()?.getValueInRange(selection) ?? '' : ''
       window.api.send('plugin:editor-get-selection:reply', text)
     })
-    window.api.on('plugin:editor-get-path', () => {
+    const unsubGetPath = window.api.on('plugin:editor-get-path', () => {
       const buf = currentIdRef.current ? getBuffer(currentIdRef.current) : null
       window.api.send('plugin:editor-get-path:reply', buf?.filePath ?? null)
     })
-    window.api.on('plugin:insert-text', (...args: unknown[]) => {
+    const unsubInsert = window.api.on('plugin:insert-text', (...args: unknown[]) => {
       const text = args[1] as string
       const editor = editorRef.current
       if (!editor || !text) return
@@ -871,6 +891,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
         editor.executeEdits('plugin', [{ range: selection, text, forceMoveMarkers: true }])
       }
     })
+    return () => { unsubGetText(); unsubGetSel(); unsubGetPath(); unsubInsert() }
   }, [getBuffer])
 
   return (
