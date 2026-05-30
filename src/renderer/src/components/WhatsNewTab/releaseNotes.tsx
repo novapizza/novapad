@@ -31,12 +31,12 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: '1.3.0',
+    version: '1.4.0',
     summary: (
       <>
-        A big maintenance and polish drop. The installer is dramatically smaller, your unsaved
-        scratch tabs survive a crash, file associations actually work, and the plugin system grew
-        up. Less ceremony, more editing.
+        A new <span className="font-mono text-sm">Tools</span> menu turns NovaPad into a handy
+        developer toolbox — hashing plus a set of everyday encoders, converters, and generators,
+        all without leaving the editor.
       </>
     ),
     highlights: [
@@ -53,7 +53,19 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             generator, and JWT / URL / CSP utilities. Find it under <span className="font-mono text-sm">Tools</span>.
           </>
         )
-      },
+      }
+    ]
+  },
+  {
+    version: '1.3.0',
+    summary: (
+      <>
+        A big maintenance and polish drop. The installer is dramatically smaller, your unsaved
+        scratch tabs survive a crash, file associations actually work, and the plugin system grew
+        up. Less ceremony, more editing.
+      </>
+    ),
+    highlights: [
       {
         title: 'Slimmer installer',
         body: (
