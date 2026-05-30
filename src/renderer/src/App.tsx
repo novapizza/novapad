@@ -16,6 +16,8 @@ import { StatusBar } from './components/StatusBar/StatusBar'
 import { BottomPanelContainer } from './components/Panels/BottomPanelContainer'
 import { FindReplaceDialog } from './components/Dialogs/FindReplace/FindReplaceDialog'
 import { AboutDialog } from './components/Dialogs/AboutDialog/AboutDialog'
+import { ToolsPanel } from './components/Tools/ToolsPanel'
+import { openHashGenerator, hashFromFiles, hashSelectionToClipboard, type HashAlgo } from './lib/tools/hashActions'
 import { Sidebar } from './components/Sidebar/Sidebar'
 // Lazy-loaded preview panes — each pulls heavy deps that stay out of the
 // main bundle until the user actually opens the preview.
@@ -248,6 +250,13 @@ export default function App() {
       useEditorStore.getState().openVirtualTab('settings')
     })
     window.api.on('menu:whats-new-open',     () => useEditorStore.getState().openVirtualTab('whatsNew'))
+    window.api.on('menu:tools-open',         (...args) => useUIStore.getState().openTool(args[0] as string))
+    window.api.on('menu:tools-hash',         (...args) => {
+      const { algo, verb } = args[0] as { algo: HashAlgo; verb: 'generate' | 'files' | 'selection' }
+      if (verb === 'files') void hashFromFiles(algo)
+      else if (verb === 'selection') void hashSelectionToClipboard(algo)
+      else openHashGenerator(algo)
+    })
     window.api.on('menu:check-for-updates',  () => { void window.api.update.check() })
     window.api.on('plugin:state-changed', () => {
       usePluginStore.getState().fetchPlugins()
@@ -453,6 +462,8 @@ export default function App() {
       window.api.off('menu:settings-open')
       window.api.off('menu:shortcuts-open')
       window.api.off('menu:whats-new-open')
+      window.api.off('menu:tools-open')
+      window.api.off('menu:tools-hash')
       window.api.off('menu:check-for-updates')
       window.api.off('plugin:add-menu-item')
       window.api.off('plugin:state-changed')
@@ -630,6 +641,7 @@ export default function App() {
 
       <FindReplaceDialog />
       <AboutDialog />
+      <ToolsPanel />
       {csvViewerOpen && <CsvViewerOverlay csvText={csvViewerText} fileName={csvViewerFileName} />}
       {compareOpen && (
         <Suspense fallback={

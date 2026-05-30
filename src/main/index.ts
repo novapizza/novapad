@@ -9,6 +9,7 @@ import { registerSearchHandlers } from './ipc/searchHandlers'
 import { registerWatchHandlers } from './ipc/watchHandlers'
 import { registerUpdateHandlers } from './ipc/updateHandlers'
 import { registerBackupHandlers } from './ipc/backupHandlers'
+import { registerToolsHandlers } from './ipc/toolsHandlers'
 import { UpdateManager } from './update/UpdateManager'
 import { PluginLoader } from './plugins/PluginLoader'
 import { SessionManager } from './sessions/SessionManager'
@@ -201,6 +202,7 @@ app.whenReady().then(() => {
   registerConfigHandlers()
   registerPluginHandlers()
   registerBackupHandlers()
+  registerToolsHandlers()
 
   createWindow()
 

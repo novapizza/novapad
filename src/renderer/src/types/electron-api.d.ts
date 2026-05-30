@@ -93,6 +93,15 @@ interface ElectronAPI {
     cleanup: (keep: string[]) => Promise<unknown>
   }
 
+  tools: {
+    hash: (algo: string, text: string) => Promise<{ hex: string | null; error: string | null }>
+    hashFiles: (algo: string) => Promise<{
+      canceled: boolean
+      error: string | null
+      files: Array<{ path: string; name: string; size: number; hex: string | null; error: string | null }>
+    }>
+  }
+
   app: {
     getVersion: () => Promise<string>
   }

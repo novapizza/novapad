@@ -17,6 +17,7 @@ import { useAltHeld } from '../../hooks/useAltHeld'
 import { useAltMnemonics } from '../../hooks/useAltMnemonics'
 import { SettingsMenu } from './SettingsMenu'
 import { NavButtons } from './NavButtons'
+import { HASH_ALGOS, openHashGenerator, hashFromFiles, hashSelectionToClipboard } from '../../lib/tools/hashActions'
 
 interface MenuBarProps {
   onNew: () => void
@@ -262,6 +263,38 @@ export function MenuBar({
       { separator: true, label: '' },
       { label: 'S&plit View', disabled: true },
     ],
+    Tools: (() => {
+      const openTool = (id: string) => useUIStore.getState().openTool(id)
+      const hashMenu = (algo: (typeof HASH_ALGOS)[number]['id']): MenuItem[] => [
+        { label: '&Generate...', action: () => openHashGenerator(algo) },
+        { label: 'Generate from &files...', action: () => { void hashFromFiles(algo) } },
+        { label: 'Generate from &selection into clipboard', action: () => { void hashSelectionToClipboard(algo) } },
+      ]
+      return [
+        ...HASH_ALGOS.map((a) => ({ label: a.label, submenu: hashMenu(a.id) })),
+        { separator: true, label: '' },
+        {
+          label: '&Encoding && Web', submenu: [
+            { label: '&URL Encoder', action: () => openTool('url') },
+            { label: '&JWT Decoder', action: () => openTool('jwt') },
+            { label: '&CSP Tools', action: () => openTool('csp') },
+          ],
+        },
+        {
+          label: '&Converters', submenu: [
+            { label: '&Epoch Converter', action: () => openTool('epoch') },
+            { label: 'C&olor Converter', action: () => openTool('color') },
+            { label: 'Cro&n Builder', action: () => openTool('cron') },
+          ],
+        },
+        {
+          label: '&Generators', submenu: [
+            { label: 'UUID &Generator', action: () => openTool('uuid') },
+            { label: '&Lorem Ipsum', action: () => openTool('lorem') },
+          ],
+        },
+      ]
+    })(),
     Macro: [
       { label: '&Start Recording', shortcut: `${mod}+Shift+R`, disabled: true },
       { label: 'S&top Recording', shortcut: `${mod}+Shift+R`, disabled: true },
@@ -324,6 +357,7 @@ export function MenuBar({
     { key: 'Edit', label: '&Edit' },
     { key: 'Search', label: '&Search' },
     { key: 'View', label: '&View' },
+    { key: 'Tools', label: '&Tools' },
     { key: 'Macro', label: '&Macro' },
     { key: 'Plugins', label: '&Plugins' },
     { key: 'Settings', label: 'Se&ttings' },

@@ -41,6 +41,20 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ),
     highlights: [
       {
+        title: 'New Tools menu',
+        body: (
+          <>
+            A built-in developer toolbox: <span className="font-mono text-sm">MD5</span> /
+            <span className="font-mono text-sm"> SHA-1</span> /
+            <span className="font-mono text-sm"> SHA-256</span> /
+            <span className="font-mono text-sm"> SHA-512</span> hashing (of typed text, picked
+            files, or the current selection straight to the clipboard), plus a unified panel with a
+            UUID/ULID generator, epoch &amp; color converters, a cron builder, a Lorem Ipsum
+            generator, and JWT / URL / CSP utilities. Find it under <span className="font-mono text-sm">Tools</span>.
+          </>
+        )
+      },
+      {
         title: 'Slimmer installer',
         body: (
           <>

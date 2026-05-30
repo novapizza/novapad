@@ -405,6 +405,50 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
       ]
     },
 
+    // Tools — developer utilities. Hashing verbs match the per-algorithm
+    // submenu in the custom React MenuBar; the other tools open the unified
+    // Tools panel deep-linked to a specific tool.
+    {
+      label: '&Tools',
+      submenu: [
+        ...(['md5', 'sha1', 'sha256', 'sha512'] as const).map((algo) => ({
+          label: algo === 'sha1' ? 'SHA-1' : algo === 'sha256' ? 'SHA-256' : algo === 'sha512' ? 'SHA-512' : 'MD5',
+          submenu: [
+            { label: 'Generate…', click: () => win.webContents.send('menu:tools-hash', { algo, verb: 'generate' }) },
+            { label: 'Generate from files…', click: () => win.webContents.send('menu:tools-hash', { algo, verb: 'files' }) },
+            {
+              label: 'Generate from selection into clipboard',
+              click: () => win.webContents.send('menu:tools-hash', { algo, verb: 'selection' })
+            }
+          ]
+        })),
+        { type: 'separator' as const },
+        {
+          label: 'Encoding & Web',
+          submenu: [
+            { label: 'URL Encoder', click: () => win.webContents.send('menu:tools-open', 'url') },
+            { label: 'JWT Decoder', click: () => win.webContents.send('menu:tools-open', 'jwt') },
+            { label: 'CSP Tools', click: () => win.webContents.send('menu:tools-open', 'csp') }
+          ]
+        },
+        {
+          label: 'Converters',
+          submenu: [
+            { label: 'Epoch Converter', click: () => win.webContents.send('menu:tools-open', 'epoch') },
+            { label: 'Color Converter', click: () => win.webContents.send('menu:tools-open', 'color') },
+            { label: 'Cron Builder', click: () => win.webContents.send('menu:tools-open', 'cron') }
+          ]
+        },
+        {
+          label: 'Generators',
+          submenu: [
+            { label: 'UUID Generator', click: () => win.webContents.send('menu:tools-open', 'uuid') },
+            { label: 'Lorem Ipsum', click: () => win.webContents.send('menu:tools-open', 'lorem') }
+          ]
+        }
+      ]
+    },
+
     // Macro
     {
       label: '&Macro',

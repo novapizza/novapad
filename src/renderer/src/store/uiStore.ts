@@ -86,6 +86,15 @@ interface UIState {
    *  to that category, then clears the value. Used to deep-link from the gear menu
    *  and the native "Keyboard Shortcuts" menu item. */
   pendingSettingsCategory: string | null
+  /**
+   * Developer Tools panel (UUID/epoch/color/cron/lorem/jwt/url/csp/hash). A
+   * single modal hosts every tool; `activeToolId` selects which one is shown.
+   * `toolArgs` carries an optional preset for the active tool (e.g. the hash
+   * algorithm to pre-select, or file-hash results to display).
+   */
+  toolsPanelOpen: boolean
+  activeToolId: string | null
+  toolArgs: Record<string, unknown> | null
 
   setTheme: (t: Theme) => void
   toggleTheme: () => void
@@ -126,6 +135,8 @@ interface UIState {
   openTransform: (model: SchemaModel, kind: 'prisma' | 'dbml' | 'ddl', title: string) => void
   closeTransform: () => void
   setPendingSettingsCategory: (cat: string | null) => void
+  openTool: (id: string, args?: Record<string, unknown>) => void
+  closeTools: () => void
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -167,6 +178,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   transformKind: null,
   transformTitle: null,
   pendingSettingsCategory: null,
+  toolsPanelOpen: false,
+  activeToolId: null,
+  toolArgs: null,
 
   setTheme: (t) => set({ theme: t }),
   toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
@@ -269,5 +283,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ transformOpen: true, transformModel: model, transformKind: kind, transformTitle: title }),
   closeTransform: () =>
     set({ transformOpen: false, transformModel: null, transformKind: null, transformTitle: null }),
-  setPendingSettingsCategory: (cat) => set({ pendingSettingsCategory: cat })
+  setPendingSettingsCategory: (cat) => set({ pendingSettingsCategory: cat }),
+  openTool: (id, args) => set({ toolsPanelOpen: true, activeToolId: id, toolArgs: args ?? null }),
+  closeTools: () => set({ toolsPanelOpen: false, toolArgs: null })
 }))

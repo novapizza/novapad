@@ -80,6 +80,14 @@ const api = {
     cleanup: (keep: string[]) => ipcRenderer.invoke('backup:cleanup', keep)
   },
 
+  // Developer tools (Tools menu)
+  tools: {
+    /** Hash a UTF-8 string with the given algorithm. Returns { hex, error }. */
+    hash: (algo: string, text: string) => ipcRenderer.invoke('tools:hash', algo, text),
+    /** Open a file picker and hash each chosen file. Returns { canceled, files, error }. */
+    hashFiles: (algo: string) => ipcRenderer.invoke('tools:hash-files', algo)
+  },
+
   // App-level metadata
   app: {
     /** Reliable app version from app.getVersion() (preferred over the legacy appVersion constant). */
@@ -107,6 +115,7 @@ const api = {
       'menu:settings-open', 'menu:shortcuts-open',
       'menu:whats-new-open',
       'menu:plugin-manager', 'menu:about',
+      'menu:tools-open', 'menu:tools-hash',
       'editor:command', 'editor:set-option', 'editor:set-language',
       'editor:set-encoding', 'editor:set-eol', 'editor:set-eol-marker',
       'ui:toggle-toolbar', 'ui:toggle-statusbar', 'ui:toggle-sidebar',
@@ -137,6 +146,7 @@ const api = {
       'menu:settings-open', 'menu:shortcuts-open',
       'menu:whats-new-open',
       'menu:plugin-manager', 'menu:about',
+      'menu:tools-open', 'menu:tools-hash',
       'editor:command', 'editor:set-option', 'editor:set-language',
       'editor:set-encoding', 'editor:set-eol', 'editor:set-eol-marker',
       'ui:toggle-toolbar', 'ui:toggle-statusbar', 'ui:toggle-sidebar',
