@@ -140,15 +140,17 @@ function SearchOptionsPanel({ showInSelection, altHeld }: SearchOptionsProps) {
 
 // ─── Main dialog ──────────────────────────────────────────────────────────────
 export function FindReplaceDialog() {
-  const { showFindReplace, findReplaceMode, closeFind, findInitialTerm } = useUIStore()
+  const { showFindReplace, findReplaceMode, closeFind, findInitialTerm, findOpenNonce } = useUIStore()
   const { options, setOptions, patternHistory, replaceHistory, markStyleIndex, setMarkStyleIndex, isSearching, searchProgress, currentSearchId } =
     useSearchStore()
   const engine = useSearchEngine()
 
   const [activeTab, setActiveTab] = useState<DialogTab>('find')
+  // findOpenNonce bumps on every openFind() call, so a shortcut re-asserts its
+  // tab even when the user manually switched tabs since the last open.
   useEffect(() => {
     if (showFindReplace) setActiveTab(findReplaceMode as DialogTab)
-  }, [showFindReplace, findReplaceMode])
+  }, [showFindReplace, findReplaceMode, findOpenNonce])
 
   useEffect(() => {
     if (!showFindReplace) return
@@ -195,12 +197,19 @@ export function FindReplaceDialog() {
     window.addEventListener('mouseup', onUp)
   }
 
+  // Prefill from the editor selection and focus the find input on every
+  // openFind() call — including shortcuts pressed while the dialog is already
+  // open (mode switch with a new selection), hence the findOpenNonce dep.
+  useEffect(() => {
+    if (!showFindReplace) return
+    if (findInitialTerm) setOptions({ pattern: findInitialTerm })
+    setTimeout(() => { findInputRef.current?.focus(); findInputRef.current?.select() }, 50)
+  }, [showFindReplace, findOpenNonce]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear the vivid current-match decoration when the dialog closes so
+  // the editor returns to its normal appearance.
   useEffect(() => {
     if (showFindReplace) {
-      if (findInitialTerm) setOptions({ pattern: findInitialTerm })
-      setTimeout(() => { findInputRef.current?.focus(); findInputRef.current?.select() }, 50)
-      // Clear the vivid current-match decoration when the dialog closes so
-      // the editor returns to its normal appearance.
       return () => { engine.clearCurrentMatchHighlight() }
     }
   }, [showFindReplace]) // eslint-disable-line react-hooks/exhaustive-deps

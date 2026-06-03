@@ -36,8 +36,10 @@ interface UIState {
   sidebarPanel: 'files' | 'search' | 'plugins'
   workspaceFolder: string | null
   showFindReplace: boolean
-  findReplaceMode: 'find' | 'replace' | 'findInFiles'
+  findReplaceMode: 'find' | 'replace' | 'findInFiles' | 'mark'
   findInitialTerm: string
+  /** Bumped on every openFind() call so the dialog re-applies the selection/focus even when already open. */
+  findOpenNonce: number
   /**
    * Whether the right-side preview pane is open. The pane's content is
    * decided by the active buffer's type — Markdown gets the rendered HTML,
@@ -112,7 +114,7 @@ interface UIState {
   syncToggleToMain: (key: UIToggleKey, value: boolean) => void
   setSidebarPanel: (p: UIState['sidebarPanel']) => void
   setWorkspaceFolder: (path: string | null) => void
-  openFind: (mode?: 'find' | 'replace' | 'findInFiles', initialTerm?: string) => void
+  openFind: (mode?: 'find' | 'replace' | 'findInFiles' | 'mark', initialTerm?: string) => void
   closeFind: () => void
   togglePreview: () => void
   setShowPreview: (v: boolean) => void
@@ -157,6 +159,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   showFindReplace: false,
   findReplaceMode: 'find',
   findInitialTerm: '',
+  findOpenNonce: 0,
   showPreview: false,
   previewFullscreen: false,
   showMarkdownPreview: false,
@@ -233,7 +236,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   },
   setSidebarPanel: (p) => set({ sidebarPanel: p }),
   setWorkspaceFolder: (path) => set({ workspaceFolder: path }),
-  openFind: (mode = 'find', initialTerm = '') => set({ showFindReplace: true, findReplaceMode: mode, findInitialTerm: initialTerm }),
+  openFind: (mode = 'find', initialTerm = '') =>
+    set((s) => ({ showFindReplace: true, findReplaceMode: mode, findInitialTerm: initialTerm, findOpenNonce: s.findOpenNonce + 1 })),
   closeFind: () => set({ showFindReplace: false }),
   togglePreview: () =>
     set((s) => ({

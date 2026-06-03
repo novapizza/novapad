@@ -50,6 +50,8 @@ interface SearchState {
   patternHistory: string[]
   replaceHistory: string[]
   findResults: FindResultSet | null
+  /** Bumped whenever a NEW result set begins (setFindResults / initSearch) — not on streaming appends or dismissals. */
+  findResultsNonce: number
   markStyleIndex: number
   isSearching: boolean
   searchProgress: SearchProgress | null
@@ -69,6 +71,8 @@ interface SearchState {
   appendFindResultFile: (file: FindResultFile) => void
   /** Append multiple file results in one update (batch flush) */
   appendFindResultFiles: (files: FindResultFile[]) => void
+  /** Remove one file's results (panel "Dismiss" action) */
+  removeFindResultFile: (fileIndex: number) => void
 }
 
 export const useSearchStore = create<SearchState>((set) => ({
@@ -86,6 +90,7 @@ export const useSearchStore = create<SearchState>((set) => ({
   patternHistory: [],
   replaceHistory: [],
   findResults: null,
+  findResultsNonce: 0,
   markStyleIndex: 0,
   isSearching: false,
   searchProgress: null,
@@ -104,18 +109,19 @@ export const useSearchStore = create<SearchState>((set) => ({
       replaceHistory: [p, ...s.replaceHistory.filter((x) => x !== p)].slice(0, MAX_HISTORY)
     })),
 
-  setFindResults: (r) => set({ findResults: r }),
+  setFindResults: (r) => set((s) => ({ findResults: r, findResultsNonce: s.findResultsNonce + 1 })),
   setMarkStyleIndex: (i) => set({ markStyleIndex: i }),
   setIsSearching: (v) => set({ isSearching: v }),
   setSearchProgress: (p) => set({ searchProgress: p }),
   setCurrentSearchId: (id) => set({ currentSearchId: id }),
 
   initSearch: (query, scope) =>
-    set({
+    set((s) => ({
       findResults: { query, scope, totalHits: 0, files: [] },
+      findResultsNonce: s.findResultsNonce + 1,
       isSearching: true,
       searchProgress: { scanned: 0 }
-    }),
+    })),
 
   appendFindResultFile: (file) =>
     set((s) => {
@@ -138,6 +144,19 @@ export const useSearchStore = create<SearchState>((set) => ({
           ...s.findResults,
           totalHits: s.findResults.totalHits + addedHits,
           files: [...s.findResults.files, ...files]
+        }
+      }
+    }),
+
+  removeFindResultFile: (fileIndex) =>
+    set((s) => {
+      const removed = s.findResults?.files[fileIndex]
+      if (!s.findResults || !removed) return s
+      return {
+        findResults: {
+          ...s.findResults,
+          totalHits: s.findResults.totalHits - removed.results.length,
+          files: s.findResults.files.filter((_, i) => i !== fileIndex)
         }
       }
     })

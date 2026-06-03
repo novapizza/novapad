@@ -97,7 +97,9 @@ if (process.env['E2E_TEST'] !== '1') {
     app.quit()
   } else {
     app.on('second-instance', (_event, argv) => {
-      const items = classifyPaths(argv.slice(1))
+      // Unpackaged runs carry the bundle path at argv[1] — skip it so the
+      // main script itself is never treated as a user-opened file.
+      const items = classifyPaths(argv.slice(app.isPackaged ? 1 : 2))
       if (mainWindow) {
         if (mainWindow.isMinimized()) mainWindow.restore()
         if (!mainWindow.isVisible()) mainWindow.show()
@@ -192,8 +194,10 @@ app.whenReady().then(() => {
   // Cold-launch arg handling: when Windows/Linux "Open with NovaPad" (file or
   // folder) fires for the *first* instance, the path lands in process.argv.
   // Queue now; 'app:renderer-ready' drains it once renderer listeners attach.
+  // Unpackaged runs (dev/E2E: `electron out/main/index.js …`) carry the bundle
+  // path at argv[1] — skip it so it is never opened as a file.
   if (process.env['E2E_TEST'] !== '1') {
-    const initialItems = classifyPaths(process.argv.slice(1))
+    const initialItems = classifyPaths(process.argv.slice(app.isPackaged ? 1 : 2))
     if (initialItems.length) pendingOpenItems.push(...initialItems)
   }
 

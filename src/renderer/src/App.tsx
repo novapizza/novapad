@@ -221,7 +221,8 @@ export default function App() {
     }
     window.api.on('menu:find', () => useUIStore.getState().openFind('find', getEditorSelection()))
     window.api.on('menu:replace', () => useUIStore.getState().openFind('replace', getEditorSelection()))
-    window.api.on('menu:find-in-files', () => useUIStore.getState().openFind('findInFiles'))
+    window.api.on('menu:find-in-files', () => useUIStore.getState().openFind('findInFiles', getEditorSelection()))
+    window.api.on('menu:mark', () => useUIStore.getState().openFind('mark', getEditorSelection()))
     window.api.on('menu:folder-open', (...args) => {
       const folder = args[0] as string
       useUIStore.getState().setWorkspaceFolder(folder)
@@ -444,6 +445,7 @@ export default function App() {
       window.api.off('menu:find')
       window.api.off('menu:replace')
       window.api.off('menu:find-in-files')
+      window.api.off('menu:mark')
       window.api.off('ui:toggle-theme')
       window.api.off('ui:toggle-toolbar')
       window.api.off('ui:toggle-statusbar')
