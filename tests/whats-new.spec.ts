@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { _electron as electron, ElectronApplication } from 'playwright'
 import path from 'path'
+import { getReleaseNote } from '../src/renderer/src/components/WhatsNewTab/releaseNotes'
 
 /**
  * Tests for the "What's New" virtual tab — Phase 3 (manual open via Help menu).
@@ -91,11 +92,15 @@ test("What's New tab body renders the current release notes", async () => {
     // Release header reflects the live app version (rendered as "vX.Y.Z")
     const appVersion = await app.evaluate(({ app }) => app.getVersion())
     await expect(body.getByText(`v${appVersion}`)).toBeVisible()
-    // A few stable release-note item labels are present
-    await expect(body.getByText('Slimmer installer:')).toBeVisible()
-    await expect(body.getByText('Auto-update:', { exact: false })).toBeVisible()
-    await expect(body.getByText('Plugin Manager, redesigned:')).toBeVisible()
-    await expect(body.getByText('TableLens CSV viewer:')).toBeVisible()
+    // The tab resolves its content through getReleaseNote(appVersion) — assert
+    // against the same map so this test stays green across releases instead of
+    // hardcoding labels from whichever version was current when it was written.
+    const note = getReleaseNote(appVersion)
+    expect(note).toBeDefined()
+    expect(note!.highlights.length).toBeGreaterThan(0)
+    for (const item of note!.highlights) {
+      await expect(body.getByText(`${item.title}:`)).toBeVisible()
+    }
   } finally {
     await app.close()
   }

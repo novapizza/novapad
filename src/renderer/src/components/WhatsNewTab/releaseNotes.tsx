@@ -31,6 +31,57 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.0',
+    summary: (
+      <>
+        Search leveled up. The Find Results panel now behaves like VSCode&apos;s search tree —
+        keyboard navigation, inline file actions, and Notepad++-style line copying — and every
+        search mode picks up the text you have selected.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'Copy from Find Results',
+        body: (
+          <>
+            Select result lines in the Find Results panel — click,{' '}
+            <span className="font-mono text-sm">Ctrl/⌘+Click</span> to toggle,{' '}
+            <span className="font-mono text-sm">Shift+Click</span> for a range — and copy their full
+            line text with <span className="font-mono text-sm">Ctrl/⌘+C</span>, or right-click for{' '}
+            <strong>Copy Selected</strong>, <strong>Copy All</strong>, and{' '}
+            <strong>Select All</strong>, just like Notepad++.
+          </>
+        )
+      },
+      {
+        title: 'Search shortcuts respect your selection',
+        body: (
+          <>
+            The selected text now prefills the search field for{' '}
+            <span className="font-mono text-sm">Find in Files</span> (
+            <span className="font-mono text-sm">Ctrl/⌘+Shift+F</span>) and when switching modes
+            while the dialog is already open — not just for Find. Plus a new{' '}
+            <span className="font-mono text-sm">Search → Mark...</span> menu entry (
+            <span className="font-mono text-sm">Ctrl+M</span> on Windows/Linux) opens the Mark tab
+            directly.
+          </>
+        )
+      },
+      {
+        title: 'Find Results panel, VSCode style',
+        body: (
+          <>
+            Navigate results with the <span className="font-mono text-sm">arrow keys</span> — ↑/↓
+            move through rows, ←/→ collapse/expand file groups, <span className="font-mono text-sm">Enter</span>{' '}
+            opens the hit. Hover a file header for inline <strong>Open file</strong> and{' '}
+            <strong>Dismiss</strong> actions, and the right-click menu gained{' '}
+            <strong>Copy Path</strong>, <strong>Open File</strong>, and <strong>Dismiss</strong>.
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.4.0',
     summary: (
       <>
