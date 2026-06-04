@@ -31,12 +31,12 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: '1.5.0',
+    version: '1.5.1',
     summary: (
       <>
-        Search leveled up. The Find Results panel now behaves like VSCode&apos;s search tree —
-        keyboard navigation, inline file actions, and Notepad++-style line copying — and every
-        search mode picks up the text you have selected.
+        A new <span className="font-mono text-sm">Encoding</span> menu lands in the menu bar, and the
+        non-functional <span className="font-mono text-sm">Macro</span> menu is gone — a smaller,
+        cleaner top bar.
       </>
     ),
     highlights: [
@@ -66,7 +66,19 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             showed disabled entries — it&apos;s gone until the feature actually ships.
           </>
         )
-      },
+      }
+    ]
+  },
+  {
+    version: '1.5.0',
+    summary: (
+      <>
+        Search leveled up. The Find Results panel now behaves like VSCode&apos;s search tree —
+        keyboard navigation, inline file actions, and Notepad++-style line copying — and every
+        search mode picks up the text you have selected.
+      </>
+    ),
+    highlights: [
       {
         title: 'Copy from Find Results',
         body: (
