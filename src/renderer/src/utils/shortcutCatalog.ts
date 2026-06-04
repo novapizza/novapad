@@ -1,6 +1,6 @@
 import { isMacOS } from './platform'
 
-export type ShortcutSection = 'File' | 'Edit' | 'Search' | 'View' | 'Macro' | 'Window'
+export type ShortcutSection = 'File' | 'Edit' | 'Search' | 'View' | 'Window'
 
 export interface ShortcutDef {
   id: string
@@ -64,16 +64,12 @@ export const SHORTCUT_CATALOG: ShortcutDef[] = [
   { id: 'view.zoomOut',       label: 'Zoom Out',       section: 'View', defaultKey: 'Mod+-' },
   { id: 'view.zoomReset',     label: 'Reset Zoom',     section: 'View', defaultKey: 'Mod+0' },
 
-  // Macro
-  { id: 'macro.startStop', label: 'Start/Stop Recording', section: 'Macro',  defaultKey: 'Mod+Shift+R' },
-  { id: 'macro.playback',  label: 'Playback',             section: 'Macro',  defaultKey: 'Mod+Shift+P' },
-
   // Window
   { id: 'window.nextTab',  label: 'Next Tab',     section: 'Window', defaultKey: 'Mod+Tab' },
   { id: 'window.prevTab',  label: 'Previous Tab', section: 'Window', defaultKey: 'Mod+Shift+Tab' },
 ]
 
-export const SHORTCUT_SECTIONS: ShortcutSection[] = ['File', 'Edit', 'Search', 'View', 'Macro', 'Window']
+export const SHORTCUT_SECTIONS: ShortcutSection[] = ['File', 'Edit', 'Search', 'View', 'Window']
 
 const CATALOG_BY_ID: Record<string, ShortcutDef> = Object.fromEntries(
   SHORTCUT_CATALOG.map((s) => [s.id, s])

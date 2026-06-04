@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useEditorStore } from '../../store/editorStore'
-import { useUIStore } from '../../store/uiStore'
 import { QuickPick } from '../QuickPick/QuickPick'
 import { GoToLineInput } from '../QuickPick/GoToLineInput'
 import {
@@ -16,7 +15,6 @@ type ActivePicker = 'encoding' | 'language' | 'eol' | 'goto' | null
 
 export const StatusBar: React.FC = () => {
   const { getActive, activeId } = useEditorStore()
-  const { isRecording } = useUIStore()
   const [cursor, setCursor] = useState({ line: 1, col: 1 })
   const [activePicker, setActivePicker] = useState<ActivePicker>(null)
   const buf = getActive()
@@ -95,12 +93,6 @@ export const StatusBar: React.FC = () => {
 
       {/* Right section */}
       <div className="flex items-center gap-1">
-        {isRecording && (
-          <span className="text-destructive-foreground font-semibold tracking-wider animate-pulse px-1.5">
-            REC
-          </span>
-        )}
-
         <span
           data-testid="cursor-position"
           className={itemClass}

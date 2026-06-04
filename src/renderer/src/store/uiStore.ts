@@ -3,9 +3,6 @@ import type { SchemaModel } from '../utils/schemaParse/types'
 
 type Theme = 'light' | 'dark'
 export type BottomPanelId = 'findResults' | 'console'
-export type MacroStep =
-  | { type: 'type'; value: string }
-  | { type: 'command'; value: string }
 
 export type UIToggleKey =
   | 'showToolbar'
@@ -60,9 +57,6 @@ interface UIState {
   showBottomPanel: boolean
   activeBottomPanel: BottomPanelId
   toasts: Array<{ id: string; message: string; level: 'info' | 'warn' | 'error' }>
-  isRecording: boolean
-  macroSteps: MacroStep[]
-  hasMacro: boolean
   csvViewerOpen: boolean
   csvViewerText: string
   csvViewerFileName: string
@@ -128,8 +122,6 @@ interface UIState {
   setActiveBottomPanel: (p: BottomPanelId) => void
   addToast: (message: string, level?: 'info' | 'warn' | 'error') => void
   removeToast: (id: string) => void
-  startRecording: () => void
-  stopRecording: (steps: MacroStep[]) => void
   openCsvViewer: (csvText: string, fileName: string) => void
   closeCsvViewer: () => void
   openCompare: (left: { title: string; content: string }, right: { title: string; content: string }) => void
@@ -167,9 +159,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   showBottomPanel: false,
   activeBottomPanel: 'findResults',
   toasts: [],
-  isRecording: false,
-  macroSteps: [],
-  hasMacro: false,
   csvViewerOpen: false,
   csvViewerText: '',
   csvViewerFileName: '',
@@ -277,8 +266,6 @@ export const useUIStore = create<UIState>((set, get) => ({
     setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), 4000)
   },
   removeToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
-  startRecording: () => set({ isRecording: true, macroSteps: [] }),
-  stopRecording: (steps) => set({ isRecording: false, macroSteps: steps, hasMacro: steps.length > 0 }),
   openCsvViewer: (csvText, fileName) => set({ csvViewerOpen: true, csvViewerText: csvText, csvViewerFileName: fileName }),
   closeCsvViewer: () => set({ csvViewerOpen: false, csvViewerText: '', csvViewerFileName: '' }),
   openCompare: (left, right) => set({ compareOpen: true, compareLeft: left, compareRight: right }),

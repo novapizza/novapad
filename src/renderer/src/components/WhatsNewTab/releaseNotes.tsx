@@ -41,6 +41,33 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ),
     highlights: [
       {
+        title: 'New Encoding menu',
+        body: (
+          <>
+            A dedicated <span className="font-mono text-sm">Encoding</span> menu joins the menu bar.
+            Set the active document&apos;s encoding —{' '}
+            <span className="font-mono text-sm">UTF-8</span>,{' '}
+            <span className="font-mono text-sm">UTF-8 with BOM</span>,{' '}
+            <span className="font-mono text-sm">UTF-16 LE/BE</span>,{' '}
+            <span className="font-mono text-sm">Windows-1252</span>, or{' '}
+            <span className="font-mono text-sm">ISO-8859-1</span> — and convert line endings between{' '}
+            <strong>Windows (CRLF)</strong>, <strong>Unix (LF)</strong>, and{' '}
+            <strong>Macintosh (CR)</strong>, all from the menu. It stays in sync with the
+            click-to-change encoding and EOL controls in the status bar.
+          </>
+        )
+      },
+      {
+        title: 'Menu bar cleanup',
+        body: (
+          <>
+            Removed the <span className="font-mono text-sm">Macro</span> menu, which was a
+            non-functional placeholder. Macro recording was never wired up, so the menu only ever
+            showed disabled entries — it&apos;s gone until the feature actually ships.
+          </>
+        )
+      },
+      {
         title: 'Copy from Find Results',
         body: (
           <>

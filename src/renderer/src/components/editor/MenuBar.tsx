@@ -18,6 +18,7 @@ import { useAltMnemonics } from '../../hooks/useAltMnemonics'
 import { SettingsMenu } from './SettingsMenu'
 import { NavButtons } from './NavButtons'
 import { HASH_ALGOS, openHashGenerator, hashFromFiles, hashSelectionToClipboard } from '../../lib/tools/hashActions'
+import { ENCODINGS, EOLS } from '../../constants/registries'
 
 interface MenuBarProps {
   onNew: () => void
@@ -73,6 +74,10 @@ export function MenuBar({
     setIndentationGuides, setColumnSelectMode,
   } = useUIStore()
   const dynamicMenuItems = usePluginStore((s) => s.dynamicMenuItems)
+  // Reactive active-buffer encoding/EOL so the Encoding menu shows a checkmark
+  // on the current selection (mirrors the status-bar pickers).
+  const activeEncoding = useEditorStore((s) => s.buffers.find((b) => b.id === s.activeId)?.encoding ?? null)
+  const activeEol = useEditorStore((s) => s.buffers.find((b) => b.id === s.activeId)?.eol ?? null)
 
   // Group dynamic menu items by plugin name into submenus so the custom menu
   // mirrors the native Plugins submenu (plugin name → its items).
@@ -263,6 +268,30 @@ export function MenuBar({
       { separator: true, label: '' },
       { label: 'S&plit View', disabled: true },
     ],
+    Encoding: (() => {
+      // Mirror the status-bar pickers: dispatching these CustomEvents is what
+      // EditorPane listens for, so menu and status bar drive the same path.
+      const setEncoding = (value: string) =>
+        window.dispatchEvent(new CustomEvent('editor:set-encoding', { detail: value }))
+      const setEol = (value: string) =>
+        window.dispatchEvent(new CustomEvent('editor:set-eol', { detail: value }))
+      return [
+        ...ENCODINGS.map((e) => ({
+          label: `Encode in ${e.label}`,
+          checked: activeEncoding === e.value,
+          action: () => setEncoding(e.value),
+        })),
+        { separator: true, label: '' },
+        {
+          label: 'EOL &Conversion',
+          submenu: EOLS.map((eo) => ({
+            label: eo.label,
+            checked: activeEol === eo.value,
+            action: () => setEol(eo.value),
+          })),
+        },
+      ]
+    })(),
     Tools: (() => {
       const openTool = (id: string) => useUIStore.getState().openTool(id)
       const hashMenu = (algo: (typeof HASH_ALGOS)[number]['id']): MenuItem[] => [
@@ -295,13 +324,6 @@ export function MenuBar({
         },
       ]
     })(),
-    Macro: [
-      { label: '&Start Recording', shortcut: `${mod}+Shift+R`, disabled: true },
-      { label: 'S&top Recording', shortcut: `${mod}+Shift+R`, disabled: true },
-      { label: '&Playback', shortcut: `${mod}+Shift+P`, disabled: true },
-      { separator: true, label: '' },
-      { label: 'Sa&ved Macros', disabled: true },
-    ],
     Plugins: [
       {
         label: '&Plugin Manager...',
@@ -357,8 +379,8 @@ export function MenuBar({
     { key: 'Edit', label: '&Edit' },
     { key: 'Search', label: '&Search' },
     { key: 'View', label: '&View' },
+    { key: 'Encoding', label: 'E&ncoding' },
     { key: 'Tools', label: '&Tools' },
-    { key: 'Macro', label: '&Macro' },
     { key: 'Plugins', label: '&Plugins' },
     { key: 'Settings', label: 'Se&ttings' },
     { key: 'Window', label: '&Window' },

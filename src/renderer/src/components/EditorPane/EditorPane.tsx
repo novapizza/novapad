@@ -6,7 +6,6 @@ import { useConfigStore } from '../../store/configStore'
 import { useNavigationStore } from '../../store/navigationStore'
 import { editorRegistry } from '../../utils/editorRegistry'
 import { useBookmarks } from '../../hooks/useBookmarks'
-import { useMacroRecorder } from '../../hooks/useMacroRecorder'
 import { useFileOps } from '../../hooks/useFileOps'
 import { refineLanguageAsync, sampleFromString } from '../../utils/refineLanguage'
 import { beautify, detectBeautifyFormat } from '../../utils/beautify'
@@ -77,17 +76,11 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
   const [missingFile, setMissingFile] = useState<string | null>(null)
 
   const { toggleBookmark, nextBookmark, prevBookmark, clearBookmarks, restoreDecorations } = useBookmarks()
-  const { start: macroStart, stop: macroStop, playback: macroPlayback, recordStep } = useMacroRecorder()
 
-  // Extracted command dispatch — also called by macro:replay-command event
+  // Extracted command dispatch — shared by menu IPC and CustomEvent listeners.
   const dispatchCommand = useCallback((command: string) => {
     const editor = editorRef.current
     if (!editor) return
-
-    // Record command steps during macro recording
-    if (useUIStore.getState().isRecording) {
-      recordStep({ type: 'command', value: command })
-    }
 
     switch (command) {
       case 'duplicateLine':
@@ -379,7 +372,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
         break
       }
     }
-  }, [toggleBookmark, nextBookmark, prevBookmark, clearBookmarks, recordStep])
+  }, [toggleBookmark, nextBookmark, prevBookmark, clearBookmarks])
 
   // Initialize editor
   useEffect(() => {
@@ -738,31 +731,6 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
       window.removeEventListener('editor:command', customHandler)
     }
   }, [])
-
-  // Handle macro:replay-command from macro playback (avoids IPC round-trip)
-  useEffect(() => {
-    const handler = (e: Event) => {
-      dispatchCommandRef.current((e as CustomEvent<string>).detail)
-    }
-    window.addEventListener('macro:replay-command', handler)
-    return () => window.removeEventListener('macro:replay-command', handler)
-  }, [])
-
-  // Handle macro IPC events
-  useEffect(() => {
-    const unsubStart = window.api.on('macro:start-record', () => {
-      const editor = editorRef.current
-      if (editor) macroStart(editor)
-    })
-    const unsubStop = window.api.on('macro:stop-record', () => {
-      macroStop()
-    })
-    const unsubPlay = window.api.on('macro:playback', () => {
-      const editor = editorRef.current
-      if (editor) macroPlayback(editor)
-    })
-    return () => { unsubStart(); unsubStop(); unsubPlay() }
-  }, [macroStart, macroStop, macroPlayback])
 
   // Handle editor option changes from menu
   useEffect(() => {

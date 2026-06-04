@@ -129,4 +129,4 @@ Compiled output goes to `out/`. Packaged distributable goes to `dist/`.
 
 ## Incomplete / Stubbed Features
 
-Several features have menu entries and store state but no UI yet: Find/Replace panel, Preferences dialog, Plugin Manager, UDL Editor, Macro recording, Sidebar panels (files/project/docmap/functions), and Split View.
+Several features have menu entries and store state but no UI yet: Find/Replace panel, Preferences dialog, Plugin Manager, UDL Editor, Sidebar panels (files/project/docmap/functions), and Split View.

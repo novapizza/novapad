@@ -411,6 +411,32 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
       ]
     },
 
+    // Encoding — sets the encoding / line ending the active buffer is saved
+    // with. The renderer (EditorPane) applies the choice to the active buffer
+    // and marks it dirty; it takes effect on the next save. Values mirror the
+    // ENCODINGS / EOLS registries that drive the status-bar pickers, so the
+    // menu and the clickable status bar stay in sync.
+    {
+      label: '&Encoding',
+      submenu: [
+        { label: 'Encode in UTF-8', click: () => win.webContents.send('editor:set-encoding', 'UTF-8') },
+        { label: 'Encode in UTF-8 with BOM', click: () => win.webContents.send('editor:set-encoding', 'UTF-8 BOM') },
+        { label: 'Encode in UTF-16 LE', click: () => win.webContents.send('editor:set-encoding', 'UTF-16 LE') },
+        { label: 'Encode in UTF-16 BE', click: () => win.webContents.send('editor:set-encoding', 'UTF-16 BE') },
+        { label: 'Encode in Windows-1252 (Latin)', click: () => win.webContents.send('editor:set-encoding', 'windows-1252') },
+        { label: 'Encode in ISO-8859-1 (Latin-1)', click: () => win.webContents.send('editor:set-encoding', 'ISO-8859-1') },
+        { type: 'separator' as const },
+        {
+          label: 'EOL Conversion',
+          submenu: [
+            { label: 'Windows (CR LF)', click: () => win.webContents.send('editor:set-eol', 'CRLF') },
+            { label: 'Unix (LF)', click: () => win.webContents.send('editor:set-eol', 'LF') },
+            { label: 'Macintosh (CR)', click: () => win.webContents.send('editor:set-eol', 'CR') }
+          ]
+        }
+      ]
+    },
+
     // Tools — developer utilities. Hashing verbs match the per-algorithm
     // submenu in the custom React MenuBar; the other tools open the unified
     // Tools panel deep-linked to a specific tool.
@@ -452,34 +478,6 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
             { label: 'Lorem Ipsum', click: () => win.webContents.send('menu:tools-open', 'lorem') }
           ]
         }
-      ]
-    },
-
-    // Macro
-    {
-      label: '&Macro',
-      submenu: [
-        {
-          label: 'Start Recording',
-          accelerator: 'CmdOrCtrl+Shift+R',
-          enabled: false,
-          click: () => win.webContents.send('macro:start-record')
-        },
-        {
-          label: 'Stop Recording',
-          accelerator: 'CmdOrCtrl+Shift+R',
-          click: () => win.webContents.send('macro:stop-record'),
-          enabled: false,
-          id: 'macro-stop'
-        },
-        {
-          label: 'Playback',
-          accelerator: 'CmdOrCtrl+Shift+P',
-          enabled: false,
-          click: () => win.webContents.send('macro:playback')
-        },
-        { type: 'separator' },
-        { label: 'Saved Macros', submenu: [{ label: 'No macros saved', enabled: false }], id: 'saved-macros' }
       ]
     },
 
