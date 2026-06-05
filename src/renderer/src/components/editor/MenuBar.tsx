@@ -171,6 +171,20 @@ export function MenuBar({
         ],
       },
       { separator: true, label: '' },
+      {
+        label: 'Cop&y to Clipboard', submenu: [
+          { label: 'Current Full File &Path', action: editorCmd('copyFullPath') },
+          { label: 'Current File &Name', action: editorCmd('copyFileName') },
+          { label: 'Current &Directory Path', action: editorCmd('copyDirPath') },
+        ],
+      },
+      {
+        label: 'In&sert', submenu: [
+          { label: 'Date && Time — &Short', action: editorCmd('insertDateTimeShort') },
+          { label: 'Date && Time — &Long', action: editorCmd('insertDateTimeLong') },
+        ],
+      },
+      { separator: true, label: '' },
       { label: 'Toggle Co&mment', shortcut: `${mod}+/`, action: editorCmd('toggleComment') },
       { label: 'Toggle Bloc&k Comment', shortcut: `${mod}+Shift+/`, action: editorCmd('toggleBlockComment') },
       { separator: true, label: '' },
@@ -188,10 +202,10 @@ export function MenuBar({
       { separator: true, label: '' },
       { label: '&Go to Line...', shortcut: `${mod}+G`, action: editorCmd('goToLine') },
       { separator: true, label: '' },
-      { label: '&Toggle Bookmark', shortcut: `${mod}+F2`, disabled: true },
-      { label: '&Next Bookmark', shortcut: 'F2', disabled: true },
-      { label: '&Previous Bookmark', shortcut: 'Shift+F2', disabled: true },
-      { label: '&Clear All Bookmarks', disabled: true },
+      { label: '&Toggle Bookmark', shortcut: `${mod}+F2`, action: editorCmd('toggleBookmark') },
+      { label: '&Next Bookmark', shortcut: 'F2', action: editorCmd('nextBookmark') },
+      { label: '&Previous Bookmark', shortcut: 'Shift+F2', action: editorCmd('prevBookmark') },
+      { label: '&Clear All Bookmarks', action: editorCmd('clearBookmarks') },
     ],
     View: [
       { label: showToolbar ? 'Hide &Toolbar' : 'Show &Toolbar', action: () => setShowToolbar(!showToolbar) },
@@ -265,6 +279,19 @@ export function MenuBar({
       { label: 'Zoom &In', shortcut: `${mod}+=`, action: editorCmd('zoomIn') },
       { label: 'Zoom &Out', shortcut: `${mod}+-`, action: editorCmd('zoomOut') },
       { label: '&Reset Zoom', shortcut: `${mod}+0`, action: editorCmd('zoomReset') },
+      { separator: true, label: '' },
+      {
+        label: '&Folding', submenu: [
+          { label: 'Fold &All', action: editorCmd('foldAll') },
+          { label: '&Unfold All', action: editorCmd('unfoldAll') },
+          { separator: true, label: '' },
+          {
+            label: 'Collapse &Level', submenu: [1, 2, 3, 4, 5, 6, 7].map((n) => ({
+              label: `Level ${n}`, action: editorCmd(`foldLevel${n}`),
+            })),
+          },
+        ],
+      },
       { separator: true, label: '' },
       { label: 'S&plit View', disabled: true },
     ],
@@ -449,19 +476,26 @@ export function MenuBar({
       }
       if (item.submenu) {
         const subKey = `${parentLabel}-${item.label}`
+        // Open while this exact submenu is hovered OR while any descendant is
+        // (its key is prefixed by subKey + '-'). A single hoveredSubmenu string
+        // can hold only the deepest level, so without the prefix check, hovering
+        // a 3rd-level entry would unmount its 2nd-level parent — and the flyout
+        // with it. No onMouseLeave here: moving onto a sibling re-targets
+        // hoveredSubmenu instead, which avoids collapsing the whole chain when
+        // the cursor crosses between nested panels.
+        const open = hoveredSubmenu === subKey || !!hoveredSubmenu?.startsWith(`${subKey}-`)
         return (
           <div
             key={item.label}
             className="relative"
             onMouseEnter={() => setHoveredSubmenu(subKey)}
-            onMouseLeave={() => setHoveredSubmenu(null)}
           >
             <div className="w-full flex items-center gap-2.5 px-3 py-2 text-base text-popover-foreground hover:bg-secondary transition-colors cursor-default">
               <span className="w-5 flex justify-center shrink-0">{item.icon}</span>
               <span className="flex-1 text-left"><MnemonicLabel label={item.label} show={altHeld} /></span>
               <ChevronRight size={18} className="text-muted-foreground shrink-0" />
             </div>
-            {hoveredSubmenu === subKey && (
+            {open && (
               <div className="absolute left-full top-0 ml-0.5 min-w-[220px] bg-popover border border-border rounded-md shadow-lg py-1 z-50">
                 {renderMenuItems(item.submenu, subKey)}
               </div>
@@ -477,6 +511,10 @@ export function MenuBar({
             item.disabled ? 'opacity-40 pointer-events-none' : 'hover:bg-secondary'
           }`}
           disabled={item.disabled}
+          // Hovering a leaf collapses any sibling flyout by re-targeting
+          // hoveredSubmenu to this item's parent (the top-level menu key for
+          // level-1 items, or the enclosing submenu key when nested).
+          onMouseEnter={() => setHoveredSubmenu(parentLabel)}
           onClick={() => {
             if (!item.disabled) {
               item.action?.()

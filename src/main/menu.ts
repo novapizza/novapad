@@ -182,6 +182,22 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
         },
         { type: 'separator' },
         {
+          label: 'Copy to Clipboard',
+          submenu: [
+            { label: 'Current Full File Path', click: () => win.webContents.send('editor:command', 'copyFullPath') },
+            { label: 'Current File Name', click: () => win.webContents.send('editor:command', 'copyFileName') },
+            { label: 'Current Directory Path', click: () => win.webContents.send('editor:command', 'copyDirPath') }
+          ]
+        },
+        {
+          label: 'Insert',
+          submenu: [
+            { label: 'Date && Time — Short', click: () => win.webContents.send('editor:command', 'insertDateTimeShort') },
+            { label: 'Date && Time — Long', click: () => win.webContents.send('editor:command', 'insertDateTimeLong') }
+          ]
+        },
+        { type: 'separator' },
+        {
           label: 'Toggle Comment',
           accelerator: 'CmdOrCtrl+/',
           click: () => win.webContents.send('editor:command', 'toggleComment')
@@ -259,22 +275,19 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
         {
           label: 'Toggle Bookmark',
           accelerator: 'CmdOrCtrl+F2',
-          enabled: false,
           click: () => win.webContents.send('editor:command', 'toggleBookmark')
         },
         {
           label: 'Next Bookmark',
           accelerator: 'F2',
-          enabled: false,
           click: () => win.webContents.send('editor:command', 'nextBookmark')
         },
         {
           label: 'Previous Bookmark',
           accelerator: 'Shift+F2',
-          enabled: false,
           click: () => win.webContents.send('editor:command', 'prevBookmark')
         },
-        { label: 'Clear All Bookmarks', enabled: false, click: () => win.webContents.send('editor:command', 'clearBookmarks') }
+        { label: 'Clear All Bookmarks', click: () => win.webContents.send('editor:command', 'clearBookmarks') }
       ]
     },
 
@@ -398,6 +411,22 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
           label: 'Reset Zoom',
           accelerator: 'CmdOrCtrl+0',
           click: () => win.webContents.send('editor:command', 'zoomReset')
+        },
+        { type: 'separator' },
+        {
+          label: 'Folding',
+          submenu: [
+            { label: 'Fold All', click: () => win.webContents.send('editor:command', 'foldAll') },
+            { label: 'Unfold All', click: () => win.webContents.send('editor:command', 'unfoldAll') },
+            { type: 'separator' as const },
+            {
+              label: 'Collapse Level',
+              submenu: [1, 2, 3, 4, 5, 6, 7].map((n) => ({
+                label: `Level ${n}`,
+                click: () => win.webContents.send('editor:command', `foldLevel${n}`)
+              }))
+            }
+          ]
         },
         { type: 'separator' },
         {

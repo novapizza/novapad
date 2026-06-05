@@ -82,6 +82,14 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
     const editor = editorRef.current
     if (!editor) return
 
+    // Fold to a specific nesting depth (View ▸ Folding ▸ Collapse Level N).
+    // Monaco exposes editor.foldLevel1 … editor.foldLevel7; map the command
+    // straight onto the action id rather than listing seven near-identical cases.
+    if (/^foldLevel[1-7]$/.test(command)) {
+      editor.getAction(`editor.${command}`)?.run()
+      return
+    }
+
     switch (command) {
       case 'duplicateLine':
         editor.getAction('editor.action.copyLinesDownAction')?.run()
@@ -167,6 +175,58 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
         if (id) clearBookmarks(id)
         break
       }
+      case 'copyFullPath':
+      case 'copyFileName':
+      case 'copyDirPath': {
+        // Edit ▸ Copy to Clipboard — full path / file name / containing dir of
+        // the active buffer. File name falls back to the tab title so untitled
+        // buffers still copy something sensible; the other two need a saved path.
+        const id = currentIdRef.current
+        const buf = id ? useEditorStore.getState().getBuffer(id) : null
+        const fp = buf?.filePath ?? null
+        let value: string | null = null
+        if (command === 'copyFileName') {
+          value = fp ? (fp.split(/[/\\]/).pop() ?? fp) : (buf?.title ?? null)
+        } else if (fp) {
+          if (command === 'copyFullPath') {
+            value = fp
+          } else {
+            const idx = Math.max(fp.lastIndexOf('/'), fp.lastIndexOf('\\'))
+            value = idx > 0 ? fp.slice(0, idx) : fp
+          }
+        }
+        if (!value) {
+          useUIStore.getState().addToast('Save the document first — it has no path on disk yet.', 'warn')
+          break
+        }
+        void navigator.clipboard.writeText(value)
+        const what =
+          command === 'copyFullPath' ? 'Full path' : command === 'copyFileName' ? 'File name' : 'Directory path'
+        useUIStore.getState().addToast(`${what} copied to clipboard.`, 'info')
+        break
+      }
+      case 'insertDateTimeShort':
+      case 'insertDateTimeLong': {
+        // Edit ▸ Insert ▸ Date & Time — write a locale-formatted timestamp at
+        // the caret (replacing any selection). Short = numeric date + time;
+        // long = full weekday/date + seconds.
+        const sel = editor.getSelection()
+        if (!sel) break
+        const now = new Date()
+        const text =
+          command === 'insertDateTimeLong'
+            ? now.toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'medium' })
+            : now.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+        editor.executeEdits('insert-datetime', [{ range: sel, text, forceMoveMarkers: true }])
+        editor.focus()
+        break
+      }
+      case 'foldAll':
+        editor.getAction('editor.foldAll')?.run()
+        break
+      case 'unfoldAll':
+        editor.getAction('editor.unfoldAll')?.run()
+        break
       case 'togglePreview': {
         // Ctrl+P: open the right-side preview pane if the active buffer is
         // a previewable type (.sqlplan / xml-with-ShowPlan / .csv / .md).
