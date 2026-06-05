@@ -31,6 +31,58 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.2',
+    summary: (
+      <>
+        Bookmarks come alive, the <span className="font-mono text-sm">Edit</span> and{' '}
+        <span className="font-mono text-sm">View</span> menus gain handy new tools, and the{' '}
+        <span className="font-mono text-sm">Window</span> menu finally works on Windows and Linux.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'Bookmarks are live',
+        body: (
+          <>
+            The bookmark items in the <strong>Search</strong> menu are now enabled. Drop a marker in
+            the gutter with <span className="font-mono text-sm">Ctrl+F2</span>, jump between marks
+            with <span className="font-mono text-sm">F2</span> /{' '}
+            <span className="font-mono text-sm">Shift+F2</span>, and clear them all in one go.
+          </>
+        )
+      },
+      {
+        title: 'Copy path & Insert date/time',
+        body: (
+          <>
+            New <strong>Edit ▸ Copy to Clipboard</strong> entries copy the current document&apos;s
+            full path, file name, or containing directory. <strong>Edit ▸ Insert</strong> drops a
+            short or long timestamp at the caret.
+          </>
+        )
+      },
+      {
+        title: 'Code folding from the menu',
+        body: (
+          <>
+            A new <strong>View ▸ Folding</strong> submenu adds <strong>Fold All</strong>,{' '}
+            <strong>Unfold All</strong>, and <strong>Collapse Level 1–7</strong> for quickly
+            outlining a large file.
+          </>
+        )
+      },
+      {
+        title: 'Window menu fixed on Windows & Linux',
+        body: (
+          <>
+            <strong>Window ▸ Minimize</strong> and <strong>Window ▸ Zoom</strong> now work on
+            Windows and Linux, not just macOS.
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.5.1',
     summary: (
       <>
@@ -64,37 +116,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             Removed the <span className="font-mono text-sm">Macro</span> menu, which was a
             non-functional placeholder. Macro recording was never wired up, so the menu only ever
             showed disabled entries — it&apos;s gone until the feature actually ships.
-          </>
-        )
-      },
-      {
-        title: 'Bookmarks are live',
-        body: (
-          <>
-            The bookmark items in the <strong>Search</strong> menu are now enabled. Drop a marker in
-            the gutter with <span className="font-mono text-sm">Ctrl+F2</span>, jump between marks
-            with <span className="font-mono text-sm">F2</span> /{' '}
-            <span className="font-mono text-sm">Shift+F2</span>, and clear them all in one go.
-          </>
-        )
-      },
-      {
-        title: 'Copy path & Insert date/time',
-        body: (
-          <>
-            New <strong>Edit ▸ Copy to Clipboard</strong> entries copy the current document&apos;s
-            full path, file name, or containing directory. <strong>Edit ▸ Insert</strong> drops a
-            short or long timestamp at the caret.
-          </>
-        )
-      },
-      {
-        title: 'Code folding from the menu',
-        body: (
-          <>
-            A new <strong>View ▸ Folding</strong> submenu adds <strong>Fold All</strong>,{' '}
-            <strong>Unfold All</strong>, and <strong>Collapse Level 1–7</strong> for quickly
-            outlining a large file.
           </>
         )
       }
