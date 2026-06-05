@@ -295,6 +295,14 @@ export default function App() {
     window.addEventListener('tab:next-local', handleTabNext)
     window.addEventListener('tab:prev-local', handleTabPrev)
 
+    // Window menu (Minimize / Zoom). The native menu's minimize/zoom roles only
+    // act on macOS; on Windows/Linux the native menu is hidden, so the custom
+    // MenuBar dispatches these events and we forward them to the main process.
+    const handleWindowMinimize = () => window.api.send('window:minimize')
+    const handleWindowZoom = () => window.api.send('window:toggle-maximize')
+    window.addEventListener('window:minimize', handleWindowMinimize)
+    window.addEventListener('window:zoom', handleWindowZoom)
+
     // External file change notifications
     window.api.on('file:externally-changed', (...args) => {
       const fp = args[0] as string
@@ -469,6 +477,8 @@ export default function App() {
       window.api.off('menu:check-for-updates')
       window.api.off('plugin:add-menu-item')
       window.api.off('plugin:state-changed')
+      window.removeEventListener('window:minimize', handleWindowMinimize)
+      window.removeEventListener('window:zoom', handleWindowZoom)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -278,6 +278,22 @@ ipcMain.on('dev:toggle-devtools', () => {
   win?.webContents.toggleDevTools()
 })
 
+// Window controls for the custom React MenuBar (Window menu). On macOS the
+// native menu's minimize/zoom roles handle this; on Windows/Linux the native
+// menu is hidden, so the renderer drives these via IPC.
+ipcMain.on('window:minimize', () => {
+  const win = BrowserWindow.getFocusedWindow() ?? mainWindow
+  win?.minimize()
+})
+
+// "Zoom" maps to maximize/restore toggle, matching the macOS zoom role.
+ipcMain.on('window:toggle-maximize', () => {
+  const win = BrowserWindow.getFocusedWindow() ?? mainWindow
+  if (!win) return
+  if (win.isMaximized()) win.unmaximize()
+  else win.maximize()
+})
+
 // Bidirectional state sync: renderer → main (update native menu checkboxes)
 const toggleKeyToMenuId: Record<string, string> = {
   showToolbar: 'toggle-toolbar',

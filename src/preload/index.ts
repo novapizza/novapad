@@ -178,7 +178,9 @@ const api = {
       'plugin:invoke-menu-click',
       'dev:toggle-devtools',
       'session:save',
-      'ui:state-changed'
+      'ui:state-changed',
+      'window:minimize',
+      'window:toggle-maximize'
     ]
     if (allowedChannels.includes(channel)) {
       ipcRenderer.send(channel, ...args)
