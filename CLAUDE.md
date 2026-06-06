@@ -62,6 +62,37 @@ Rules:
 > For hard enforcement, add a CI check asserting `RELEASE_NOTES[0].version === package.json
 > version`.
 
+## Cutting a Release
+
+Releases are **tag-triggered**: pushing a `v*.*.*` tag runs `.github/workflows/release.yml`,
+which builds, signs (macOS notarization + Azure Trusted Signing for Windows), and publishes
+installers to GitHub Releases + the R2 bucket. **Auto-update delivers it to all users** — this is
+the outward-facing, hard-to-reverse step, so confirm intent before pushing the tag unless the
+user has explicitly asked to release. All signing/publishing secrets live in CI; no local signing
+env is needed, and **no local `electron-builder` run is required** (the `release:*` npm scripts are
+for manual/macOS-host publishing only).
+
+Steps to release version `X.Y.Z` (trunk-based — commit straight to `master`):
+
+1. Bump `version` in `package.json`.
+2. Refresh `releaseNotes.tsx`: add a **new** `RELEASE_NOTES[0]` entry with `version: 'X.Y.Z'`
+   covering everything landed since the previous `vX.Y.(Z-1)` tag. If features were appended to
+   the prior (already-tagged) entry while its version sat unbumped, **move them** into the new
+   entry so each version's notes match what actually shipped under it.
+3. `npm run build` to verify the renderer/TSX compiles (ignore the `"use client"` node_modules
+   warnings; a real failure shows `RollupError`/`Transform failed`. Note: piping the build
+   through `Select-Object -First N` can surface a spurious exit 255 from a broken pipe — confirm
+   with a full run if unsure).
+4. Run `/security-review` (required before any commit/push).
+5. Commit as `chore(release): X.Y.Z` and push to `master`.
+6. `git tag -a vX.Y.Z -m "Release X.Y.Z"` and `git push origin vX.Y.Z` — this fires CI.
+7. Confirm the run started: `gh run list --workflow=release.yml --limit 3`. A full publish takes
+   ~14–16 min.
+
+Tags are annotated and named `vX.Y.Z` (the `v` prefix is required by the workflow's `v*.*.*`
+trigger). Do **not** stage `.claude/settings.local.json` into release commits — it's local
+session noise.
+
 ## E2E Testing (Playwright + Test Agents)
 
 ### Test Agents workflow (run once to initialize)
