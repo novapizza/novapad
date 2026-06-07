@@ -1,4 +1,5 @@
 import * as monaco from 'monaco-editor'
+import { LOG_LIGHT_RULES, LOG_DARK_RULES } from './logLanguage'
 
 // Notepad++ color palettes for Markdown and SQL — ported from
 // notepad-plus-plus/PowerEditor/src/stylers.model.xml (SQL light),
@@ -39,7 +40,10 @@ const LIGHT_RULES: monaco.editor.ITokenThemeRule[] = [
   { token: 'keyword.table.header.md', foreground: '000080', fontStyle: 'bold' },
   { token: 'keyword.table.left.md', foreground: '8080FF', fontStyle: 'bold' },
   { token: 'keyword.table.middle.md', foreground: '8080FF', fontStyle: 'bold' },
-  { token: 'keyword.table.right.md', foreground: '8080FF', fontStyle: 'bold' }
+  { token: 'keyword.table.right.md', foreground: '8080FF', fontStyle: 'bold' },
+
+  // ---------- Logs & traces (light) ----------
+  ...LOG_LIGHT_RULES
 ]
 
 const DARK_RULES: monaco.editor.ITokenThemeRule[] = [
@@ -66,7 +70,10 @@ const DARK_RULES: monaco.editor.ITokenThemeRule[] = [
   { token: 'keyword.table.header.md', foreground: 'E3CEAB', fontStyle: 'bold' },
   { token: 'keyword.table.left.md', foreground: 'DFC47D', fontStyle: 'bold' },
   { token: 'keyword.table.middle.md', foreground: 'DFC47D', fontStyle: 'bold' },
-  { token: 'keyword.table.right.md', foreground: 'DFC47D', fontStyle: 'bold' }
+  { token: 'keyword.table.right.md', foreground: 'DFC47D', fontStyle: 'bold' },
+
+  // ---------- Logs & traces (dark — Zenburn-aligned) ----------
+  ...LOG_DARK_RULES
 ]
 
 let registered = false

@@ -62,7 +62,7 @@ const MAGIKA_TO_MONACO: Record<string, string> = {
   txt: 'plaintext',
   csv: 'plaintext',
   tsv: 'plaintext',
-  log: 'plaintext',
+  log: 'log',
   rtf: 'plaintext',
   asciidoc: 'plaintext',
 }

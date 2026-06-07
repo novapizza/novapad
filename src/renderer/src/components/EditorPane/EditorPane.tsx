@@ -10,8 +10,10 @@ import { useFileOps } from '../../hooks/useFileOps'
 import { refineLanguageAsync, sampleFromString } from '../../utils/refineLanguage'
 import { beautify, detectBeautifyFormat } from '../../utils/beautify'
 import { registerNppThemes, nppThemeName } from '../../utils/monacoThemes'
+import { registerLogLanguage } from '../../utils/logLanguage'
 import { EditorContextMenu } from './EditorContextMenu'
 
+registerLogLanguage()
 registerNppThemes()
 
 /** Same-buffer cursor moves below this line-delta do not push a navigation entry (spec BR-005). */

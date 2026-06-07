@@ -41,6 +41,23 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ),
     highlights: [
       {
+        title: 'Syntax highlighting for logs & traces',
+        body: (
+          <>
+            <span className="font-mono text-sm">.log</span> and{' '}
+            <span className="font-mono text-sm">.trace</span> files (plus{' '}
+            <span className="font-mono text-sm">.trc</span>/
+            <span className="font-mono text-sm">.out</span>/
+            <span className="font-mono text-sm">.err</span> and rotated names like{' '}
+            <span className="font-mono text-sm">app.log.1</span>) now get real coloring. One
+            format-agnostic highlighter lights up <strong>severity levels</strong> (error/warn/info
+            by color), timestamps, durations, IP addresses, UUIDs &amp; trace IDs, HTTP methods,
+            quoted strings, and <span className="font-mono text-sm">key: value</span> pairs — so app
+            logs, access logs, syslog, and distributed traces all read at a glance.
+          </>
+        )
+      },
+      {
         title: 'Bookmarks are live',
         body: (
           <>

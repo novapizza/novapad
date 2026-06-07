@@ -42,6 +42,7 @@ const langToExt: Record<string, string> = {
   elixir: 'ex',
   fsharp: 'fs',
   haskell: 'hs',
+  log: 'log',
   plaintext: 'txt'
 }
 
@@ -84,6 +85,7 @@ const langDisplayName: Record<string, string> = {
   elixir: 'Elixir',
   fsharp: 'F#',
   haskell: 'Haskell',
+  log: 'Log',
   plaintext: 'Text'
 }
 

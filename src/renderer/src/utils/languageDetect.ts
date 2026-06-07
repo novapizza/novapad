@@ -38,6 +38,8 @@ const extMap: Record<string, string> = {
   // Docs
   md: 'markdown', mdx: 'markdown',
   tex: 'latex',
+  // Logs & traces — all share one format-agnostic highlighter (see logLanguage.ts)
+  log: 'log', trace: 'log', trc: 'log', out: 'log', err: 'log',
   // Other
   dockerfile: 'dockerfile',
   makefile: 'makefile',
@@ -58,6 +60,18 @@ export function detectLanguage(filePath: string): string {
   if (name.toLowerCase() === 'dockerfile') return 'dockerfile'
   if (name.toLowerCase() === 'makefile' || name.toLowerCase() === 'gnumakefile') return 'makefile'
 
-  const ext = name.split('.').pop()?.toLowerCase() ?? ''
+  const segments = name.toLowerCase().split('.')
+  let ext = segments[segments.length - 1] ?? ''
+
+  // Rotated logs (app.log.1, service.log.2026-02-24, trace.0) end in a numeric
+  // or date suffix that hides the real extension. Fall back to the segment
+  // before it so they still highlight as logs/traces.
+  if (
+    segments.length >= 3 &&
+    (/^\d+$/.test(ext) || /^\d{4}-\d{2}-\d{2}$/.test(ext))
+  ) {
+    ext = segments[segments.length - 2] ?? ext
+  }
+
   return extMap[ext] ?? 'plaintext'
 }

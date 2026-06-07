@@ -13,6 +13,11 @@ export async function refineLanguageAsync(
   extensionLanguage: string
 ): Promise<void> {
   if (!sample || sample.byteLength === 0) return
+  // The extension already resolved to our dedicated log/trace highlighter —
+  // don't let Magika's content guess (which mistakes log lines for `ini`)
+  // override it. This was the original bug: same-format logs flickered between
+  // `ini` and `plaintext` depending on Magika's per-file confidence.
+  if (extensionLanguage === 'log') return
   const detected = await detectLanguageFromBytes(sample)
   if (!detected || detected === extensionLanguage) return
   const store = useEditorStore.getState()
