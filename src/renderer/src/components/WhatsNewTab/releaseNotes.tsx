@@ -31,12 +31,12 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: '1.5.2',
+    version: '1.5.3',
     summary: (
       <>
-        Bookmarks come alive, the <span className="font-mono text-sm">Edit</span> and{' '}
-        <span className="font-mono text-sm">View</span> menus gain handy new tools, and the{' '}
-        <span className="font-mono text-sm">Window</span> menu finally works on Windows and Linux.
+        Logs and traces get first-class syntax highlighting — open any{' '}
+        <span className="font-mono text-sm">.log</span> or{' '}
+        <span className="font-mono text-sm">.trace</span> file and it reads at a glance.
       </>
     ),
     highlights: [
@@ -56,7 +56,19 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             logs, access logs, syslog, and distributed traces all read at a glance.
           </>
         )
-      },
+      }
+    ]
+  },
+  {
+    version: '1.5.2',
+    summary: (
+      <>
+        Bookmarks come alive, the <span className="font-mono text-sm">Edit</span> and{' '}
+        <span className="font-mono text-sm">View</span> menus gain handy new tools, and the{' '}
+        <span className="font-mono text-sm">Window</span> menu finally works on Windows and Linux.
+      </>
+    ),
+    highlights: [
       {
         title: 'Bookmarks are live',
         body: (
