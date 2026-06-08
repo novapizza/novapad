@@ -1,0 +1,38 @@
+name: Prune R2 (manual)
+
+# Manually trigger R2 release pruning for testing. Defaults to a dry run so you
+# can inspect the deletion set in the logs before deleting anything.
+on:
+  workflow_dispatch:
+    inputs:
+      keep:
+        description: 'Number of newest versions to keep'
+        required: true
+        default: '2'
+        type: string
+      dry_run:
+        description: 'Dry run (list deletions, delete nothing)'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  prune-r2:
+    environment: Production
+    name: Prune old R2 releases
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prune old releases
+        run: bash scripts/prune-r2-releases.sh
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_RELEASES_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_RELEASES_SECRET_ACCESS_KEY }}
+          R2_RELEASES_ACCOUNT_ID: ${{ secrets.R2_RELEASES_ACCOUNT_ID }}
+          R2_RELEASES_BUCKET: ${{ secrets.R2_RELEASES_BUCKET }}
+          KEEP: ${{ inputs.keep }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
