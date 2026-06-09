@@ -538,14 +538,39 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
     // with on-load and on-save detection, this keeps syntax highlighting in
     // sync as content evolves (e.g. paste minified JSON into "new 1" — Magika
     // re-classifies it as json so the beautify shortcut works on it).
-    editor.onDidPaste(() => {
+    editor.onDidPaste((e) => {
       const id = currentIdRef.current
       if (!id) return
       const buf = useEditorStore.getState().getBuffer(id)
       if (!buf) return
-      const text = editor.getModel()?.getValue() ?? ''
+      const model = editor.getModel()
+      const text = model?.getValue() ?? ''
       if (!text) return
       void refineLanguageAsync(id, sampleFromString(text), buf.language)
+
+      // Auto-enable word wrap when the pasted content has a line too long to
+      // fit the viewport (e.g. markdown copied from another app stores each
+      // paragraph as one unbroken line). Without wrap, Monaco scrolls
+      // horizontally to the cursor and the text reads as fragments. Match
+      // beautify's behavior — persist via configStore so the menu checkbox and
+      // next launch stay in sync.
+      if (model && !useConfigStore.getState().wordWrap) {
+        const { contentWidth } = editor.getLayoutInfo()
+        const charW = editor.getOption(monaco.editor.EditorOption.fontInfo)
+          .typicalHalfwidthCharacterWidth
+        const visibleCols = charW > 0 ? Math.floor(contentWidth / charW) : 120
+        let hasLongLine = false
+        for (let line = e.range.startLineNumber; line <= e.range.endLineNumber; line++) {
+          if (model.getLineLength(line) > visibleCols) {
+            hasLongLine = true
+            break
+          }
+        }
+        if (hasLongLine) {
+          useConfigStore.getState().setProp('wordWrap', true)
+          useUIStore.getState().setWordWrap(true)
+        }
+      }
     })
 
     // Track content changes — compare Monaco's alternative version id to the

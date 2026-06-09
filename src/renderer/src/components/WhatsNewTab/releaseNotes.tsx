@@ -56,6 +56,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             logs, access logs, syslog, and distributed traces all read at a glance.
           </>
         )
+      },
+      {
+        title: 'Pasted long lines stay readable',
+        body: (
+          <>
+            Pasting content with very long lines — like markdown copied from another app, where
+            each paragraph is one unbroken line — now <strong>auto-enables Word Wrap</strong> so the
+            text reflows to fit the window instead of scrolling off to the right. Toggle it any time
+            with <span className="font-mono text-sm">Alt+Z</span>.
+          </>
+        )
       }
     ]
   },
