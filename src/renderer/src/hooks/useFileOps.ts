@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import * as monaco from 'monaco-editor'
 import { useEditorStore, EOLType } from '../store/editorStore'
 import { useUIStore } from '../store/uiStore'
 import { detectLanguage } from '../utils/languageDetect'
@@ -321,11 +322,13 @@ export function useFileOps() {
     if (!buf.loaded) return false
 
     let filePath = buf.filePath
+    let pathAssigned = false
     if (!filePath) {
       const suggestedExt = languageToExtension(buf.language)
       const res = await window.api.file.saveDialog(buf.title, suggestedExt)
       if (res.canceled || !res.filePath) return false
       filePath = res.filePath
+      pathAssigned = true
     }
 
     const content = buf.model?.getValue() ?? buf.content
@@ -335,16 +338,25 @@ export function useFileOps() {
       return false
     }
 
+    // An untitled buffer that just got a path (e.g. saved as notes.md) must
+    // pick up the language its new extension implies — Magika alone won't, as
+    // it often reads markdown/text content as plain text.
+    const language = pathAssigned ? detectLanguage(filePath) : buf.language
+    if (pathAssigned && language !== buf.language && buf.model) {
+      monaco.editor.setModelLanguage(buf.model, language)
+    }
+
     updateBuffer(id, {
       filePath,
       title: basename(filePath),
       isDirty: false,
       savedVersionId: buf.model?.getAlternativeVersionId() ?? 0,
-      content
+      content,
+      ...(pathAssigned ? { language } : {})
     })
     window.api.file.addRecent(filePath)
     if (result.magikaSample?.byteLength) {
-      void refineLanguageAsync(id, result.magikaSample, buf.language)
+      void refineLanguageAsync(id, result.magikaSample, language)
     }
     return true
   }, [updateBuffer, addToast])
@@ -364,16 +376,24 @@ export function useFileOps() {
       return false
     }
 
+    // Save As follows the chosen extension — re-derive the language so saving
+    // a buffer as .md (etc.) switches highlighting to match the new file type.
+    const language = detectLanguage(res.filePath)
+    if (language !== buf.language && buf.model) {
+      monaco.editor.setModelLanguage(buf.model, language)
+    }
+
     updateBuffer(buf.id, {
       filePath: res.filePath,
       title: basename(res.filePath),
       isDirty: false,
       savedVersionId: buf.model?.getAlternativeVersionId() ?? 0,
-      content
+      content,
+      language
     })
     window.api.file.addRecent(res.filePath)
     if (result.magikaSample?.byteLength) {
-      void refineLanguageAsync(buf.id, result.magikaSample, buf.language)
+      void refineLanguageAsync(buf.id, result.magikaSample, language)
     }
     return true
   }, [getActive, updateBuffer, addToast])

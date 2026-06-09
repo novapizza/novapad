@@ -20,6 +20,10 @@ export async function refineLanguageAsync(
   if (extensionLanguage === 'log') return
   const detected = await detectLanguageFromBytes(sample)
   if (!detected || detected === extensionLanguage) return
+  // Extension is authoritative — don't let a content guess of "plain text"
+  // (Magika routinely labels markdown / csv / config files as `txt`) erase a
+  // real language the file extension already resolved.
+  if (detected === 'plaintext' && extensionLanguage !== 'plaintext') return
   const store = useEditorStore.getState()
   const buf = store.getBuffer(bufferId)
   if (!buf || buf.language === detected) return

@@ -67,6 +67,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             with <span className="font-mono text-sm">Alt+Z</span>.
           </>
         )
+      },
+      {
+        title: 'Language follows the file you saved',
+        body: (
+          <>
+            Saving an untitled note as <span className="font-mono text-sm">.md</span> (or any typed
+            extension) now <strong>switches syntax highlighting to match</strong> right away. Content
+            auto-detection also stops <strong>downgrading a recognized file type to plain text</strong>
+            {' '}— so markdown, CSV, and config files keep their highlighting on open and save.
+          </>
+        )
       }
     ]
   },
