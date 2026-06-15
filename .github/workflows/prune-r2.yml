@@ -25,7 +25,7 @@ jobs:
     name: Prune old R2 releases
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Prune old releases
         run: bash scripts/prune-r2-releases.sh
