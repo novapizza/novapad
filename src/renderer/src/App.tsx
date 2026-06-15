@@ -105,13 +105,14 @@ export default function App() {
     }
   }, [activeId])
 
-  // Quick Open (Ctrl/Cmd+P) — handle in the capture phase on documentElement so
-  // it fires app-wide regardless of focus, beating Monaco's internal keybindings
+  // Quick Open (Ctrl/Cmd+Shift+P) — handle in the capture phase on documentElement
+  // so it fires app-wide regardless of focus, beating Monaco's internal keybindings
   // (the native menu accelerator alone gets swallowed when the editor is focused).
+  // Plain Ctrl/Cmd+P is intentionally left to fall through to Preview.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const mod = window.api.platform === 'darwin' ? e.metaKey : e.ctrlKey
-      if (mod && !e.shiftKey && !e.altKey && (e.key === 'p' || e.key === 'P')) {
+      if (mod && e.shiftKey && !e.altKey && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault()
         e.stopPropagation()
         useUIStore.getState().setQuickOpenVisible(true)

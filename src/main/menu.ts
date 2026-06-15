@@ -261,7 +261,7 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
         },
         {
           label: 'Go to File...',
-          accelerator: 'CmdOrCtrl+P',
+          accelerator: 'CmdOrCtrl+Shift+P',
           click: () => win.webContents.send('menu:goto-file')
         },
         {
@@ -324,7 +324,7 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
         },
         {
           label: 'Preview',
-          accelerator: 'CmdOrCtrl+Shift+V',
+          accelerator: 'CmdOrCtrl+P',
           click: () => win.webContents.send('editor:command', 'togglePreview')
         },
         { type: 'separator' },
