@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { ChevronRight, ChevronDown, FolderOpen, Folder, FileText, RefreshCw } from 'lucide-react'
 import {
   ContextMenu,
@@ -47,10 +47,86 @@ function updateNodeChildren(nodes: TreeNode[], targetPath: string, children: Tre
   })
 }
 
+/** Inline editing state + commit/cancel callbacks, threaded through the tree. */
+interface EditApi {
+  /** Path of the node whose label is currently an editable rename input. */
+  renamingPath: string | null
+  /** Pending new entry: which directory and whether file or folder. */
+  creating: { dir: string; kind: 'file' | 'folder' } | null
+  commitRename: (node: TreeNode, name: string) => void
+  commitCreate: (name: string) => void
+  cancelEdit: () => void
+}
+
+/**
+ * VSCode-style inline name editor used for Rename and New File/Folder.
+ * Electron has no working window.prompt(), so we edit in place instead.
+ */
+function InlineEditInput({
+  depth,
+  isDir,
+  initialValue,
+  selectBasename,
+  onCommit,
+  onCancel,
+}: {
+  depth: number
+  isDir: boolean
+  initialValue: string
+  selectBasename: boolean
+  onCommit: (value: string) => void
+  onCancel: () => void
+}) {
+  const ref = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.focus()
+    // Select the basename (minus extension) for file renames, like VSCode.
+    const dot = initialValue.lastIndexOf('.')
+    if (selectBasename && dot > 0) el.setSelectionRange(0, dot)
+    else el.select()
+  }, [initialValue, selectBasename])
+
+  return (
+    <div
+      className="w-full flex items-center gap-1.5 py-1 text-base"
+      style={{ paddingLeft: depth * 14 + 10 }}
+    >
+      <span className="shrink-0 w-[18px]" />
+      <span className="shrink-0 text-primary flex items-center justify-center">
+        {isDir ? <Folder size={18} /> : <FileText size={18} className="text-tab-muted" />}
+      </span>
+      <input
+        ref={ref}
+        data-testid="inline-edit-input"
+        defaultValue={initialValue}
+        spellCheck={false}
+        autoComplete="off"
+        className="flex-1 min-w-0 bg-input text-foreground border border-primary rounded px-1 py-0 text-base outline-none"
+        onClick={(e) => e.stopPropagation()}
+        onBlur={() => onCancel()}
+        onKeyDown={(e) => {
+          e.stopPropagation()
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            onCommit(ref.current?.value ?? '')
+          } else if (e.key === 'Escape') {
+            e.preventDefault()
+            onCancel()
+          }
+        }}
+      />
+    </div>
+  )
+}
+
 interface TreeNodeRowProps {
   node: TreeNode
   depth: number
   expanded: Set<string>
+  edit: EditApi
   onToggle: (node: TreeNode) => void
   onOpen: (node: TreeNode) => void
   onContextMenu: (node: TreeNode) => void
@@ -62,95 +138,156 @@ interface TreeNodeRowProps {
   handleReveal: (node: TreeNode) => void
 }
 
-function TreeNodeRow({ node, depth, expanded, onToggle, onOpen, onContextMenu, handleNewFile, handleNewFolder, handleRename, handleDelete, handleCopyPath, handleReveal }: TreeNodeRowProps) {
+function TreeNodeRow({ node, depth, expanded, edit, onToggle, onOpen, onContextMenu, handleNewFile, handleNewFolder, handleRename, handleDelete, handleCopyPath, handleReveal }: TreeNodeRowProps) {
+  const isRenaming = edit.renamingPath === node.path
+  const showCreateRow = node.isDir && expanded.has(node.path) && edit.creating?.dir === node.path
   return (
     <>
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <div
-            className="w-full flex items-center gap-1.5 py-1 text-base transition-colors hover:bg-explorer-hover cursor-pointer text-explorer-foreground"
-            style={{ paddingLeft: depth * 14 + 10 }}
-            onClick={() => (node.isDir ? onToggle(node) : onOpen(node))}
-            title={node.path}
-          >
-            <span className="shrink-0 w-[18px] flex justify-center text-muted-foreground">
-              {node.isDir ? (
-                expanded.has(node.path) ? <ChevronDown size={18} /> : <ChevronRight size={18} />
-              ) : null}
-            </span>
-            <span className="shrink-0 text-primary flex items-center justify-center">
-              {node.isDir ? (
-                expanded.has(node.path) ? <FolderOpen size={18} /> : <Folder size={18} />
-              ) : (
-                <FileText size={18} className="text-tab-muted" />
-              )}
-            </span>
-            <span className="truncate">{node.name}</span>
-          </div>
-        </ContextMenuTrigger>
-        <ContextMenuContent className="w-48">
-          {!node.isDir && (
-            <ContextMenuItem onClick={() => onOpen(node)}>Open</ContextMenuItem>
-          )}
-          <ContextMenuItem onClick={() => handleNewFile(node)}>New File…</ContextMenuItem>
-          <ContextMenuItem onClick={() => handleNewFolder(node)}>New Folder…</ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem onClick={() => handleRename(node)}>Rename</ContextMenuItem>
-          <ContextMenuItem onClick={() => handleDelete(node)}>Delete</ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem onClick={() => handleCopyPath(node)}>Copy Path</ContextMenuItem>
-          <ContextMenuItem onClick={() => handleReveal(node)}>
-            Reveal in {window.api.platform === 'darwin' ? 'Finder' : 'Explorer'}
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
-      {node.isDir && expanded.has(node.path) && node.children?.map((child) => (
-        <TreeNodeRow
-          key={child.path}
-          node={child}
-          depth={depth + 1}
-          expanded={expanded}
-          onToggle={onToggle}
-          onOpen={onOpen}
-          onContextMenu={onContextMenu}
-          handleNewFile={handleNewFile}
-          handleNewFolder={handleNewFolder}
-          handleRename={handleRename}
-          handleDelete={handleDelete}
-          handleCopyPath={handleCopyPath}
-          handleReveal={handleReveal}
+      {isRenaming ? (
+        <InlineEditInput
+          depth={depth}
+          isDir={node.isDir}
+          initialValue={node.name}
+          selectBasename={!node.isDir}
+          onCommit={(v) => edit.commitRename(node, v)}
+          onCancel={edit.cancelEdit}
         />
-      ))}
+      ) : (
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <div
+              className="w-full flex items-center gap-1.5 py-1 text-base transition-colors hover:bg-explorer-hover cursor-pointer text-explorer-foreground"
+              style={{ paddingLeft: depth * 14 + 10 }}
+              onClick={() => (node.isDir ? onToggle(node) : onOpen(node))}
+              title={node.path}
+            >
+              <span className="shrink-0 w-[18px] flex justify-center text-muted-foreground">
+                {node.isDir ? (
+                  expanded.has(node.path) ? <ChevronDown size={18} /> : <ChevronRight size={18} />
+                ) : null}
+              </span>
+              <span className="shrink-0 text-primary flex items-center justify-center">
+                {node.isDir ? (
+                  expanded.has(node.path) ? <FolderOpen size={18} /> : <Folder size={18} />
+                ) : (
+                  <FileText size={18} className="text-tab-muted" />
+                )}
+              </span>
+              <span className="truncate">{node.name}</span>
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-48">
+            {!node.isDir && (
+              <>
+                <ContextMenuItem onClick={() => onOpen(node)}>Open</ContextMenuItem>
+                <ContextMenuSeparator />
+              </>
+            )}
+            <ContextMenuItem onClick={() => handleRename(node)}>Rename</ContextMenuItem>
+            <ContextMenuItem onClick={() => handleCopyPath(node)}>Copy Path</ContextMenuItem>
+            <ContextMenuItem onClick={() => handleReveal(node)}>
+              Reveal in {window.api.platform === 'darwin' ? 'Finder' : 'Explorer'}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => handleNewFile(node)}>New File…</ContextMenuItem>
+            <ContextMenuItem onClick={() => handleNewFolder(node)}>New Folder…</ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => handleDelete(node)}>Delete</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+      )}
+      {node.isDir && expanded.has(node.path) && (
+        <>
+          {showCreateRow && (
+            <InlineEditInput
+              depth={depth + 1}
+              isDir={edit.creating!.kind === 'folder'}
+              initialValue=""
+              selectBasename={false}
+              onCommit={(v) => edit.commitCreate(v)}
+              onCancel={edit.cancelEdit}
+            />
+          )}
+          {node.children?.map((child) => (
+            <TreeNodeRow
+              key={child.path}
+              node={child}
+              depth={depth + 1}
+              expanded={expanded}
+              edit={edit}
+              onToggle={onToggle}
+              onOpen={onOpen}
+              onContextMenu={onContextMenu}
+              handleNewFile={handleNewFile}
+              handleNewFolder={handleNewFolder}
+              handleRename={handleRename}
+              handleDelete={handleDelete}
+              handleCopyPath={handleCopyPath}
+              handleReveal={handleReveal}
+            />
+          ))}
+        </>
+      )}
     </>
   )
 }
 
 export function FileBrowserPanel() {
-  const { workspaceFolder, setWorkspaceFolder, setSidebarPanel } = useUIStore()
-  const { openFiles } = useFileOps()
+  const { workspaceFolder, setWorkspaceFolder, setSidebarPanel, expandedFolders, setExpandedFolders } = useUIStore()
+  const { openFiles, updateRenamedBuffer } = useFileOps()
   const [tree, setTree] = useState<TreeNode[]>([])
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  // expandedFolders lives in uiStore so it can be persisted across sessions.
+  const expanded = useMemo(() => new Set(expandedFolders), [expandedFolders])
+  // Inline editing state (Electron has no working window.prompt()).
+  const [renamingPath, setRenamingPath] = useState<string | null>(null)
+  const [creating, setCreating] = useState<{ dir: string; kind: 'file' | 'folder' } | null>(null)
 
-  // Load root when workspaceFolder changes
+  // Load root when workspaceFolder changes, rebuilding the tree so any
+  // previously-expanded folders (restored from a saved session) are re-loaded
+  // and shown expanded. Reads expandedFolders via getState() so this effect
+  // only re-runs on workspaceFolder change, not on every toggle.
   useEffect(() => {
     if (!workspaceFolder) { setTree([]); return }
-    setExpanded(new Set())
-    loadChildren(workspaceFolder).then(setTree)
+    let cancelled = false
+    const norm = (p: string) => p.replace(/\\/g, '/')
+    const rootNorm = norm(workspaceFolder)
+    const toExpand = useUIStore.getState().expandedFolders
+      .filter((p) => {
+        const n = norm(p)
+        return n !== rootNorm && n.startsWith(rootNorm + '/')
+      })
+      // Shallow → deep so each parent is in the tree before we merge its child.
+      .sort((a, b) => norm(a).split('/').length - norm(b).split('/').length)
+    ;(async () => {
+      let nextTree = await loadChildren(workspaceFolder)
+      if (cancelled) return
+      for (const p of toExpand) {
+        try {
+          const children = await loadChildren(p)
+          if (cancelled) return
+          nextTree = updateNodeChildren(nextTree, p, children)
+        } catch {
+          // Folder may have been deleted/renamed since save — skip it.
+        }
+      }
+      if (!cancelled) setTree(nextTree)
+    })()
+    return () => { cancelled = true }
   }, [workspaceFolder])
 
   const handleToggle = useCallback(async (node: TreeNode) => {
-    const newExpanded = new Set(expanded)
-    if (expanded.has(node.path)) {
-      newExpanded.delete(node.path)
+    const next = new Set(useUIStore.getState().expandedFolders)
+    if (next.has(node.path)) {
+      next.delete(node.path)
     } else {
-      newExpanded.add(node.path)
+      next.add(node.path)
       if (!node.children) {
         const children = await loadChildren(node.path)
         setTree((prev) => updateNodeChildren(prev, node.path, children))
       }
     }
-    setExpanded(newExpanded)
-  }, [expanded])
+    setExpandedFolders(Array.from(next))
+  }, [setExpandedFolders])
 
   const handleOpen = useCallback((node: TreeNode) => {
     openFiles([node.path])
@@ -173,35 +310,52 @@ export function FileBrowserPanel() {
     setTree(children)
   }, [workspaceFolder])
 
-  const handleNewFile = useCallback(async (node: TreeNode) => {
+  // Start an inline "new entry" input inside `node`'s directory: expand the
+  // target dir (loading its children if needed) so the input row is visible.
+  const startCreate = useCallback(async (node: TreeNode, kind: 'file' | 'folder') => {
     const dir = node.isDir ? node.path : parentDir(node.path)
-    const name = prompt('New file name:')
-    if (!name?.trim()) return
-    const fp = joinPath(dir, name.trim())
-    const result = await window.api.file.create(fp)
-    if (result.error) { alert(`Error: ${result.error}`); return }
-    await refreshParent(dir)
-    openFiles([fp])
-  }, [refreshParent, openFiles])
+    setRenamingPath(null)
+    if (dir !== workspaceFolder) {
+      const current = useUIStore.getState().expandedFolders
+      if (!current.includes(dir)) setExpandedFolders([...current, dir])
+      const children = await loadChildren(dir)
+      setTree((prev) => updateNodeChildren(prev, dir, children))
+    }
+    setCreating({ dir, kind })
+  }, [workspaceFolder, setExpandedFolders])
 
-  const handleNewFolder = useCallback(async (node: TreeNode) => {
-    const dir = node.isDir ? node.path : parentDir(node.path)
-    const name = prompt('New folder name:')
-    if (!name?.trim()) return
-    const fp = joinPath(dir, name.trim())
-    const result = await window.api.file.mkdir(fp)
-    if (result.error) { alert(`Error: ${result.error}`); return }
-    await refreshParent(dir)
-  }, [refreshParent])
+  const handleNewFile = useCallback((node: TreeNode) => { void startCreate(node, 'file') }, [startCreate])
+  const handleNewFolder = useCallback((node: TreeNode) => { void startCreate(node, 'folder') }, [startCreate])
+  const handleRename = useCallback((node: TreeNode) => { setCreating(null); setRenamingPath(node.path) }, [])
 
-  const handleRename = useCallback(async (node: TreeNode) => {
-    const newName = prompt('Rename to:', node.name)
-    if (!newName?.trim() || newName.trim() === node.name) return
-    const newPath = joinPath(parentDir(node.path), newName.trim())
+  const cancelEdit = useCallback(() => { setRenamingPath(null); setCreating(null) }, [])
+
+  const commitRename = useCallback(async (node: TreeNode, newName: string) => {
+    setRenamingPath(null)
+    const trimmed = newName.trim()
+    if (!trimmed || trimmed === node.name) return
+    const newPath = joinPath(parentDir(node.path), trimmed)
     const result = await window.api.file.rename(node.path, newPath)
     if (result.error) { alert(`Error: ${result.error}`); return }
+    // Keep any open tab pointing at the renamed file in sync.
+    if (!node.isDir) updateRenamedBuffer(node.path, newPath)
     await refreshParent(node.path)
-  }, [refreshParent])
+  }, [refreshParent, updateRenamedBuffer])
+
+  const commitCreate = useCallback(async (name: string) => {
+    const pending = creating
+    setCreating(null)
+    if (!pending) return
+    const trimmed = name.trim()
+    if (!trimmed) return
+    const fp = joinPath(pending.dir, trimmed)
+    const result = pending.kind === 'file'
+      ? await window.api.file.create(fp)
+      : await window.api.file.mkdir(fp)
+    if (result.error) { alert(`Error: ${result.error}`); return }
+    await refreshParent(fp)
+    if (pending.kind === 'file') openFiles([fp])
+  }, [creating, refreshParent, openFiles])
 
   const handleDelete = useCallback(async (node: TreeNode) => {
     if (!confirm(`Delete "${node.name}"? This cannot be undone.`)) return
@@ -221,9 +375,13 @@ export function FileBrowserPanel() {
   const handleOpenFolder = async () => {
     const result = await window.api.file.openDirDialog()
     if (!result) return
+    // Opening a fresh folder: drop any expanded paths from the previous root.
+    setExpandedFolders([])
     setWorkspaceFolder(result)
     setSidebarPanel('files')
   }
+
+  const edit: EditApi = { renamingPath, creating, commitRename, commitCreate, cancelEdit }
 
   if (!workspaceFolder) {
     return (
@@ -260,7 +418,18 @@ export function FileBrowserPanel() {
         </TooltipProvider>
       </div>
       <div className="flex-1 overflow-y-auto overflow-x-hidden editor-scrollbar select-none py-1">
-        {tree.length === 0 ? (
+        {/* New File/Folder created directly at the workspace root. */}
+        {creating?.dir === workspaceFolder && (
+          <InlineEditInput
+            depth={0}
+            isDir={creating.kind === 'folder'}
+            initialValue=""
+            selectBasename={false}
+            onCommit={commitCreate}
+            onCancel={cancelEdit}
+          />
+        )}
+        {tree.length === 0 && creating?.dir !== workspaceFolder ? (
           <div className="p-4 text-muted-foreground text-sm text-center">Empty folder</div>
         ) : (
           tree.map((node) => (
@@ -269,6 +438,7 @@ export function FileBrowserPanel() {
               node={node}
               depth={0}
               expanded={expanded}
+              edit={edit}
               onToggle={handleToggle}
               onOpen={handleOpen}
               onContextMenu={() => {}}

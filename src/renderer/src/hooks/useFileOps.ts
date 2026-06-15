@@ -31,6 +31,9 @@ export interface SessionData {
   virtualTabs?: Array<{ kind: string; pluginId?: string }>
   activeIndex: number
   workspaceFolder?: string
+  sidebarVisible?: boolean
+  sidebarPanel?: 'files' | 'search' | 'plugins'
+  expandedFolders?: string[]
 }
 
 
@@ -425,7 +428,24 @@ export function useFileOps() {
     })
   }, [updateBuffer, addToast])
 
-  return { openFiles, newFile, saveBuffer, saveActiveAs, closeBuffer, reloadBuffer, loadBuffer, restoreSession }
+  /**
+   * Sync an open tab after its file was renamed on disk (from the File Browser).
+   * Repoints the buffer to the new path, refreshes its title/language to match
+   * the new extension, and moves the file watch. No-op if the file isn't open.
+   */
+  const updateRenamedBuffer = useCallback((oldPath: string, newPath: string) => {
+    const buf = useEditorStore.getState().buffers.find((b) => b.filePath === oldPath)
+    if (!buf) return
+    window.api.watch.remove(oldPath)
+    updateBuffer(buf.id, {
+      filePath: newPath,
+      title: basename(newPath),
+      language: detectLanguage(newPath)
+    })
+    window.api.watch.add(newPath)
+  }, [updateBuffer])
+
+  return { openFiles, newFile, saveBuffer, saveActiveAs, closeBuffer, reloadBuffer, loadBuffer, restoreSession, updateRenamedBuffer }
 }
 
 /**

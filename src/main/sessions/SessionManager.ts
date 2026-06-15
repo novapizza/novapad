@@ -27,13 +27,23 @@ interface SessionVirtualTab {
   pluginId?: string           // set only for 'pluginDetail'
 }
 
+type SidebarPanel = 'files' | 'search' | 'plugins'
+
 interface Session {
   version: number
   files: SessionFile[]
   virtualTabs: SessionVirtualTab[]
   activeIndex: number
   workspaceFolder?: string
+  /** Whether the sidebar was visible at save time. */
+  sidebarVisible?: boolean
+  /** Which sidebar panel was active at save time. */
+  sidebarPanel?: SidebarPanel
+  /** Paths of folders expanded in the File Browser tree. */
+  expandedFolders?: string[]
 }
+
+const KNOWN_SIDEBAR_PANELS: ReadonlySet<SidebarPanel> = new Set(['files', 'search', 'plugins'])
 
 const KNOWN_VIRTUAL_KINDS: ReadonlySet<SessionVirtualKind> = new Set(['settings', 'shortcuts', 'whatsNew', 'pluginManager', 'pluginDetail'])
 
@@ -117,6 +127,13 @@ export class SessionManager {
 
     const activeIndex = typeof obj.activeIndex === 'number' ? obj.activeIndex : 0
     const workspaceFolder = typeof obj.workspaceFolder === 'string' ? obj.workspaceFolder : undefined
+    const sidebarVisible = typeof obj.sidebarVisible === 'boolean' ? obj.sidebarVisible : undefined
+    const sidebarPanel = typeof obj.sidebarPanel === 'string' && KNOWN_SIDEBAR_PANELS.has(obj.sidebarPanel as SidebarPanel)
+      ? (obj.sidebarPanel as SidebarPanel)
+      : undefined
+    const expandedFolders = Array.isArray(obj.expandedFolders)
+      ? (obj.expandedFolders as unknown[]).filter((p): p is string => typeof p === 'string')
+      : undefined
 
     // virtualTabs is v3+. Skip unknown kinds; tolerate malformed (non-array) values.
     const rawVirtual = obj.virtualTabs
@@ -146,7 +163,10 @@ export class SessionManager {
       files: normalizedFiles,
       virtualTabs,
       activeIndex,
-      workspaceFolder
+      workspaceFolder,
+      sidebarVisible,
+      sidebarPanel,
+      expandedFolders
     }
   }
 

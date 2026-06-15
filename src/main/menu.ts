@@ -260,6 +260,11 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
           click: () => win.webContents.send('menu:find-in-files')
         },
         {
+          label: 'Go to File...',
+          accelerator: 'CmdOrCtrl+P',
+          click: () => win.webContents.send('menu:goto-file')
+        },
+        {
           label: 'Mark...',
           // No accelerator on macOS — ⌘+M is the standard minimize-window shortcut.
           ...(isMac ? {} : { accelerator: 'Ctrl+M' }),
@@ -319,7 +324,7 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
         },
         {
           label: 'Preview',
-          accelerator: 'CmdOrCtrl+P',
+          accelerator: 'CmdOrCtrl+Shift+V',
           click: () => win.webContents.send('editor:command', 'togglePreview')
         },
         { type: 'separator' },

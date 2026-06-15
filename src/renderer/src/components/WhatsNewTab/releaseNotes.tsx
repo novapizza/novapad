@@ -78,6 +78,44 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             {' '}— so markdown, CSV, and config files keep their highlighting on open and save.
           </>
         )
+      },
+      {
+        title: 'The File Browser remembers where you were',
+        body: (
+          <>
+            The <strong>File Browser</strong> sidebar now restores across restarts: reopen the app and
+            your folder is back, the sidebar reappears (or stays hidden) exactly as you left it, and the
+            folders you had <strong>expanded stay expanded</strong> — no re-navigating the tree every launch.
+          </>
+        )
+      },
+      {
+        title: 'Quick Open files with Ctrl+P',
+        body: (
+          <>
+            Press <span className="font-mono text-sm">Ctrl+P</span> (
+            <span className="font-mono text-sm">⌘P</span> on macOS) to <strong>fuzzy-search every file</strong>{' '}
+            in the open folder and jump straight to it — type a few characters, use{' '}
+            <span className="font-mono text-sm">↑/↓</span> and <span className="font-mono text-sm">Enter</span>,
+            just like VS Code — and it works <strong>anywhere</strong>, even while you're typing in the editor.
+            Markdown/JSON <strong>Preview moves to <span className="font-mono text-sm">Ctrl+Shift+V</span></strong> (
+            <span className="font-mono text-sm">⌘⇧V</span> on macOS), and the file-tree right-click menu has been
+            reorganized so the actions you use most sit up top.
+          </>
+        )
+      },
+      {
+        title: 'Rename & create files right in the tree',
+        body: (
+          <>
+            <strong>Rename</strong>, <strong>New File…</strong> and <strong>New Folder…</strong> in the File Browser
+            now edit <strong>inline</strong> — the row turns into a text box you confirm with{' '}
+            <span className="font-mono text-sm">Enter</span> (or cancel with{' '}
+            <span className="font-mono text-sm">Esc</span>), just like VS Code, instead of a pop-up prompt that
+            never appeared. Renaming a file that's <strong>open in a tab</strong> now updates the tab in place —
+            and no longer fires a misleading "deleted from disk" warning.
+          </>
+        )
       }
     ]
   },

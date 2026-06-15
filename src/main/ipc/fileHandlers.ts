@@ -5,7 +5,11 @@ import * as chardet from 'chardet'
 import * as iconv from 'iconv-lite'
 import { addRecent, loadRecents } from '../recentFiles'
 import { updateRecentFiles } from '../menu'
-import { markSelfSaved } from './watchHandlers'
+import { markSelfSaved, markSelfRemoved } from './watchHandlers'
+import { collectFilesAsync } from './findInFilesLogic'
+
+/** Hard cap on files returned by file:list-files-recursive (Quick Open). */
+const QUICK_OPEN_MAX_FILES = 20000
 
 export function registerFileHandlers(): void {
   // Read file with encoding detection. Returns the raw byte sample so the renderer
@@ -141,6 +145,24 @@ export function registerFileHandlers(): void {
     }
   })
 
+  // Recursively list every file under a directory, for the Quick Open (Ctrl+P)
+  // fuzzy file finder. Reuses the Find-in-Files walker, which already skips
+  // dotfiles + node_modules and yields to the event loop so it won't block.
+  ipcMain.handle('file:list-files-recursive', async (_event, dirPath: string, max = QUICK_OPEN_MAX_FILES) => {
+    const cap = Math.min(typeof max === 'number' && max > 0 ? max : QUICK_OPEN_MAX_FILES, QUICK_OPEN_MAX_FILES)
+    const files: { path: string; name: string }[] = []
+    let truncated = false
+    try {
+      for await (const fp of collectFilesAsync(dirPath, /.*/, true)) {
+        if (files.length >= cap) { truncated = true; break }
+        files.push({ path: fp, name: path.basename(fp) })
+      }
+    } catch {
+      // Best-effort — return whatever was collected before the error.
+    }
+    return { files, truncated }
+  })
+
   // Create file
   ipcMain.handle('file:create', async (_event, filePath: string) => {
     try {
@@ -154,6 +176,9 @@ export function registerFileHandlers(): void {
   // Delete file or directory
   ipcMain.handle('file:delete', async (_event, filePath: string) => {
     try {
+      // Our own deletion — suppress the watcher's 'unlink' for this path and any
+      // open file underneath it (folder delete) so it isn't reported as external.
+      markSelfRemoved(filePath)
       const stat = fs.statSync(filePath)
       if (stat.isDirectory()) {
         fs.rmSync(filePath, { recursive: true })
@@ -184,6 +209,9 @@ export function registerFileHandlers(): void {
   // Rename/move file
   ipcMain.handle('file:rename', async (_event, oldPath: string, newPath: string) => {
     try {
+      // Our own move — suppress the watcher's 'unlink' on the old path so it
+      // isn't reported as an external deletion.
+      markSelfRemoved(oldPath)
       fs.renameSync(oldPath, newPath)
       return { error: null }
     } catch (err: any) {

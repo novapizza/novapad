@@ -32,6 +32,8 @@ interface UIState {
   splitView: boolean
   sidebarPanel: 'files' | 'search' | 'plugins'
   workspaceFolder: string | null
+  /** Paths of folders currently expanded in the File Browser tree (persisted across sessions). */
+  expandedFolders: string[]
   showFindReplace: boolean
   findReplaceMode: 'find' | 'replace' | 'findInFiles' | 'mark'
   findInitialTerm: string
@@ -54,6 +56,8 @@ interface UIState {
   /** @deprecated kept temporarily for any callers that read it; mirrors showPreview. */
   showMarkdownPreview: boolean
   showAbout: boolean
+  /** VSCode-style Quick Open (Ctrl+P) file-finder palette visibility. */
+  quickOpenVisible: boolean
   showBottomPanel: boolean
   activeBottomPanel: BottomPanelId
   toasts: Array<{ id: string; message: string; level: 'info' | 'warn' | 'error' }>
@@ -108,6 +112,7 @@ interface UIState {
   syncToggleToMain: (key: UIToggleKey, value: boolean) => void
   setSidebarPanel: (p: UIState['sidebarPanel']) => void
   setWorkspaceFolder: (path: string | null) => void
+  setExpandedFolders: (paths: string[]) => void
   openFind: (mode?: 'find' | 'replace' | 'findInFiles' | 'mark', initialTerm?: string) => void
   closeFind: () => void
   togglePreview: () => void
@@ -118,6 +123,7 @@ interface UIState {
   toggleMarkdownPreview: () => void
   setMarkdownPreview: (v: boolean) => void
   setShowAbout: (v: boolean) => void
+  setQuickOpenVisible: (v: boolean) => void
   setShowBottomPanel: (v: boolean) => void
   setActiveBottomPanel: (p: BottomPanelId) => void
   addToast: (message: string, level?: 'info' | 'warn' | 'error') => void
@@ -148,6 +154,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   splitView: false,
   sidebarPanel: 'files',
   workspaceFolder: null,
+  expandedFolders: [],
   showFindReplace: false,
   findReplaceMode: 'find',
   findInitialTerm: '',
@@ -156,6 +163,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   previewFullscreen: false,
   showMarkdownPreview: false,
   showAbout: false,
+  quickOpenVisible: false,
   showBottomPanel: false,
   activeBottomPanel: 'findResults',
   toasts: [],
@@ -225,6 +233,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   },
   setSidebarPanel: (p) => set({ sidebarPanel: p }),
   setWorkspaceFolder: (path) => set({ workspaceFolder: path }),
+  setExpandedFolders: (paths) => set({ expandedFolders: paths }),
   openFind: (mode = 'find', initialTerm = '') =>
     set((s) => ({ showFindReplace: true, findReplaceMode: mode, findInitialTerm: initialTerm, findOpenNonce: s.findOpenNonce + 1 })),
   closeFind: () => set({ showFindReplace: false }),
@@ -257,6 +266,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   setMarkdownPreview: (v) =>
     set((s) => ({ showPreview: v, showMarkdownPreview: v, previewFullscreen: v ? s.previewFullscreen : false })),
   setShowAbout: (v) => set({ showAbout: v }),
+  setQuickOpenVisible: (v) => set({ quickOpenVisible: v }),
   setShowBottomPanel: (v) => set({ showBottomPanel: v }),
   setActiveBottomPanel: (p) => set({ activeBottomPanel: p }),
 

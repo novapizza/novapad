@@ -16,6 +16,7 @@ import { StatusBar } from './components/StatusBar/StatusBar'
 import { BottomPanelContainer } from './components/Panels/BottomPanelContainer'
 import { FindReplaceDialog } from './components/Dialogs/FindReplace/FindReplaceDialog'
 import { AboutDialog } from './components/Dialogs/AboutDialog/AboutDialog'
+import { QuickOpenPalette } from './components/QuickOpen/QuickOpenPalette'
 import { ToolsPanel } from './components/Tools/ToolsPanel'
 import { openHashGenerator, hashFromFiles, hashSelectionToClipboard, type HashAlgo } from './lib/tools/hashActions'
 import { Sidebar } from './components/Sidebar/Sidebar'
@@ -103,6 +104,22 @@ export default function App() {
       prevActiveIdRef.current = activeId
     }
   }, [activeId])
+
+  // Quick Open (Ctrl/Cmd+P) — handle in the capture phase on documentElement so
+  // it fires app-wide regardless of focus, beating Monaco's internal keybindings
+  // (the native menu accelerator alone gets swallowed when the editor is focused).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const mod = window.api.platform === 'darwin' ? e.metaKey : e.ctrlKey
+      if (mod && !e.shiftKey && !e.altKey && (e.key === 'p' || e.key === 'P')) {
+        e.preventDefault()
+        e.stopPropagation()
+        useUIStore.getState().setQuickOpenVisible(true)
+      }
+    }
+    document.documentElement.addEventListener('keydown', onKeyDown, { capture: true })
+    return () => document.documentElement.removeEventListener('keydown', onKeyDown, { capture: true })
+  }, [])
   // The right-side preview pane renders when the user toggled showPreview AND
   // the active buffer's type is one we know how to preview. The pane
   // component is decided per-buffer so switching tabs swaps the preview.
@@ -225,10 +242,13 @@ export default function App() {
     window.api.on('menu:mark', () => useUIStore.getState().openFind('mark', getEditorSelection()))
     window.api.on('menu:folder-open', (...args) => {
       const folder = args[0] as string
+      // Opening a fresh folder: drop any expanded paths from the previous root.
+      useUIStore.getState().setExpandedFolders([])
       useUIStore.getState().setWorkspaceFolder(folder)
       useUIStore.getState().setShowSidebar(true)
       useUIStore.getState().setSidebarPanel('files')
     })
+    window.api.on('menu:goto-file', () => useUIStore.getState().setQuickOpenVisible(true))
     window.api.on('ui:toggle-theme', () => {
       useUIStore.getState().toggleTheme()
       useConfigStore.getState().setProp('theme', useUIStore.getState().theme)
@@ -330,8 +350,20 @@ export default function App() {
       if (session?.files?.length || session?.virtualTabs?.length) {
         restoreSession(session)
       }
+      // Restore sidebar/file-browser state. Set expandedFolders BEFORE the
+      // workspaceFolder so FileBrowserPanel's load effect can rebuild the tree
+      // with the previously-expanded folders.
+      if (Array.isArray(session?.expandedFolders)) {
+        useUIStore.getState().setExpandedFolders(session.expandedFolders)
+      }
       if (session?.workspaceFolder) {
         useUIStore.getState().setWorkspaceFolder(session.workspaceFolder)
+      }
+      if (session?.sidebarPanel) {
+        useUIStore.getState().setSidebarPanel(session.sidebarPanel)
+      }
+      if (typeof session?.sidebarVisible === 'boolean') {
+        useUIStore.getState().setShowSidebar(session.sidebarVisible)
       }
       // Mark the auto-open trigger ready: any restored buffers are now in
       // place, so the auto-open will append AFTER them (BR-002 + Test 6).
@@ -429,7 +461,10 @@ export default function App() {
           ...(b.kind === 'pluginDetail' && b.pluginId ? { pluginId: b.pluginId } : {})
         })),
         activeIndex,
-        workspaceFolder: uiState.workspaceFolder
+        workspaceFolder: uiState.workspaceFolder,
+        sidebarVisible: uiState.showSidebar,
+        sidebarPanel: uiState.sidebarPanel,
+        expandedFolders: uiState.expandedFolders
       })
       window.api.send('app:close-confirmed')
     })
@@ -464,6 +499,7 @@ export default function App() {
       window.api.off('session:restore')
       window.api.off('app:before-close')
       window.api.off('menu:folder-open')
+      window.api.off('menu:goto-file')
       window.api.off('file:externally-changed')
       window.api.off('file:externally-deleted')
       window.api.off('menu:plugin-manager')
@@ -653,6 +689,7 @@ export default function App() {
 
       <FindReplaceDialog />
       <AboutDialog />
+      <QuickOpenPalette />
       <ToolsPanel />
       {csvViewerOpen && <CsvViewerOverlay csvText={csvViewerText} fileName={csvViewerFileName} />}
       {compareOpen && (

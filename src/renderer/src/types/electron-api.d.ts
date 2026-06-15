@@ -41,6 +41,10 @@ interface ElectronAPI {
     listDir: (
       dirPath: string
     ) => Promise<Array<{ name: string; path: string; isDir: boolean }>>
+    listFilesRecursive: (
+      dirPath: string,
+      max?: number
+    ) => Promise<{ files: Array<{ path: string; name: string }>; truncated: boolean }>
     create: (filePath: string) => Promise<{ error: string | null }>
     delete: (filePath: string) => Promise<{ error: string | null }>
     rename: (oldPath: string, newPath: string) => Promise<{ error: string | null }>
