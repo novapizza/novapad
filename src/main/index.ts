@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Menu, session } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 import { buildMenu } from './menu'
@@ -13,7 +13,25 @@ import { registerToolsHandlers } from './ipc/toolsHandlers'
 import { UpdateManager } from './update/UpdateManager'
 import { PluginLoader } from './plugins/PluginLoader'
 import { SessionManager } from './sessions/SessionManager'
+import { installNavigationGuards } from './windows/navigationGuards'
 import { loadRecents } from './recentFiles'
+
+// Mirror of the <meta> CSP in src/renderer/index.html, plus frame-ancestors
+// (which <meta> ignores). Keep the two in sync. style-src keeps 'unsafe-inline'
+// because Monaco/Radix inject inline styles; script-src needs neither
+// 'unsafe-inline' nor 'unsafe-eval' (verified: Monaco runs clean without them).
+const CSP_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
+  "img-src 'self' data: blob:",
+  "worker-src 'self' blob:",
+  "connect-src 'self' https://google.github.io",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "frame-ancestors 'none'"
+].join('; ')
 
 let mainWindow: BrowserWindow | null = null
 
@@ -134,7 +152,7 @@ function createWindow(): void {
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
+      sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
       // Electron defaults this to true, which loads a Hunspell dictionary
@@ -169,6 +187,8 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
+  installNavigationGuards(mainWindow.webContents)
+
   mainWindow.on('close', (e) => {
     if (process.env['E2E_TEST'] === '1') return // allow Playwright teardown
     // Let renderer handle unsaved changes check before close
@@ -200,6 +220,19 @@ app.whenReady().then(() => {
     const initialItems = classifyPaths(process.argv.slice(app.isPackaged ? 1 : 2))
     if (initialItems.length) pendingOpenItems.push(...initialItems)
   }
+
+  // Content-Security-Policy as a response header (defense in depth alongside the
+  // <meta> CSP in index.html). The header can express frame-ancestors, which <meta>
+  // cannot. Note: webRequest may not fire for file:// in the packaged build, so the
+  // <meta> tag remains the primary control there — this hardens dev + http subresources.
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [CSP_POLICY]
+      }
+    })
+  })
 
   // Register IPC handlers (no window dependency)
   registerFileHandlers()

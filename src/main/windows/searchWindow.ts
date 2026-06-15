@@ -1,5 +1,6 @@
 import { BrowserWindow, app } from 'electron'
 import { join } from 'path'
+import { installNavigationGuards } from './navigationGuards'
 
 let searchWin: BrowserWindow | null = null
 
@@ -35,11 +36,12 @@ export function openSearchWindow(mainWindow: BrowserWindow, mode: string): void 
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: true
     }
   })
 
   searchWin.setMenu(null)
+  installNavigationGuards(searchWin.webContents)
 
   // Hide instead of close so state is preserved
   searchWin.on('close', (e) => {
