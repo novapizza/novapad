@@ -1,0 +1,43 @@
+name: Dependency Audit
+
+# Surfaces known advisories for triage. Intentionally informational, not a hard
+# gate: the only current high-severity advisories are tar@6.2.1 nested under
+# magika -> @tensorflow/tfjs-node, which is excluded from the packaged bundle
+# (electron-builder.yml files array) and therefore not shipped to users. Real
+# remediation is driven by Dependabot PRs (.github/dependabot.yml). Promote the
+# blocking step below to remove `|| true` once the prod tree is clean.
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    # Mondays 06:00 UTC.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: pnpm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit production dependencies (high+; non-blocking)
+        run: pnpm audit --prod --audit-level high || true
+
+      - name: Full audit report (all severities; non-blocking)
+        run: pnpm audit || true
