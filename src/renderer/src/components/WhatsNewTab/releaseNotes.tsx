@@ -31,6 +31,32 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.5',
+    summary: (
+      <>
+        A small but welcome shortcut fix: <strong>Quick Open</strong> moves to{' '}
+        <span className="font-mono text-sm">Ctrl+Shift+P</span>, and{' '}
+        <span className="font-mono text-sm">Ctrl+P</span> goes back to opening <strong>Preview</strong> —
+        the way it always worked.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'Quick Open & Preview shortcuts, sorted out',
+        body: (
+          <>
+            <strong>Quick Open</strong> now lives on <span className="font-mono text-sm">Ctrl+Shift+P</span>{' '}
+            (<span className="font-mono text-sm">⌘⇧P</span> on macOS), and{' '}
+            <span className="font-mono text-sm">Ctrl+P</span> (<span className="font-mono text-sm">⌘P</span>)
+            once again toggles <strong>Preview</strong> for Markdown, JSON, CSV, and SQL plans — restoring the
+            long-standing shortcut that briefly moved in the previous release. Preview now works from{' '}
+            <span className="font-mono text-sm">Ctrl+P</span> even while you're typing in the editor.
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.5.4',
     summary: (
       <>
