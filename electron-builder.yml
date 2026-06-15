@@ -2,6 +2,10 @@ appId: com.novapad.app
 productName: NovaPad
 copyright: Copyright © 2026 NovaPad
 
+# Flip Electron fuses + enable embedded asar integrity validation after packaging
+# (runs before afterSign so the signature covers the post-flip binary). See build/fuses.cjs.
+afterPack: build/fuses.cjs
+
 # LZMA-max NSIS payload + en-US-only Electron locales. Drops ~50 unused .pak
 # files (~12 MB raw, ~3 MB compressed) and gives the installer another 5-10 %
 # off via maximum LZMA compression at slower build time.

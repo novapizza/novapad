@@ -13,6 +13,8 @@ dist/
 build/*
 !build/entitlements.mac.plist
 !build/installer.nsh
+!build/fuses.cjs
+!build/notarize.cjs
 *.tsbuildinfo
 
 # ── Electron builder artifacts ───────────────────────────────────────────────────
