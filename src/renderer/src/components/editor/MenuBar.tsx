@@ -6,6 +6,7 @@ import {
   PanelLeftClose, PanelLeft,
   RotateCcw, ChevronRight, Clock,
   Settings as SettingsIcon, Sun, Moon, Keyboard,
+  Printer, FileDown,
 } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { useEditorStore } from '../../store/editorStore'
@@ -68,10 +69,10 @@ export function MenuBar({
   const {
     showToolbar, showStatusBar, showSidebar,
     wordWrap, renderWhitespace, showEOL, showNonPrinting, showControlChars,
-    indentationGuides, columnSelectMode, theme,
+    indentationGuides, columnSelectMode, splitView, theme,
     setShowToolbar, setShowStatusBar, setShowSidebar,
     setWordWrap, setRenderWhitespace, setShowEOL, setShowNonPrinting, setShowControlChars,
-    setIndentationGuides, setColumnSelectMode,
+    setIndentationGuides, setColumnSelectMode, setSplitView,
   } = useUIStore()
   const dynamicMenuItems = usePluginStore((s) => s.dynamicMenuItems)
   // Reactive active-buffer encoding/EOL so the Encoding menu shows a checkmark
@@ -132,6 +133,9 @@ export function MenuBar({
       { separator: true, label: '' },
       { label: '&Reload from Disk', icon: <RotateCcw size={18} />, shortcut: `${mod}+R`, action: onReload },
       { label: 'Rec&ent Files', icon: <Clock size={18} />, submenu: recentFilesSubmenu },
+      { separator: true, label: '' },
+      { label: '&Print...', icon: <Printer size={18} />, shortcut: `${mod}+${alt}+P`, action: editorCmd('printDocument') },
+      { label: 'Export to P&DF...', icon: <FileDown size={18} />, action: editorCmd('exportPdf') },
       { separator: true, label: '' },
       { label: '&Close File', icon: <X size={18} />, shortcut: `${mod}+W`, action: onClose },
       { label: 'Close All Fi&les', action: onCloseAll },
@@ -293,7 +297,7 @@ export function MenuBar({
         ],
       },
       { separator: true, label: '' },
-      { label: 'S&plit View', disabled: true },
+      { label: 'S&plit View', shortcut: `${mod}+\\`, checked: splitView, action: () => setSplitView(!splitView) },
     ],
     Encoding: (() => {
       // Mirror the status-bar pickers: dispatching these CustomEvents is what

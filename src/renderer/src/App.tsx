@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, lazy, Suspense } from 'react'
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels'
 import { EditorPane } from './components/EditorPane/EditorPane'
+import { SplitEditorPane } from './components/EditorPane/SplitEditorPane'
 import { SettingsTab } from './components/SettingsTab/SettingsTab'
 import { ShortcutsTab } from './components/ShortcutsTab/ShortcutsTab'
 import { WhatsNewTab } from './components/WhatsNewTab/WhatsNewTab'
@@ -89,7 +90,7 @@ export default function App() {
   const { activeId, buffers } = useEditorStore()
   const activeBuffer = buffers.find((b) => b.id === activeId)
   const activeKind = activeBuffer?.kind ?? 'file'
-  const { theme, showToolbar, showStatusBar, showBottomPanel, showSidebar, openFind, csvViewerOpen, csvViewerText, csvViewerFileName, showPreview, previewFullscreen, compareOpen, transformOpen } = useUIStore()
+  const { theme, showToolbar, showStatusBar, showBottomPanel, showSidebar, openFind, csvViewerOpen, csvViewerText, csvViewerFileName, showPreview, previewFullscreen, compareOpen, transformOpen, splitView } = useUIStore()
   // Auto-close the preview pane when the user switches tabs. Without this,
   // toggling preview on (say) a .md tab would leave it open across every
   // tab whose buffer type also happens to be previewable, which surprises
@@ -132,6 +133,13 @@ export default function App() {
   // covering the whole window, so reserving split-panel space would be wasted.
   const previewVisible = previewKind !== null && !previewFullscreen
   const previewFullscreenVisible = previewKind !== null && previewFullscreen
+  // Split View: a second editor mirroring the active file buffer. Suppressed
+  // for virtual tabs (settings/plugins) and while a preview is fullscreen.
+  const splitVisible = splitView && activeKind === 'file' && !!activeId && !previewFullscreen
+  // Distribute the editor row across however many panes are showing so the
+  // three defaultSizes always sum to 100 (react-resizable-panels normalizes,
+  // but matching keeps the initial layout stable).
+  const editorContentSize = splitVisible && previewVisible ? 40 : splitVisible || previewVisible ? 55 : 100
   const { openFiles, newFile, saveBuffer, saveActiveAs, closeBuffer, reloadBuffer, loadBuffer, restoreSession } = useFileOps()
   // Mount window-level keyboard (Alt+Left/Right or Ctrl+-) and mouse
   // back/forward button listeners that drive navigation history.
@@ -257,6 +265,7 @@ export default function App() {
     window.api.on('ui:toggle-toolbar', (...args) => useUIStore.getState().setShowToolbar(args[0] as boolean, true))
     window.api.on('ui:toggle-statusbar', (...args) => useUIStore.getState().setShowStatusBar(args[0] as boolean, true))
     window.api.on('ui:toggle-sidebar', (...args) => useUIStore.getState().setShowSidebar(args[0] as boolean, true))
+    window.api.on('ui:toggle-split-view', (...args) => useUIStore.getState().setSplitView(args[0] as boolean, true))
     window.api.on('ui:show-toast', (...args) => {
       useUIStore.getState().addToast(args[0] as string, (args[1] as 'info' | 'warn' | 'error') ?? 'info')
     })
@@ -494,6 +503,7 @@ export default function App() {
       window.api.off('ui:toggle-toolbar')
       window.api.off('ui:toggle-statusbar')
       window.api.off('ui:toggle-sidebar')
+      window.api.off('ui:toggle-split-view')
       window.api.off('ui:show-toast')
       window.api.off('tab:next')
       window.api.off('tab:prev')
@@ -607,7 +617,7 @@ export default function App() {
               )}
               <Panel id="editor-main" order={2} defaultSize={showSidebar ? 82 : 100} minSize={20}>
                 <PanelGroup direction="horizontal" id="editor-preview-split" className="h-full">
-                  <Panel id="editor-content" order={1} defaultSize={previewVisible ? 55 : 100} minSize={20}>
+                  <Panel id="editor-content" order={1} defaultSize={editorContentSize} minSize={20}>
                     <div className="flex flex-col h-full overflow-hidden">
                       <TabBar onClose={closeBuffer} onNewFile={newFile} />
                       <div className="flex flex-1 overflow-hidden relative">
@@ -646,13 +656,24 @@ export default function App() {
                       </div>
                     </div>
                   </Panel>
+                  {splitVisible && (
+                    <>
+                      <PanelResizeHandle
+                        id="split-editor-resize"
+                        className="w-1 bg-border cursor-col-resize shrink-0 transition-colors hover:bg-primary data-[resize-handle-active]:bg-primary"
+                      />
+                      <Panel id="split-editor-pane" order={2} defaultSize={previewVisible ? 30 : 45} minSize={15}>
+                        <SplitEditorPane />
+                      </Panel>
+                    </>
+                  )}
                   {previewVisible && (
                     <>
                       <PanelResizeHandle
                         id="md-preview-resize"
                         className="w-1 bg-border cursor-col-resize shrink-0 transition-colors hover:bg-primary data-[resize-handle-active]:bg-primary"
                       />
-                      <Panel id="preview-pane" order={2} defaultSize={45} minSize={20}>
+                      <Panel id="preview-pane" order={3} defaultSize={splitVisible ? 30 : 45} minSize={20}>
                         <Suspense fallback={
                           <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
                             Loading preview…

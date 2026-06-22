@@ -6,9 +6,11 @@ import {
   ZoomIn, ZoomOut, RotateCcw,
   IndentIncrease, IndentDecrease, MessageSquare,
   ArrowUpDown, Eraser,
+  Files, ListTree, Map as MapIcon,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { editorRegistry } from '../../utils/editorRegistry'
+import { useUIStore } from '../../store/uiStore'
 import { shortcutMod } from '../../utils/platform'
 
 interface ToolbarProps {
@@ -27,6 +29,17 @@ interface ToolbarItem {
   action?: () => void
   /** Per-icon accent color (Tailwind text class). Falls back to toolbar-foreground. */
   color?: string
+}
+
+/** Open the sidebar to a specific panel, or close it if that panel is already showing. */
+function toggleSidebarPanel(panel: 'files' | 'functions' | 'docmap') {
+  const ui = useUIStore.getState()
+  if (ui.showSidebar && ui.sidebarPanel === panel) {
+    ui.setShowSidebar(false)
+  } else {
+    ui.setSidebarPanel(panel)
+    ui.setShowSidebar(true)
+  }
 }
 
 function editorCommand(command: string) {
@@ -96,6 +109,12 @@ export function Toolbar({ onNew, onOpen, onSave, onSaveAll, onFind, onReplace, o
     [
       { icon: <ArrowUpDown size={sz} />, title: 'Sort Lines', action: () => editorCommand('sortLinesAsc'), color: C_RED },
       { icon: <Eraser size={sz} />, title: 'Trim Whitespace', action: () => editorCommand('trimTrailingWhitespace'), color: C_GRAY },
+    ],
+    // Panels — open the sidebar to a specific view
+    [
+      { icon: <Files size={sz} />, title: `Explorer (${mod}+B)`, action: () => toggleSidebarPanel('files'), color: C_BLUE },
+      { icon: <ListTree size={sz} />, title: 'Function / Symbol List', action: () => toggleSidebarPanel('functions'), color: C_PURPLE },
+      { icon: <MapIcon size={sz} />, title: 'Document Map', action: () => toggleSidebarPanel('docmap'), color: C_GREEN },
     ],
   ]
 

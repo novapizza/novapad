@@ -30,7 +30,7 @@ interface UIState {
   indentationGuides: boolean
   columnSelectMode: boolean
   splitView: boolean
-  sidebarPanel: 'files' | 'search' | 'plugins'
+  sidebarPanel: 'files' | 'search' | 'plugins' | 'functions' | 'docmap'
   workspaceFolder: string | null
   /** Paths of folders currently expanded in the File Browser tree (persisted across sessions). */
   expandedFolders: string[]

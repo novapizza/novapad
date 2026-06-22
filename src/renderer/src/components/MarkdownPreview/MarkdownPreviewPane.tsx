@@ -3,7 +3,7 @@ import * as monaco from 'monaco-editor'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
-import { Eye, X } from 'lucide-react'
+import { Eye, X, FileCode, FileDown } from 'lucide-react'
 import {
   DiagramRenderer,
   bootstrapDiagramRenderers,
@@ -12,7 +12,9 @@ import {
 } from 'merslim'
 import { editorRegistry } from '../../utils/editorRegistry'
 import { useUIStore } from '../../store/uiStore'
+import { useEditorStore } from '../../store/editorStore'
 import { usePreviewFullscreen } from '../preview/previewFullscreen'
+import { downloadText, buildStandaloneHtml } from '../../utils/exportDoc'
 
 // Highlight.js stylesheet — dynamically swapped between light/dark via the
 // effect below so code blocks match the rest of the editor theme.
@@ -67,10 +69,27 @@ export const MarkdownPreviewPane: React.FC = () => {
   const [content, setContent] = useState('')
   const setMarkdownPreview = useUIStore((s) => s.setMarkdownPreview)
   const { sectionClass, Toggle: FullscreenToggle } = usePreviewFullscreen()
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const title = useEditorStore((s) => {
+    const buf = s.buffers.find((b) => b.id === s.activeId)
+    return buf?.title ?? 'document.md'
+  })
 
   useEffect(() => {
     bootstrapDiagramRenderers()
   }, [])
+
+  // Export the rendered preview. innerHTML is markup produced by our own
+  // ReactMarkdown render, wrapped in a self-contained, styled document.
+  const baseName = title.replace(/\.[^.]+$/, '') || 'document'
+  const renderedHtml = () => buildStandaloneHtml(title, bodyRef.current?.innerHTML ?? '')
+  const exportHtml = () =>
+    downloadText(`${baseName}.html`, renderedHtml(), 'text/html;charset=utf-8')
+  const exportPdf = async () => {
+    const res = await window.api.print.toPdf(renderedHtml(), `${baseName}.pdf`)
+    if (res?.error) useUIStore.getState().addToast(`PDF export failed: ${res.error}`, 'error')
+    else if (!res?.canceled) useUIStore.getState().addToast('Saved PDF.', 'info')
+  }
 
   // Read the editor's current model + watch content changes. Re-runs when the
   // editor instance changes (rare) or when the active model changes (every
@@ -106,6 +125,22 @@ export const MarkdownPreviewPane: React.FC = () => {
           Markdown Preview
         </span>
         <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={exportHtml}
+            aria-label="Export as HTML"
+            title="Export as HTML"
+            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <FileCode size={14} />
+          </button>
+          <button
+            onClick={exportPdf}
+            aria-label="Export as PDF"
+            title="Export as PDF"
+            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <FileDown size={14} />
+          </button>
           {FullscreenToggle}
           <button
             onClick={() => setMarkdownPreview(false)}
@@ -117,7 +152,7 @@ export const MarkdownPreviewPane: React.FC = () => {
           </button>
         </div>
       </header>
-      <div className="flex-1 overflow-auto p-4 markdown-body">
+      <div ref={bodyRef} className="flex-1 overflow-auto p-4 markdown-body">
         <ReactMarkdown
           remarkPlugins={REMARK_PLUGINS}
           rehypePlugins={REHYPE_PLUGINS}

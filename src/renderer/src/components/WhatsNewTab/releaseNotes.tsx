@@ -31,6 +31,62 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.6',
+    summary: (
+      <>
+        Four editor staples land at once: a <strong>Function&nbsp;/&nbsp;Symbol List</strong> and{' '}
+        <strong>Document Map</strong> in the sidebar, a real <strong>Split View</strong>, and{' '}
+        <strong>Print / Export to PDF</strong> — plus one-click <strong>HTML / PDF</strong> export from the
+        Markdown preview and <strong>JSON / JSON&nbsp;Schema</strong> export from the JSON preview.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'Function List & Document Map in the sidebar',
+        body: (
+          <>
+            The activity bar gains two new panels: <strong>Symbols</strong> lists the functions, classes, and
+            other symbols in the current file (click to jump), and <strong>Map</strong> shows a bird's-eye{' '}
+            <strong>document map</strong> you can click to scroll. Both live next to the File Browser.
+          </>
+        )
+      },
+      {
+        title: 'Split View',
+        body: (
+          <>
+            Toggle <strong>Split View</strong> (<span className="font-mono text-sm">Ctrl+\</span>, or{' '}
+            <span className="font-mono text-sm">View ▸ Split View</span>) to open a second editor beside the
+            first. It mirrors the active document — edits in either side stay in sync, while scroll position and
+            cursor are independent.
+          </>
+        )
+      },
+      {
+        title: 'Print & Export to PDF',
+        body: (
+          <>
+            <span className="font-mono text-sm">File ▸ Print…</span> (
+            <span className="font-mono text-sm">Ctrl+Alt+P</span>) opens the system print dialog, and{' '}
+            <span className="font-mono text-sm">File ▸ Export to PDF…</span> writes a clean, line-numbered PDF
+            of the current document.
+          </>
+        )
+      },
+      {
+        title: 'Export from preview panes',
+        body: (
+          <>
+            The <strong>Markdown</strong> preview can now export the rendered document as{' '}
+            <strong>HTML</strong> or <strong>PDF</strong>, and the <strong>JSON</strong> preview can export
+            <strong> formatted JSON</strong> or an <strong>inferred JSON Schema</strong> — all from the pane
+            header. (CSV export — all rows, filtered, or changed — already lives in the Table Lens preview.)
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.5.5',
     summary: (
       <>

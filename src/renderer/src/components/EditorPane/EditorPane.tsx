@@ -433,6 +433,36 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
         })()
         break
       }
+      case 'printDocument':
+      case 'exportPdf': {
+        // File ▸ Print / Export to PDF — render the active buffer to a clean,
+        // line-numbered HTML document in the main process and either open the
+        // system print dialog or write a PDF via a Save dialog.
+        const id = currentIdRef.current
+        const model = editor.getModel()
+        if (!id || !model) break
+        const buf = useEditorStore.getState().getBuffer(id)
+        const title = buf?.title ?? 'document'
+        const content = model.getValue()
+        ;(async () => {
+          const { buildPlainDocumentHtml } = await import('../../utils/exportDoc')
+          const html = buildPlainDocumentHtml({ title, content })
+          if (command === 'exportPdf') {
+            const base = buf?.filePath
+              ? buf.filePath.replace(/\.[^.]+$/, '')
+              : title.replace(/\.[^.]+$/, '')
+            const res = await window.api.print.toPdf(html, `${base}.pdf`)
+            if (res?.error) useUIStore.getState().addToast(`PDF export failed: ${res.error}`, 'error')
+            else if (!res?.canceled) useUIStore.getState().addToast('Saved PDF.', 'info')
+          } else {
+            const res = await window.api.print.document(html)
+            if (res && !res.success && res.error) {
+              useUIStore.getState().addToast(`Print failed: ${res.error}`, 'error')
+            }
+          }
+        })()
+        break
+      }
     }
   }, [toggleBookmark, nextBookmark, prevBookmark, clearBookmarks])
 

@@ -90,6 +90,15 @@ const api = {
     hashFiles: (algo: string) => ipcRenderer.invoke('tools:hash-files', algo)
   },
 
+  // Printing / PDF — render trusted HTML in an offscreen window in main.
+  print: {
+    /** Build a PDF from `html` and save it via a Save dialog. */
+    toPdf: (html: string, defaultPath?: string) =>
+      ipcRenderer.invoke('print:to-pdf', { html, defaultPath }),
+    /** Open the system print dialog for `html`. */
+    document: (html: string) => ipcRenderer.invoke('print:document', { html })
+  },
+
   // App-level metadata
   app: {
     /** Reliable app version from app.getVersion() (preferred over the legacy appVersion constant). */

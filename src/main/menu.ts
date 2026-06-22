@@ -110,6 +110,16 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
         },
         { type: 'separator' },
         {
+          label: 'Print…',
+          accelerator: 'CmdOrCtrl+Alt+P',
+          click: () => win.webContents.send('editor:command', 'printDocument')
+        },
+        {
+          label: 'Export to PDF…',
+          click: () => win.webContents.send('editor:command', 'exportPdf')
+        },
+        { type: 'separator' },
+        {
           label: 'Close',
           accelerator: 'CmdOrCtrl+W',
           click: () => win.webContents.send('menu:file-close')
@@ -437,9 +447,9 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
         {
           id: 'toggle-split-view',
           label: 'Split View',
+          accelerator: 'CmdOrCtrl+\\',
           type: 'checkbox',
           checked: false,
-          enabled: false,
           click: (item) => win.webContents.send('ui:toggle-split-view', item.checked)
         }
       ]

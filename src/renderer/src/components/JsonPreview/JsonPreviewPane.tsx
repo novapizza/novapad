@@ -1,10 +1,12 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react'
 import {
-  Braces, X, Wrench, GitCompare, Code2, Unlink, Network, ShieldCheck, Search,
+  Braces, X, Wrench, GitCompare, Code2, Unlink, Network, ShieldCheck, Search, FileJson, FileCode,
 } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { useEditorStore } from '../../store/editorStore'
 import { usePreviewFullscreen } from '../preview/previewFullscreen'
+import { downloadText } from '../../utils/exportDoc'
+import { inferJsonSchema } from '../../utils/inferJsonSchema'
 import { FormatTab } from './FormatTab'
 
 // Format is the default tab → bundled with the pane shell so the first render
@@ -61,6 +63,33 @@ export const JsonPreviewPane: React.FC = () => {
     const buf = s.buffers.find((b) => b.id === s.activeId)
     return buf?.model ?? null
   })
+  const title = useEditorStore((s) => {
+    const buf = s.buffers.find((b) => b.id === s.activeId)
+    return buf?.title ?? 'data.json'
+  })
+  const baseName = title.replace(/\.[^.]+$/, '') || 'data'
+
+  // Export the formatted (pretty-printed) JSON; falls back to the raw text if
+  // the buffer isn't valid JSON.
+  const exportJson = () => {
+    let out = content
+    try {
+      out = JSON.stringify(JSON.parse(content), null, 2)
+    } catch {
+      /* save as-is */
+    }
+    downloadText(`${baseName}.json`, out, 'application/json;charset=utf-8')
+  }
+
+  // Infer a JSON Schema from the current content and export it.
+  const exportSchema = () => {
+    try {
+      const schema = inferJsonSchema(JSON.parse(content))
+      downloadText(`${baseName}.schema.json`, JSON.stringify(schema, null, 2), 'application/json;charset=utf-8')
+    } catch {
+      useUIStore.getState().addToast('Cannot infer schema — content is not valid JSON.', 'warn')
+    }
+  }
 
   useEffect(() => {
     if (!activeModel) {
@@ -80,6 +109,22 @@ export const JsonPreviewPane: React.FC = () => {
           JSON Mighty Tools
         </span>
         <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={exportJson}
+            aria-label="Export formatted JSON"
+            title="Export formatted JSON"
+            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <FileJson size={14} />
+          </button>
+          <button
+            onClick={exportSchema}
+            aria-label="Export inferred JSON Schema"
+            title="Export inferred JSON Schema"
+            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <FileCode size={14} />
+          </button>
           {FullscreenToggle}
           <button
             onClick={() => setShowPreview(false)}

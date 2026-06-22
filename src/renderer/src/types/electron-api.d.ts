@@ -106,6 +106,14 @@ interface ElectronAPI {
     }>
   }
 
+  print: {
+    toPdf: (
+      html: string,
+      defaultPath?: string
+    ) => Promise<{ canceled: boolean; filePath?: string; error?: string }>
+    document: (html: string) => Promise<{ success: boolean; error?: string }>
+  }
+
   app: {
     getVersion: () => Promise<string>
   }

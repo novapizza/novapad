@@ -10,6 +10,7 @@ import { registerWatchHandlers } from './ipc/watchHandlers'
 import { registerUpdateHandlers } from './ipc/updateHandlers'
 import { registerBackupHandlers } from './ipc/backupHandlers'
 import { registerToolsHandlers } from './ipc/toolsHandlers'
+import { registerPrintHandlers } from './ipc/printHandlers'
 import { UpdateManager } from './update/UpdateManager'
 import { PluginLoader } from './plugins/PluginLoader'
 import { SessionManager } from './sessions/SessionManager'
@@ -240,6 +241,7 @@ app.whenReady().then(() => {
   registerPluginHandlers()
   registerBackupHandlers()
   registerToolsHandlers()
+  registerPrintHandlers()
 
   createWindow()
 

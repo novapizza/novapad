@@ -1,12 +1,12 @@
 import React from 'react'
-import { Files, Search, Settings, Puzzle } from 'lucide-react'
+import { Files, Search, Settings, Puzzle, ListTree, Map as MapIcon } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { useUIStore } from '../../store/uiStore'
 import { useEditorStore } from '../../store/editorStore'
 import { shortcutMod } from '../../utils/platform'
 import { cn } from '../../lib/utils'
 
-type SidebarPanelId = 'files' | 'search' | 'plugins'
+type SidebarPanelId = 'files' | 'search' | 'plugins' | 'functions' | 'docmap'
 
 const PANEL_IDS = new Set<string>(['files', 'project', 'docmap', 'functions'])
 
@@ -15,6 +15,8 @@ export function SideNav() {
   const NAV_ITEMS: { id: SidebarPanelId; icon: React.ReactNode; label: string; tip: string }[] = [
     { id: 'files',     icon: <Files size={18} />,            label: 'Files',    tip: 'File Browser' },
     { id: 'search',    icon: <Search size={18} />,           label: 'Search',   tip: `Find & Replace (${mod}+F)` },
+    { id: 'functions', icon: <ListTree size={18} />,         label: 'Symbols',  tip: 'Function / Symbol List' },
+    { id: 'docmap',    icon: <MapIcon size={18} />,          label: 'Map',      tip: 'Document Map' },
     { id: 'plugins',   icon: <Puzzle size={18} />,           label: 'Plugins',  tip: 'Plugin Manager' },
   ]
   const {
