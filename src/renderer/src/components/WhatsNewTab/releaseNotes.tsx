@@ -31,7 +31,7 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: '1.5.6',
+    version: '1.5.7',
     summary: (
       <>
         Four editor staples land at once: a <strong>Function&nbsp;/&nbsp;Symbol List</strong> and{' '}
