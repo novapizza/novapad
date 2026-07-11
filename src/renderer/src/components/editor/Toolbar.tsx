@@ -43,12 +43,16 @@ function toggleSidebarPanel(panel: 'files' | 'functions' | 'docmap') {
 }
 
 function editorCommand(command: string) {
+  // Whole-window zoom is handled globally in App.tsx and must work even with no
+  // active editor — route it through the shared editor:command event and bail
+  // before the editor guard below.
+  if (command === 'zoomIn' || command === 'zoomOut' || command === 'zoomReset') {
+    window.dispatchEvent(new CustomEvent('editor:command', { detail: command }))
+    return
+  }
   const editor = editorRegistry.get()
   if (!editor) return
   switch (command) {
-    case 'zoomIn': editor.trigger('keyboard', 'editor.action.fontZoomIn', {}); break
-    case 'zoomOut': editor.trigger('keyboard', 'editor.action.fontZoomOut', {}); break
-    case 'zoomReset': editor.trigger('keyboard', 'editor.action.fontZoomReset', {}); break
     case 'indentLines': editor.trigger('keyboard', 'editor.action.indentLines', {}); break
     case 'outdentLines': editor.trigger('keyboard', 'editor.action.outdentLines', {}); break
     case 'toggleComment': editor.getAction('editor.action.commentLine')?.run(); break

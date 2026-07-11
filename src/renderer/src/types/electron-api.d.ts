@@ -118,6 +118,14 @@ interface ElectronAPI {
     getVersion: () => Promise<string>
   }
 
+  zoom: {
+    get: () => number
+    set: (level: number) => number
+    in: () => number
+    out: () => number
+    reset: () => number
+  }
+
   update: {
     check: () => Promise<void>
     install: () => Promise<void>

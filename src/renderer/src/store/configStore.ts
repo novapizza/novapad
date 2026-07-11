@@ -46,6 +46,9 @@ export interface AppConfig {
   /** App version string the user was last shown the auto-open for; null = never seen. */
   lastSeenVersion: string | null
 
+  /** Whole-window zoom level (Electron webFrame zoom level; 0 = 100%). Applied on launch. */
+  windowZoomLevel: number
+
   /** Keyboard-shortcut overrides keyed by command id (see shortcutCatalog).
    *  Absent entries fall back to the catalog default. */
   shortcuts: Record<string, string>
@@ -80,6 +83,7 @@ export const CONFIG_DEFAULTS: AppConfig = {
   rememberUnsavedOnExit: true,
   snapshotIntervalMs: 7000,
   lastSeenVersion: null,
+  windowZoomLevel: 0,
   shortcuts: {}
 }
 

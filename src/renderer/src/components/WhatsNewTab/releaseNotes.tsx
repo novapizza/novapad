@@ -94,6 +94,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             <PreviewButtonsDemo />
           </>
         )
+      },
+      {
+        title: 'Whole-window zoom',
+        body: (
+          <>
+            <span className="font-mono text-sm">Ctrl/Cmd</span> <span className="font-mono text-sm">+</span> /{' '}
+            <span className="font-mono text-sm">-</span> / <span className="font-mono text-sm">0</span> now zoom the
+            entire app (UI and editor) and work everywhere — even on the Welcome screen. The zoom level is
+            remembered across launches.
+          </>
+        )
       }
     ]
   },

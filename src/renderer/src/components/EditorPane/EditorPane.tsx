@@ -127,15 +127,8 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
       case 'goToLine':
         editor.getAction('editor.action.gotoLine')?.run()
         break
-      case 'zoomIn':
-        editor.trigger('keyboard', 'editor.action.fontZoomIn', {})
-        break
-      case 'zoomOut':
-        editor.trigger('keyboard', 'editor.action.fontZoomOut', {})
-        break
-      case 'zoomReset':
-        editor.trigger('keyboard', 'editor.action.fontZoomReset', {})
-        break
+      // zoomIn/zoomOut/zoomReset are handled globally in App.tsx (whole-window
+      // zoom via webFrame) so they work even without an active editor.
       case 'sortLinesAsc':
         editor.getAction('editor.action.sortLinesAscending')?.run()
         break
@@ -505,7 +498,9 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
         verticalScrollbarSize: 10,
         horizontalScrollbarSize: 10
       },
-      mouseWheelZoom: true,
+      // Match VS Code / Cursor defaults: Ctrl+wheel does NOT zoom the editor
+      // font. Whole-window zoom is via Cmd/Ctrl +/-/0 (handled in App.tsx).
+      mouseWheelZoom: false,
       padding: { top: 4 }
     })
 

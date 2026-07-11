@@ -37,6 +37,14 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 - **What's New now activates on first launch of a new version** when the workspace is empty
   (it opens in the background when a session with files was restored, as before). Its header
   gained the app name and a larger logo.
+- **Zoom now zooms the whole window** (UI + editor) via Zoom In / Out / Reset
+  (`Ctrl/Cmd` `+` / `-` / `0`) and works everywhere, including the Welcome screen and
+  virtual tabs. The level is remembered across launches. `Ctrl`+mouse-wheel no longer zooms
+  the editor font, matching VS Code / Cursor defaults.
+
+### Fixed
+- **Zoom In / Out / Reset did nothing unless a file was open in the editor** — they only drove
+  Monaco's per-editor font zoom. They now control whole-window zoom and always work.
 
 [Unreleased]: https://github.com/novapizza/notepadandmore/compare/v1.5.8...HEAD
 [1.5.8]: https://github.com/novapizza/notepadandmore/releases/tag/v1.5.8

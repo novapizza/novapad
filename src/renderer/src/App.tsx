@@ -191,6 +191,37 @@ export default function App() {
     })()
   }, [configLoaded, readyForAutoOpen])
 
+  // Apply the persisted whole-window zoom once config has loaded.
+  const zoomAppliedRef = useRef(false)
+  useEffect(() => {
+    if (!configLoaded || zoomAppliedRef.current) return
+    zoomAppliedRef.current = true
+    window.api.zoom.set(useConfigStore.getState().windowZoomLevel ?? 0)
+  }, [configLoaded])
+
+  // Whole-window zoom (UI + editor) handled here so it works regardless of the
+  // active tab — including the Welcome screen and virtual tabs where no Monaco
+  // editor is mounted. Fires for both native-menu IPC and custom MenuBar/Toolbar
+  // CustomEvents on the shared 'editor:command' channel.
+  useEffect(() => {
+    const applyZoom = (cmd: string): void => {
+      let level: number
+      if (cmd === 'zoomIn') level = window.api.zoom.in()
+      else if (cmd === 'zoomOut') level = window.api.zoom.out()
+      else if (cmd === 'zoomReset') level = window.api.zoom.reset()
+      else return
+      useConfigStore.getState().setProp('windowZoomLevel', level)
+    }
+    const ipcHandler = (...args: unknown[]) => applyZoom(args[0] as string)
+    const customHandler = (e: Event) => applyZoom((e as CustomEvent<string>).detail)
+    const unsub = window.api.on('editor:command', ipcHandler)
+    window.addEventListener('editor:command', customHandler)
+    return () => {
+      unsub()
+      window.removeEventListener('editor:command', customHandler)
+    }
+  }, [])
+
   // Wire up menu IPC events
   useEffect(() => {
     window.api.on('menu:file-new', () => newFile())

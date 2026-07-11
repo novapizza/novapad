@@ -1,4 +1,15 @@
-import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import { contextBridge, ipcRenderer, webUtils, webFrame } from 'electron'
+
+// Whole-window zoom (Electron webFrame). Level 0 = 100%; each step ≈ 20%.
+const ZOOM_STEP = 0.5
+const ZOOM_MIN = -3
+const ZOOM_MAX = 4
+const clampZoom = (l: number): number => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, l))
+const applyZoom = (l: number): number => {
+  const clamped = clampZoom(l)
+  webFrame.setZoomLevel(clamped)
+  return clamped
+}
 
 // Expose safe IPC API to renderer via window.api
 const api = {
@@ -103,6 +114,16 @@ const api = {
   app: {
     /** Reliable app version from app.getVersion() (preferred over the legacy appVersion constant). */
     getVersion: (): Promise<string> => ipcRenderer.invoke('app:get-version')
+  },
+
+  // Whole-window zoom (UI + editor). Each method returns the resulting zoom level
+  // so the renderer can persist it. Level 0 = 100%.
+  zoom: {
+    get: (): number => webFrame.getZoomLevel(),
+    set: (level: number): number => applyZoom(level),
+    in: (): number => applyZoom(webFrame.getZoomLevel() + ZOOM_STEP),
+    out: (): number => applyZoom(webFrame.getZoomLevel() - ZOOM_STEP),
+    reset: (): number => applyZoom(0)
   },
 
   // Auto-update operations
