@@ -4,6 +4,7 @@ import { useAltHeld } from '../../../hooks/useAltHeld'
 import { useAltMnemonics } from '../../../hooks/useAltMnemonics'
 import { MnemonicLabel } from '../../../utils/mnemonic'
 import { isWindows } from '../../../utils/platform'
+import logoUrl from '../../../assets/logo-animated.svg'
 
 export function AboutDialog() {
   const { showAbout, setShowAbout } = useUIStore()
@@ -46,6 +47,7 @@ export function AboutDialog() {
           >✕</button>
         </div>
         <div className="px-6 py-4 text-center">
+          <img src={logoUrl} alt="NovaPad" width={56} height={56} className="mx-auto mb-2 rounded-lg" draggable={false} />
           <div className="text-lg font-semibold text-foreground">NovaPad</div>
           <div className="text-base text-muted-foreground mt-1">{version ? `Version ${version}` : ' '}</div>
           <p className="text-base text-muted-foreground mt-3 leading-relaxed">

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { FilePlus, FolderOpen, Clock } from 'lucide-react'
 import { useConfigStore } from '../../store/configStore'
 import { shortcutMod } from '../../utils/platform'
+import logoUrl from '../../assets/logo-animated.svg'
 
 interface WelcomeScreenProps {
   onNewFile: () => void
@@ -23,9 +24,7 @@ export function WelcomeScreen({ onNewFile, onOpenFile, onOpenRecent }: WelcomeSc
   return (
     <div className="flex justify-center w-full h-full bg-background pt-[10%]">
       <div className="flex flex-col items-center gap-6">
-        <div className="w-24 h-24 mx-auto rounded-2xl bg-muted flex items-center justify-center">
-          <span className="text-4xl font-bold font-mono text-muted-foreground leading-none">N+</span>
-        </div>
+        <img src={logoUrl} alt="NovaPad" className="w-24 h-24 mx-auto" draggable={false} />
 
         <div className="min-w-[340px] border border-border rounded-lg overflow-hidden bg-card">
             <button

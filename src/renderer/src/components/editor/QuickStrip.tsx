@@ -2,6 +2,7 @@ import { PanelLeftClose, PanelLeft } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { SettingsMenu } from './SettingsMenu'
 import { NavButtons } from './NavButtons'
+import logoUrl from '../../assets/logo-mark.svg'
 
 interface QuickStripProps {
   onToggleSidebar: () => void
@@ -21,9 +22,7 @@ export function QuickStrip({ onToggleSidebar }: QuickStripProps) {
 
       {/* App icon */}
       <div className="flex items-center gap-2 px-2" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-        <div className="w-5 h-5 rounded-sm bg-primary flex items-center justify-center shrink-0">
-          <span className="text-primary-foreground text-[10px] font-bold font-mono leading-none">N+</span>
-        </div>
+        <img src={logoUrl} alt="NovaPad" className="w-5 h-5 shrink-0" draggable={false} />
         <span className="text-sm font-semibold text-toolbar-foreground tracking-tight">NovaPad</span>
       </div>
 

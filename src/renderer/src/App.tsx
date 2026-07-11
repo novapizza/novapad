@@ -175,7 +175,12 @@ export default function App() {
         const currentVersion = await window.api.app.getVersion()
         const lastSeenVersion = useConfigStore.getState().lastSeenVersion
         if (lastSeenVersion !== currentVersion) {
-          useEditorStore.getState().openVirtualTab('whatsNew', { activate: false })
+          // Activate What's New when the workspace is otherwise empty (nothing to
+          // interrupt) so the user actually sees it instead of the Welcome screen;
+          // when a session with files was restored, open it in the background so
+          // it doesn't steal focus from the restored document (BR-004).
+          const hasFiles = useEditorStore.getState().buffers.some((b) => b.kind === 'file')
+          useEditorStore.getState().openVirtualTab('whatsNew', { activate: !hasFiles })
           // Write-on-fire (BR-004): persist immediately so a crash before tab
           // close still counts as "seen" and won't re-fire on next launch.
           useConfigStore.getState().setProp('lastSeenVersion', currentVersion)

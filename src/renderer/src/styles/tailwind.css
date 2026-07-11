@@ -46,7 +46,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 15%;
 
-    --primary: 215 80% 50%;
+    --primary: 262 72% 55%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 14% 90%;
@@ -55,7 +55,7 @@
     --muted: 220 14% 92%;
     --muted-foreground: 220 10% 46%;
 
-    --accent: 215 80% 50%;
+    --accent: 262 72% 55%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
@@ -63,7 +63,7 @@
 
     --border: 220 13% 87%;
     --input: 220 13% 87%;
-    --ring: 215 80% 50%;
+    --ring: 262 72% 55%;
 
     --radius: 0.25rem;
 
@@ -76,98 +76,103 @@
     --tab-hover: 220 14% 96%;
     --tab-foreground: 220 20% 15%;
     --tab-muted: 220 10% 50%;
-    --statusbar: 215 80% 50%;
+    --statusbar: 262 70% 50%;
     --statusbar-foreground: 0 0% 100%;
     --explorer: 220 14% 97%;
     --explorer-foreground: 220 20% 25%;
-    --explorer-hover: 215 60% 90%;
-    --explorer-active: 215 80% 95%;
+    --explorer-hover: 262 55% 93%;
+    --explorer-active: 262 70% 95%;
     --gutter: 220 14% 94%;
     --gutter-foreground: 220 10% 60%;
-    --line-highlight: 215 60% 95%;
+    --line-highlight: 262 60% 96%;
 
     --sidebar-background: 220 14% 97%;
     --sidebar-foreground: 220 20% 25%;
-    --sidebar-primary: 215 80% 50%;
+    --sidebar-primary: 262 72% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 60% 90%;
+    --sidebar-accent: 262 55% 93%;
     --sidebar-accent-foreground: 220 20% 15%;
     --sidebar-border: 220 13% 87%;
-    --sidebar-ring: 215 80% 50%;
+    --sidebar-ring: 262 72% 55%;
 
     /* JSON syntax tokens (Notepad++ palette). Light theme uses saturated mid
      * shades so contrast is strong on the near-white preview background.
      * The .dark block below switches to pastel-300 equivalents. */
-    --tok-key:    215 80% 40%;
+    --tok-key:    262 60% 48%;
     --tok-string: 145 65% 32%;
-    --tok-bool:   262 65% 50%;
+    --tok-bool:   288 60% 52%;
     --tok-null:   215 10% 45%;
     --tok-num:     24 85% 45%;
     --tok-brace:  215 15% 35%;
   }
 
   .dark {
-    --background: 220 16% 12%;
-    --foreground: 220 14% 90%;
+    /* Dracula-family dark chrome (hue ~231/232) kept in sync with the Monaco
+     * 'dracula' editor theme (editor.background #282a36) so the editor and its
+     * surrounding panels read as one surface. Accent stays violet — it already
+     * matches Dracula's purple. */
+    --background: 231 15% 18%;         /* #282a36 — matches editor.background */
+    --foreground: 60 30% 96%;          /* #f8f8f2 */
 
-    --card: 220 16% 15%;
-    --card-foreground: 220 14% 90%;
+    --card: 232 14% 21%;
+    --card-foreground: 60 30% 96%;
 
-    --popover: 220 16% 15%;
-    --popover-foreground: 220 14% 90%;
+    --popover: 232 14% 21%;
+    --popover-foreground: 60 30% 96%;
 
-    --primary: 215 80% 55%;
+    --primary: 262 80% 70%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 16% 20%;
-    --secondary-foreground: 220 14% 90%;
+    --secondary: 232 14% 26%;
+    --secondary-foreground: 60 30% 96%;
 
-    --muted: 220 16% 18%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 232 14% 24%;
+    --muted-foreground: 225 20% 62%;   /* Dracula comment, lightened for contrast */
 
-    --accent: 215 80% 55%;
+    --accent: 262 80% 70%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62% 45%;
+    --destructive: 0 62% 55%;          /* Dracula red #ff5555 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 16% 22%;
-    --input: 220 16% 22%;
-    --ring: 215 80% 55%;
+    --border: 232 14% 27%;
+    --input: 232 14% 27%;
+    --ring: 262 80% 70%;
 
-    --toolbar: 220 16% 14%;
-    --toolbar-foreground: 220 14% 80%;
-    --toolbar-border: 220 16% 20%;
-    --tab-active: 220 16% 18%;
-    --tab-inactive: 220 16% 12%;
-    --tab-hover: 220 16% 16%;
-    --tab-foreground: 220 14% 90%;
-    --tab-muted: 220 10% 50%;
-    --statusbar: 215 80% 40%;
+    --toolbar: 231 15% 16%;
+    --toolbar-foreground: 60 20% 88%;
+    --toolbar-border: 232 14% 25%;
+    --tab-active: 231 15% 18%;         /* == editor bg, tab merges into editor */
+    --tab-inactive: 231 15% 14%;
+    --tab-hover: 231 15% 20%;
+    --tab-foreground: 60 30% 96%;
+    --tab-muted: 225 15% 58%;
+    --statusbar: 262 55% 45%;
     --statusbar-foreground: 0 0% 100%;
-    --explorer: 220 16% 13%;
-    --explorer-foreground: 220 14% 80%;
-    --explorer-hover: 215 40% 22%;
-    --explorer-active: 215 50% 25%;
-    --gutter: 220 16% 14%;
-    --gutter-foreground: 220 10% 40%;
-    --line-highlight: 215 30% 18%;
+    --explorer: 231 15% 15%;
+    --explorer-foreground: 60 20% 86%;
+    --explorer-hover: 232 14% 24%;
+    --explorer-active: 232 14% 31%;    /* Dracula current-line #44475a */
+    --gutter: 231 15% 16%;
+    --gutter-foreground: 225 15% 45%;
+    --line-highlight: 232 14% 26%;
 
-    --sidebar-background: 220 16% 13%;
-    --sidebar-foreground: 220 14% 80%;
-    --sidebar-primary: 215 80% 55%;
+    --sidebar-background: 231 15% 15%;
+    --sidebar-foreground: 60 20% 86%;
+    --sidebar-primary: 262 80% 70%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 40% 22%;
-    --sidebar-accent-foreground: 220 14% 90%;
-    --sidebar-border: 220 16% 20%;
-    --sidebar-ring: 215 80% 55%;
+    --sidebar-accent: 232 14% 24%;
+    --sidebar-accent-foreground: 60 30% 96%;
+    --sidebar-border: 232 14% 25%;
+    --sidebar-ring: 262 80% 70%;
 
-    --tok-key:    213 95% 78%;
-    --tok-string: 142 70% 75%;
-    --tok-bool:   262 90% 80%;
-    --tok-null:   215 14% 65%;
-    --tok-num:     24 85% 72%;
-    --tok-brace:  215 15% 75%;
+    /* JSON preview tokens — Dracula palette */
+    --tok-key:    191 97% 77%;         /* cyan  #8be9fd */
+    --tok-string:  65 92% 76%;         /* yellow #f1fa8c */
+    --tok-bool:   326 100% 74%;        /* pink  #ff79c6 */
+    --tok-null:   225 27% 65%;         /* comment */
+    --tok-num:    265 89% 78%;         /* purple #bd93f9 */
+    --tok-brace:   60 30% 90%;
   }
 }
 

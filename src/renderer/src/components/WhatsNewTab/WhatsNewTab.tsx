@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Sparkles } from 'lucide-react'
 import { getReleaseNote } from './releaseNotes'
+import logoUrl from '../../assets/logo-animated.svg'
 
 export function WhatsNewTab() {
   const [version, setVersion] = useState<string>('')
@@ -30,12 +30,12 @@ export function WhatsNewTab() {
       </div>
       <div className="flex-1 overflow-y-auto">
         <article className="max-w-[680px] mx-auto px-8 py-10">
-          <header className="flex items-center gap-3 mb-6">
-            <Sparkles size={32} strokeWidth={1.4} className="text-primary shrink-0" />
+          <header className="flex items-center gap-4 mb-6">
+            <img src={logoUrl} alt="NovaPad" width={64} height={64} className="rounded-2xl shrink-0" draggable={false} />
             <div>
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">Release</div>
-              <div className="text-2xl font-semibold text-foreground leading-tight">
-                {version ? `v${version}` : ''}
+              <div className="text-3xl font-bold text-foreground leading-tight tracking-tight">NovaPad</div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground mt-1">
+                Release{version ? ` v${version}` : ''}
               </div>
             </div>
           </header>

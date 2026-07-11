@@ -1,5 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react'
-import { X, Plus, ChevronLeft, ChevronRight, Settings as SettingsIcon, Keyboard, Sparkles, Puzzle, Lock, Eye, Columns2 } from 'lucide-react'
+import { X, Plus, ChevronLeft, ChevronRight, Settings as SettingsIcon, Keyboard, Puzzle, Lock, Eye, Columns2 } from 'lucide-react'
+import logoUrl from '../../assets/logo-mark.svg'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -214,7 +215,7 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile }) => {
                 {/* Kind icon for virtual tabs */}
                 {buf.kind === 'settings' && <SettingsIcon size={18} className="shrink-0 opacity-80" />}
                 {buf.kind === 'shortcuts' && <Keyboard size={18} className="shrink-0 opacity-80" />}
-                {buf.kind === 'whatsNew' && <Sparkles size={18} className="shrink-0 opacity-80" />}
+                {buf.kind === 'whatsNew' && <img src={logoUrl} alt="" className="w-[18px] h-[18px] shrink-0" draggable={false} />}
                 {(buf.kind === 'pluginManager' || buf.kind === 'pluginDetail') && <Puzzle size={18} className="shrink-0 opacity-80" />}
 
                 {/* Read-only (deeplink remote) indicator */}

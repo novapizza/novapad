@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NovaPad — Review màu & Rebrand</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 24px 64px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6; color: #1a1a1a; background: #f7f7f9;
+    max-width: 1100px; margin-inline: auto;
+  }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 20px; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 2px solid #e4e4ea; }
+  h3 { font-size: 15px; margin: 22px 0 8px; color: #444; }
+  p, li { font-size: 14px; }
+  code { background: #ececf2; padding: 1px 6px; border-radius: 4px; font-size: 12px; font-family: 'JetBrains Mono', Consolas, monospace; }
+  .lead { color: #555; }
+  .note { background: #fff8e1; border: 1px solid #f0d98a; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin: 12px 0; }
+  .rec { background: #e7f6ec; border: 1px solid #a6d9b8; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin: 12px 0; }
+
+  /* swatch grid */
+  .swatches { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 4px; }
+  .sw { width: 150px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; }
+  .sw .chip { height: 54px; }
+  .sw .meta { padding: 6px 8px; font-size: 11px; }
+  .sw .meta b { display: block; font-size: 12px; color: #222; }
+  .sw .meta span { color: #666; font-family: 'JetBrains Mono', monospace; }
+
+  /* option cards */
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 12px; }
+  @media (max-width: 760px) { .opts { grid-template-columns: 1fr; } }
+  .card { border: 1px solid #ddd; border-radius: 12px; overflow: hidden; }
+  .card > .title { padding: 10px 14px; font-weight: 700; font-size: 14px; background: #fff; border-bottom: 1px solid #eee; }
+
+  /* mini app mockup */
+  .mock { padding: 0; }
+  .mock .toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 10px; }
+  .mock .tabrow { display: flex; align-items: stretch; height: 30px; font-size: 12px; }
+  .mock .tab { display: flex; align-items: center; padding: 0 12px; border-right: 1px solid var(--bd); }
+  .mock .tab.active { font-weight: 600; box-shadow: inset 0 -2px 0 0 var(--pri); }
+  .mock .body { height: 92px; display: flex; }
+  .mock .filerow { padding: 6px 10px; font-size: 12px; }
+  .mock .filerow.sel { }
+  .mock .content { flex: 1; padding: 10px; font-size: 12px; }
+  .mock .btn { display: inline-block; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; color: #fff; background: var(--pri); }
+  .mock a { color: var(--pri); }
+  .mock .status { padding: 4px 10px; font-size: 11px; color: #fff; background: var(--status); }
+  .mock .icon { width: 16px; height: 16px; border-radius: 3px; }
+
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px; }
+  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
+  th { background: #f0f0f5; }
+  .dot { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; border: 1px solid rgba(0,0,0,.15); }
+</style>
+</head>
+<body>
+
+<h1>NovaPad — Review màu &amp; Đề xuất Rebrand</h1>
+<p class="lead">Xem trực quan bảng màu hiện tại và các phương án màu mới lấy từ logo. <b>Chưa đổi gì</b> — file này để bạn chọn hướng.</p>
+
+<h2>1. Màu đang nằm ở đâu</h2>
+<p>Gần như toàn bộ màu accent của app là <b>một màu xanh dương duy nhất (HSL hue 215)</b>, định nghĩa ở một chỗ:
+<code>src/renderer/src/styles/tailwind.css</code> (biến CSS cho light + dark). Đổi màu = dịch hue này sang màu logo.</p>
+<ul>
+  <li><b>Editor (Monaco)</b> dùng theme mặc định → <b>không bị ảnh hưởng</b> khi đổi accent. Scope rất gọn.</li>
+  <li>Logo/icon (icns, ico, png, favicon) thay riêng ở bước sau.</li>
+</ul>
+
+<h2>2. Màu hiện tại (xanh dương — hue 215)</h2>
+<div class="swatches">
+  <div class="sw"><div class="chip" style="background:hsl(215 80% 50%)"></div><div class="meta"><b>Primary / Accent</b><span>hsl(215 80% 50%)</span><span>#1f7ae0</span></div></div>
+  <div class="sw"><div class="chip" style="background:hsl(215 80% 40%)"></div><div class="meta"><b>Statusbar (dark)</b><span>hsl(215 80% 40%)</span></div></div>
+  <div class="sw"><div class="chip" style="background:hsl(215 80% 95%)"></div><div class="meta"><b>File chọn (light)</b><span>hsl(215 80% 95%)</span></div></div>
+  <div class="sw"><div class="chip" style="background:hsl(220 16% 12%)"></div><div class="meta"><b>Nền tối</b><span>hsl(220 16% 12%)</span></div></div>
+</div>
+
+<h2>3. Palette logo mới</h2>
+<p>Màu chủ đạo: <b>fuchsia/hồng cánh sen</b> (chữ "N") + <b>violet/tím</b> (ngoặc <code>{ }</code>), trên nền tím-đen.</p>
+<div class="swatches">
+  <div class="sw"><div class="chip" style="background:#f0abfc"></div><div class="meta"><b>"N" nhạt</b><span>#f0abfc</span></div></div>
+  <div class="sw"><div class="chip" style="background:#e879f9"></div><div class="meta"><b>"N" chủ đạo</b><span>#e879f9</span></div></div>
+  <div class="sw"><div class="chip" style="background:#a855f7"></div><div class="meta"><b>"N" đậm</b><span>#a855f7</span></div></div>
+  <div class="sw"><div class="chip" style="background:#c4b5fd"></div><div class="meta"><b>Ngoặc nhạt</b><span>#c4b5fd</span></div></div>
+  <div class="sw"><div class="chip" style="background:#8b5cf6"></div><div class="meta"><b>Ngoặc đậm</b><span>#8b5cf6</span></div></div>
+  <div class="sw"><div class="chip" style="background:#221c30"></div><div class="meta"><b>Nền icon</b><span>#221c30 → #0c0a12</span></div></div>
+</div>
+<h3>Viền cầu vồng (dùng làm điểm nhấn gradient, tuỳ chọn)</h3>
+<div class="swatches">
+  <div class="sw"><div class="chip" style="background:#4a9eff"></div><div class="meta"><span>#4a9eff</span></div></div>
+  <div class="sw"><div class="chip" style="background:#10c99a"></div><div class="meta"><span>#10c99a</span></div></div>
+  <div class="sw"><div class="chip" style="background:#f2a83a"></div><div class="meta"><span>#f2a83a</span></div></div>
+  <div class="sw"><div class="chip" style="background:#f26d70"></div><div class="meta"><span>#f26d70</span></div></div>
+  <div class="sw"><div class="chip" style="background:#a678f0"></div><div class="meta"><span>#a678f0</span></div></div>
+</div>
+
+<h2>4. Hai phương án màu — xem thử trên mockup</h2>
+<p class="lead">Mỗi phương án hiện ở cả nền sáng và nền tối: tab đang mở (gạch chân accent), nút primary, link, dòng file đang chọn, và thanh status.</p>
+
+<div class="rec"><b>Khuyến nghị: Phương án A (Fuchsia)</b> — bám sát chữ "N", nổi bật, nhận ra logo ngay.</div>
+
+<h3>Phương án A — Fuchsia (hue 292)</h3>
+<div class="opts">
+  <!-- A light -->
+  <div class="card">
+    <div class="title">Nền sáng</div>
+    <div class="mock" style="--pri:hsl(292 72% 50%); --status:hsl(292 72% 46%); --bd:#e2e2ea; --sel:hsl(292 70% 95%); --hov:hsl(292 55% 92%); background:#f7f7f9; color:#1a1a1a;">
+      <div class="tabrow" style="background:#eeeef3">
+        <div class="tab active" style="background:#fff">README.md</div>
+        <div class="tab" style="color:#666">app.json</div>
+      </div>
+      <div class="body">
+        <div style="width:130px; border-right:1px solid var(--bd); background:#fafafc">
+          <div class="filerow" style="background:var(--sel)">📄 README.md</div>
+          <div class="filerow">📄 app.json</div>
+          <div class="filerow" style="background:var(--hov)">📁 src</div>
+        </div>
+        <div class="content">
+          <span class="btn">Lưu</span>
+          &nbsp; <a href="#">một liên kết</a>
+          <div style="margin-top:8px; color:#555">văn bản thường…</div>
+        </div>
+      </div>
+      <div class="status">Ln 1, Col 1 &nbsp; UTF-8 &nbsp; Markdown</div>
+    </div>
+  </div>
+  <!-- A dark -->
+  <div class="card">
+    <div class="title">Nền tối</div>
+    <div class="mock" style="--pri:hsl(292 82% 66%); --status:hsl(292 60% 40%); --bd:#2a2a33; --sel:hsl(285 45% 26%); --hov:hsl(285 35% 22%); background:#17171d; color:#dcdce2;">
+      <div class="tabrow" style="background:#1c1c22">
+        <div class="tab active" style="background:#232330">README.md</div>
+        <div class="tab" style="color:#888">app.json</div>
+      </div>
+      <div class="body">
+        <div style="width:130px; border-right:1px solid var(--bd); background:#1a1a20">
+          <div class="filerow" style="background:var(--sel)">📄 README.md</div>
+          <div class="filerow">📄 app.json</div>
+          <div class="filerow" style="background:var(--hov)">📁 src</div>
+        </div>
+        <div class="content">
+          <span class="btn">Lưu</span>
+          &nbsp; <a href="#">một liên kết</a>
+          <div style="margin-top:8px; color:#9a9aa5">văn bản thường…</div>
+        </div>
+      </div>
+      <div class="status">Ln 1, Col 1 &nbsp; UTF-8 &nbsp; Markdown</div>
+    </div>
+  </div>
+</div>
+
+<h3>Phương án B — Violet (hue 262)</h3>
+<div class="opts">
+  <!-- B light -->
+  <div class="card">
+    <div class="title">Nền sáng</div>
+    <div class="mock" style="--pri:hsl(262 72% 55%); --status:hsl(262 70% 50%); --bd:#e2e2ea; --sel:hsl(262 70% 95%); --hov:hsl(262 55% 93%); background:#f7f7f9; color:#1a1a1a;">
+      <div class="tabrow" style="background:#eeeef3">
+        <div class="tab active" style="background:#fff">README.md</div>
+        <div class="tab" style="color:#666">app.json</div>
+      </div>
+      <div class="body">
+        <div style="width:130px; border-right:1px solid var(--bd); background:#fafafc">
+          <div class="filerow" style="background:var(--sel)">📄 README.md</div>
+          <div class="filerow">📄 app.json</div>
+          <div class="filerow" style="background:var(--hov)">📁 src</div>
+        </div>
+        <div class="content">
+          <span class="btn">Lưu</span>
+          &nbsp; <a href="#">một liên kết</a>
+          <div style="margin-top:8px; color:#555">văn bản thường…</div>
+        </div>
+      </div>
+      <div class="status">Ln 1, Col 1 &nbsp; UTF-8 &nbsp; Markdown</div>
+    </div>
+  </div>
+  <!-- B dark -->
+  <div class="card">
+    <div class="title">Nền tối</div>
+    <div class="mock" style="--pri:hsl(262 80% 70%); --status:hsl(262 55% 42%); --bd:#2a2a33; --sel:hsl(262 45% 27%); --hov:hsl(262 35% 22%); background:#17171d; color:#dcdce2;">
+      <div class="tabrow" style="background:#1c1c22">
+        <div class="tab active" style="background:#232330">README.md</div>
+        <div class="tab" style="color:#888">app.json</div>
+      </div>
+      <div class="body">
+        <div style="width:130px; border-right:1px solid var(--bd); background:#1a1a20">
+          <div class="filerow" style="background:var(--sel)">📄 README.md</div>
+          <div class="filerow">📄 app.json</div>
+          <div class="filerow" style="background:var(--hov)">📁 src</div>
+        </div>
+        <div class="content">
+          <span class="btn">Lưu</span>
+          &nbsp; <a href="#">một liên kết</a>
+          <div style="margin-top:8px; color:#9a9aa5">văn bản thường…</div>
+        </div>
+      </div>
+      <div class="status">Ln 1, Col 1 &nbsp; UTF-8 &nbsp; Markdown</div>
+    </div>
+  </div>
+</div>
+
+<div class="note"><b>Lưu ý contrast:</b> thanh status và nút primary dùng <b>chữ trắng trên nền accent</b>. Ở nền sáng, màu accent phải đủ đậm (độ sáng L ≈ 46–50%) để chữ trắng đọc rõ (chuẩn WCAG AA). Các giá trị trên đã cân theo yêu cầu đó; mình sẽ kiểm tra contrast từng chỗ trước khi áp.</div>
+
+<h2>5. Bảng token cần đổi (giá trị đề xuất — Phương án A)</h2>
+<table>
+  <tr><th>Token</th><th>Light</th><th>Dark</th><th>Dùng cho</th></tr>
+  <tr><td><span class="dot" style="background:hsl(292 72% 50%)"></span>--primary / --accent / --ring</td><td>292 72% 50%</td><td>292 82% 66%</td><td>nút, gạch chân tab, focus, link</td></tr>
+  <tr><td><span class="dot" style="background:hsl(292 72% 46%)"></span>--statusbar</td><td>292 72% 46%</td><td>292 60% 40%</td><td>nền thanh status (chữ trắng)</td></tr>
+  <tr><td><span class="dot" style="background:hsl(292 72% 50%)"></span>--sidebar-primary / -ring</td><td>292 72% 50%</td><td>292 82% 66%</td><td>mục active ở sidebar</td></tr>
+  <tr><td><span class="dot" style="background:hsl(292 55% 92%)"></span>--explorer-hover</td><td>292 55% 92%</td><td>285 35% 22%</td><td>hover dòng file</td></tr>
+  <tr><td><span class="dot" style="background:hsl(292 70% 95%)"></span>--explorer-active / --sidebar-accent</td><td>292 70% 95%</td><td>285 45% 26%</td><td>dòng file đang chọn</td></tr>
+  <tr><td><span class="dot" style="background:hsl(292 60% 96%)"></span>--line-highlight</td><td>292 60% 96%</td><td>285 28% 18%</td><td>nền dòng hiện tại</td></tr>
+  <tr><td><span class="dot" style="background:hsl(292 60% 45%)"></span>--tok-key (JSON)</td><td>292 60% 45%</td><td>292 85% 80%</td><td>key JSON trong preview</td></tr>
+</table>
+<p style="font-size:13px; color:#666">Neutrals (nền, chữ, border) giữ xám; có thể tint nhẹ tím ở nền tối (hue 220 → ~250) cho ăn nhập logo — tuỳ bạn.</p>
+
+<h2>6. Câu hỏi cần bạn chốt</h2>
+<ol>
+  <li><b>Chọn A (Fuchsia) hay B (Violet) hay hybrid</b> (primary fuchsia + ring/hover violet)? — <i>Khuyến nghị: A.</i></li>
+  <li><b>Tint nhẹ tím cho nền tối</b> hay giữ xám trung tính? — <i>Khuyến nghị: tint rất nhẹ, chỉ ở dark.</i></li>
+  <li><b>Đổi luôn màu JSON key</b> theo accent mới? — <i>Khuyến nghị: có, cho đồng bộ.</i></li>
+  <li><b>Editor Monaco</b> giữ mặc định hay đổi màu selection/line theo accent? — <i>Khuyến nghị: giữ mặc định (ít rủi ro).</i></li>
+</ol>
+
+</body>
+</html>

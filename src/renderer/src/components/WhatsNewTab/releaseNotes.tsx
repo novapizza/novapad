@@ -35,11 +35,22 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     version: '1.5.8',
     summary: (
       <>
-        Open files in NovaPad from a link — the new <span className="font-mono text-sm text-primary">novapad://</span>{' '}
-        deeplink scheme (great for Slack), plus VS Code-style preview buttons on the tab bar.
+        A fresh look — new logo, app icon, and color theme — plus{' '}
+        <span className="font-mono text-sm text-primary">novapad://</span> deeplinks (great for Slack)
+        and VS Code-style preview buttons on the tab bar.
       </>
     ),
     highlights: [
+      {
+        title: 'New look — logo, icon & theme',
+        body: (
+          <>
+            NovaPad has a new <strong>{'{ N }'}</strong> logo and app icon, and a color theme drawn from it:
+            a <strong>violet</strong> accent in light mode and a <strong>Dracula</strong>-based palette in
+            dark mode (editor and chrome in one tone).
+          </>
+        )
+      },
       {
         title: 'Deeplinks (novapad://)',
         body: (
