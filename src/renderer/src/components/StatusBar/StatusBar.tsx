@@ -82,13 +82,13 @@ export const StatusBar: React.FC = () => {
       className="h-7 bg-statusbar text-statusbar-foreground flex items-center px-2 text-base select-none shrink-0"
       data-testid="statusbar"
     >
-      {/* Left section: full file path */}
+      {/* Left section: full file path (or the remote source URL for deeplink tabs) */}
       <span
         data-testid="statusbar-filepath"
         className="flex-1 min-w-0 truncate opacity-80 px-1.5"
-        title={buf?.filePath ?? ''}
+        title={buf?.sourceUrl ?? buf?.filePath ?? ''}
       >
-        {buf?.filePath ?? ''}
+        {buf?.sourceUrl ?? buf?.filePath ?? ''}
       </span>
 
       {/* Right section */}
@@ -129,8 +129,8 @@ export const StatusBar: React.FC = () => {
           {getLanguageLabel(buf?.language ?? 'plaintext')}
         </span>
 
-        <span className="opacity-70 px-1.5">
-          {buf?.isDirty ? 'Modified' : buf?.filePath ? 'Saved' : 'New File'}
+        <span className="opacity-70 px-1.5" data-testid="statusbar-state">
+          {buf?.isReadOnly ? 'Read-only' : buf?.isDirty ? 'Modified' : buf?.filePath ? 'Saved' : 'New File'}
         </span>
       </div>
 

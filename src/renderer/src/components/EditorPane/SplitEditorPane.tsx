@@ -27,6 +27,7 @@ export const SplitEditorPane: React.FC = () => {
     const buf = s.buffers.find((b) => b.id === s.activeId)
     return buf?.model ?? null
   })
+  const activeIsReadOnly = useEditorStore((s) => s.buffers.find((b) => b.id === s.activeId)?.isReadOnly ?? false)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -66,6 +67,15 @@ export const SplitEditorPane: React.FC = () => {
   useEffect(() => {
     editorRef.current?.setModel(activeModel)
   }, [activeModel])
+
+  // Mirror the primary pane's read-only state (deeplink remote buffers) — the
+  // mirror shares the model, so an editable mirror would bypass the lock.
+  useEffect(() => {
+    editorRef.current?.updateOptions({
+      readOnly: activeIsReadOnly,
+      readOnlyMessage: { value: 'Read-only remote file — use File → Save As to edit a local copy' }
+    })
+  }, [activeIsReadOnly, activeModel])
 
   return (
     <div className="flex flex-col h-full overflow-hidden border-l border-border" data-testid="split-editor">

@@ -61,6 +61,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
   const { updateBuffer, getBuffer } = useEditorStore()
   const activeBufLoaded = useEditorStore((s) => s.buffers.find((b) => b.id === activeId)?.loaded)
   const activeBufIsLarge = useEditorStore((s) => s.buffers.find((b) => b.id === activeId)?.isLargeFile)
+  const activeBufIsReadOnly = useEditorStore((s) => s.buffers.find((b) => b.id === activeId)?.isReadOnly ?? false)
   const { theme } = useUIStore()
   const { loadBuffer } = useFileOps()
   const currentIdRef = useRef<string | null>(null)
@@ -827,6 +828,16 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
 
     editor.focus()
   }, [activeId, activeBufLoaded, getBuffer, updateBuffer, restoreDecorations, loadBuffer])
+
+  // Read-only mode (deeplink-opened remote buffers). Reactive to the flag —
+  // not just tab switches — so Save As flipping isReadOnly false unlocks the
+  // editor in place.
+  useEffect(() => {
+    editorRef.current?.updateOptions({
+      readOnly: activeBufIsReadOnly,
+      readOnlyMessage: { value: 'Read-only remote file — use File → Save As to edit a local copy' }
+    })
+  }, [activeBufIsReadOnly, activeId])
 
   // Handle editor commands from menu (IPC from native menu + CustomEvent from custom MenuBar/context menu)
   // Hold dispatchCommand in a ref so the IPC listener stays registered exactly

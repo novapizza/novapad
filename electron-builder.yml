@@ -53,6 +53,14 @@ files:
   # tiny enough that keeping them is safer than risking another runtime
   # require failure.
 
+# Custom URL scheme for deeplinks (novapad://open?url=…). electron-builder
+# writes CFBundleURLTypes on macOS and the protocol registry keys in the NSIS
+# installer; src/main/deeplink.ts validates and handles incoming URLs.
+protocols:
+  - name: NovaPad Deeplink
+    schemes:
+      - novapad
+
 # File associations register NovaPad as a handler for these extensions, which
 # adds the app to Windows' "Open with" menu and macOS' "Open With" menu.
 # CFBundleTypeRole=Editor advertises NovaPad as an *editor* (the macOS UI

@@ -1,0 +1,30 @@
+# Changelog
+
+All notable, user-facing changes to NovaPad are documented here.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+This log starts at **1.5.8**; for earlier releases see the Git history and the
+per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
+
+## [Unreleased]
+
+## [1.5.8]
+
+### Added
+- **Deeplinks (`novapad://`)** — open files in NovaPad from a link (e.g. posted in Slack).
+  Three verbs:
+  - `open?url=<https>[&line=N][&col=M]` — fetch a remote file into a **read-only** tab.
+  - `preview?url=<https>[&line=N][&col=M]` — same as `open`, then open the preview pane.
+  - `new?title=…&content=…&lang=…` (or `contentBase64=…`) — new **editable** tab from inline content.
+
+  Targets are `https`-only and credential-free; unknown hosts require confirmation (with an
+  "Always Allow" allowlist persisted to `deeplink.json`). Fetches are capped at 10 MB / 15 s and
+  redirects are re-validated against the trusted hosts. See `.docs/features/deeplink/README.md`.
+- **Preview toggle buttons on the tab bar** — for previewable files (Markdown, JSON, CSV, SQL plan),
+  two buttons next to `+`: **Preview** (replaces the editor in the current tab) and
+  **Open Preview to the Side** (same as `Ctrl/Cmd+P`).
+
+[Unreleased]: https://github.com/novapizza/notepadandmore/compare/v1.5.8...HEAD
+[1.5.8]: https://github.com/novapizza/notepadandmore/releases/tag/v1.5.8

@@ -35,6 +35,10 @@ export interface Buffer {
   pluginId: string | null      // set only when kind === 'pluginDetail'; the plugin's unique name
   /** Backup filename (relative to userData/backup/) while the buffer is dirty; null when clean. */
   backupPath: string | null
+  /** True for deeplink-opened remote content — editor is read-only; Save As makes a local editable copy. */
+  isReadOnly: boolean
+  /** Remote URL this buffer was fetched from (deeplink); null for local/untitled buffers. */
+  sourceUrl: string | null
 }
 
 interface EditorState {
@@ -44,8 +48,8 @@ interface EditorState {
   splitActiveId: string | null
 
   // Actions
-  addBuffer: (buf: Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath' | 'savedVersionId'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null }) => string
-  addGhostBuffer: (buf: Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath' | 'savedVersionId'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null }) => string
+  addBuffer: (buf: Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath' | 'savedVersionId' | 'isReadOnly' | 'sourceUrl'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null; isReadOnly?: boolean; sourceUrl?: string | null }) => string
+  addGhostBuffer: (buf: Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath' | 'savedVersionId' | 'isReadOnly' | 'sourceUrl'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null; isReadOnly?: boolean; sourceUrl?: string | null }) => string
   hydrateBuffer: (id: string, patch: { content: string; encoding: string; eol: EOLType; mtime: number; hasBom?: boolean }) => void
   removeBuffer: (id: string) => void
   updateBuffer: (id: string, patch: Partial<Buffer>) => void
@@ -84,7 +88,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     // mark savedVersionId as unreachable so undoing within Monaco can't clear it.
     const savedVersionId = buf.isDirty ? -1 : model.getAlternativeVersionId()
     set((s) => ({
-      buffers: [...s.buffers, { ...buf, kind: buf.kind ?? 'file', id, model, savedVersionId, loaded: true, missing: false, savedViewState: buf.savedViewState ?? null, pluginId: buf.pluginId ?? null, backupPath: buf.backupPath ?? null }],
+      buffers: [...s.buffers, { ...buf, kind: buf.kind ?? 'file', id, model, savedVersionId, loaded: true, missing: false, savedViewState: buf.savedViewState ?? null, pluginId: buf.pluginId ?? null, backupPath: buf.backupPath ?? null, isReadOnly: buf.isReadOnly ?? false, sourceUrl: buf.sourceUrl ?? null }],
       activeId: s.activeId ?? id
     }))
     return id
@@ -93,7 +97,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   addGhostBuffer: (buf) => {
     const id = newId()
     set((s) => ({
-      buffers: [...s.buffers, { ...buf, kind: buf.kind ?? 'file', id, model: null, savedVersionId: 0, pluginId: buf.pluginId ?? null, backupPath: buf.backupPath ?? null }],
+      buffers: [...s.buffers, { ...buf, kind: buf.kind ?? 'file', id, model: null, savedVersionId: 0, pluginId: buf.pluginId ?? null, backupPath: buf.backupPath ?? null, isReadOnly: buf.isReadOnly ?? false, sourceUrl: buf.sourceUrl ?? null }],
       activeId: s.activeId ?? id
     }))
     return id
@@ -183,7 +187,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           loaded: true,
           missing: false,
           isLargeFile: false,
-          backupPath: null
+          backupPath: null,
+          isReadOnly: false,
+          sourceUrl: null
         }
       ],
       ...(activate ? { activeId: id } : {})
@@ -222,7 +228,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           loaded: true,
           missing: false,
           isLargeFile: false,
-          backupPath: null
+          backupPath: null,
+          isReadOnly: false,
+          sourceUrl: null
         }
       ],
       activeId: id
@@ -261,7 +269,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           loaded: true,
           missing: false,
           isLargeFile: false,
-          backupPath: null
+          backupPath: null,
+          isReadOnly: false,
+          sourceUrl: null
         }
       ],
       activeId: id

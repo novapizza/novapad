@@ -53,6 +53,13 @@ interface UIState {
    * resetting showPreview also clears this flag.
    */
   previewFullscreen: boolean
+  /**
+   * How an open (non-fullscreen) preview is laid out:
+   *  - 'side'   → preview panel beside the editor (Ctrl/Cmd+P default)
+   *  - 'inline' → preview replaces the editor in the current tab area
+   * Only meaningful while showPreview is true and previewFullscreen is false.
+   */
+  previewLayout: 'side' | 'inline'
   /** @deprecated kept temporarily for any callers that read it; mirrors showPreview. */
   showMarkdownPreview: boolean
   showAbout: boolean
@@ -119,6 +126,7 @@ interface UIState {
   setShowPreview: (v: boolean) => void
   togglePreviewFullscreen: () => void
   setPreviewFullscreen: (v: boolean) => void
+  setPreviewLayout: (v: 'side' | 'inline') => void
   /** @deprecated alias of togglePreview / setShowPreview. */
   toggleMarkdownPreview: () => void
   setMarkdownPreview: (v: boolean) => void
@@ -161,6 +169,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   findOpenNonce: 0,
   showPreview: false,
   previewFullscreen: false,
+  previewLayout: 'side',
   showMarkdownPreview: false,
   showAbout: false,
   quickOpenVisible: false,
@@ -242,9 +251,12 @@ export const useUIStore = create<UIState>((set, get) => ({
       showPreview: !s.showPreview,
       showMarkdownPreview: !s.showPreview,
       previewFullscreen: s.showPreview ? false : s.previewFullscreen,
+      // Ctrl/Cmd+P always opens the side layout; inline is button-only.
+      previewLayout: s.showPreview ? s.previewLayout : 'side',
     })),
   setShowPreview: (v) =>
     set((s) => ({ showPreview: v, showMarkdownPreview: v, previewFullscreen: v ? s.previewFullscreen : false })),
+  setPreviewLayout: (v) => set({ previewLayout: v }),
   togglePreviewFullscreen: () =>
     set((s) => ({
       previewFullscreen: !s.previewFullscreen,

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react'
-import { X, Plus, ChevronLeft, ChevronRight, Settings as SettingsIcon, Keyboard, Sparkles, Puzzle } from 'lucide-react'
+import { X, Plus, ChevronLeft, ChevronRight, Settings as SettingsIcon, Keyboard, Sparkles, Puzzle, Lock, Eye, Columns2 } from 'lucide-react'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -12,6 +12,7 @@ import {
 } from '../ui/context-menu'
 import { useEditorStore } from '../../store/editorStore'
 import { useUIStore } from '../../store/uiStore'
+import { detectPreviewKind } from '../../utils/previewKind'
 import { cn } from '../../lib/utils'
 
 interface TabBarProps {
@@ -21,6 +22,40 @@ interface TabBarProps {
 
 export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile }) => {
   const { buffers, activeId, setActive } = useEditorStore()
+
+  // VS Code-style preview toggles, shown next to the "+" button when the active
+  // buffer is previewable (markdown / json / csv / SQL plan). Depend on language
+  // + path only — not content — so they don't re-render on every keystroke.
+  const activeBuf = buffers.find((b) => b.id === activeId)
+  const isPreviewable =
+    !!activeBuf && activeBuf.kind === 'file' && detectPreviewKind(activeBuf.language, activeBuf.filePath, null) !== null
+  const showPreview = useUIStore((s) => s.showPreview)
+  const previewFullscreen = useUIStore((s) => s.previewFullscreen)
+  const previewLayout = useUIStore((s) => s.previewLayout)
+  const inlineActive = showPreview && !previewFullscreen && previewLayout === 'inline'
+  const sideActive = showPreview && !previewFullscreen && previewLayout === 'side'
+  // Icon 1 — preview replaces the source in the current tab (in place, not split).
+  const toggleInlinePreview = useCallback(() => {
+    const ui = useUIStore.getState()
+    if (ui.showPreview && !ui.previewFullscreen && ui.previewLayout === 'inline') {
+      ui.setShowPreview(false)
+    } else {
+      ui.setPreviewFullscreen(false)
+      ui.setPreviewLayout('inline')
+      ui.setShowPreview(true)
+    }
+  }, [])
+  // Icon 2 — preview beside the source (same as the Ctrl/Cmd+P shortcut).
+  const toggleSidePreview = useCallback(() => {
+    const ui = useUIStore.getState()
+    if (ui.showPreview && !ui.previewFullscreen && ui.previewLayout === 'side') {
+      ui.setShowPreview(false)
+    } else {
+      ui.setPreviewFullscreen(false)
+      ui.setPreviewLayout('side')
+      ui.setShowPreview(true)
+    }
+  }, [])
   const dragRef = useRef<string | null>(null)
   const dragOverRef = useRef<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -169,7 +204,7 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile }) => {
                 onDragStart={() => handleDragStart(buf.id)}
                 onDragOver={(e) => handleDragOver(e, buf.id)}
                 onDrop={handleDrop}
-                title={isVirtual ? buf.title : (buf.filePath ?? buf.title)}
+                title={isVirtual ? buf.title : (buf.sourceUrl ?? buf.filePath ?? buf.title)}
               >
                 {/* Active indicator — blue top line */}
                 {buf.id === activeId && (
@@ -181,6 +216,9 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile }) => {
                 {buf.kind === 'shortcuts' && <Keyboard size={18} className="shrink-0 opacity-80" />}
                 {buf.kind === 'whatsNew' && <Sparkles size={18} className="shrink-0 opacity-80" />}
                 {(buf.kind === 'pluginManager' || buf.kind === 'pluginDetail') && <Puzzle size={18} className="shrink-0 opacity-80" />}
+
+                {/* Read-only (deeplink remote) indicator */}
+                {buf.isReadOnly && <Lock size={13} className="shrink-0 opacity-70" data-testid="tab-readonly-icon" />}
 
                 {/* Tab title — prefix dirty buffers with "*" (Notepad++ style) */}
                 <span className={cn('truncate', buf.missing && 'line-through opacity-50')}>
@@ -265,7 +303,41 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile }) => {
         </button>
       )}
 
-      {/* New file button */}
+      {/* Preview toggles — only for previewable buffers (markdown/json/csv/SQL plan) */}
+      {isPreviewable && (
+        <div className="flex items-center shrink-0 border-l border-border" data-testid="preview-actions">
+          <button
+            type="button"
+            onClick={toggleInlinePreview}
+            aria-label="Toggle preview"
+            aria-pressed={inlineActive}
+            title="Preview (replaces the editor in this tab)"
+            data-testid="preview-toggle-inline"
+            className={cn(
+              'w-9 h-full flex items-center justify-center transition-colors hover:bg-tab-hover',
+              inlineActive ? 'text-primary' : 'text-tab-muted hover:text-tab-foreground'
+            )}
+          >
+            <Eye size={17} />
+          </button>
+          <button
+            type="button"
+            onClick={toggleSidePreview}
+            aria-label="Open preview to the side"
+            aria-pressed={sideActive}
+            title="Open Preview to the Side (Ctrl/Cmd+P)"
+            data-testid="preview-toggle-side"
+            className={cn(
+              'w-9 h-full flex items-center justify-center transition-colors hover:bg-tab-hover',
+              sideActive ? 'text-primary' : 'text-tab-muted hover:text-tab-foreground'
+            )}
+          >
+            <Columns2 size={17} />
+          </button>
+        </div>
+      )}
+
+      {/* New file button — outermost on the right */}
       <button
         className="w-9 flex items-center justify-center text-tab-muted hover:text-tab-foreground hover:bg-tab-hover transition-colors shrink-0 border-l border-border"
         onClick={() => onNewFile?.()}

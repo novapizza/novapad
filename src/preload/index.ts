@@ -141,7 +141,8 @@ const api = {
       'search:chunk', 'search:progress', 'search:done',
       'menu:check-for-updates',
       'update:checking', 'update:available', 'update:not-available',
-      'update:downloading', 'update:downloaded', 'update:error'
+      'update:downloading', 'update:downloaded', 'update:error',
+      'deeplink:open', 'deeplink:new'
     ]
     if (!allowedChannels.includes(channel)) return () => {}
     const listener = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args)
@@ -172,7 +173,8 @@ const api = {
       'search:chunk', 'search:progress', 'search:done',
       'menu:check-for-updates',
       'update:checking', 'update:available', 'update:not-available',
-      'update:downloading', 'update:downloaded', 'update:error'
+      'update:downloading', 'update:downloaded', 'update:error',
+      'deeplink:open', 'deeplink:new'
     ]
     if (allowedChannels.includes(channel)) {
       ipcRenderer.removeAllListeners(channel)

@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, Menu, session } from 'electron'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import * as fs from 'fs'
+import { DEEPLINK_SCHEME, initDeeplink, handleDeeplinkUrl, extractDeeplinkArgs } from './deeplink'
 import { buildMenu } from './menu'
 import { registerFileHandlers } from './ipc/fileHandlers'
 import { registerConfigHandlers } from './ipc/configHandlers'
@@ -64,6 +65,36 @@ type OpenItem = { kind: 'file' | 'folder'; path: string }
 const pendingOpenItems: OpenItem[] = []
 let rendererReady = false
 
+/**
+ * Generic renderer-bound messages (deeplink payloads, their toasts) queued for
+ * the same renderer-ready race as pendingOpenItems.
+ */
+const pendingRendererMessages: Array<{ channel: string; args: unknown[] }> = []
+
+function sendToRendererWhenReady(channel: string, ...args: unknown[]): void {
+  if (!mainWindow || !rendererReady) {
+    pendingRendererMessages.push({ channel, args })
+    return
+  }
+  mainWindow.webContents.send(channel, ...args)
+}
+
+// Register novapad:// with the OS. In dev (process.defaultApp) the protocol
+// must point at the electron binary + the app path, otherwise the OS would try
+// to launch the bare Electron shell without our main script.
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient(DEEPLINK_SCHEME, process.execPath, [resolve(process.argv[1])])
+  }
+} else {
+  app.setAsDefaultProtocolClient(DEEPLINK_SCHEME)
+}
+
+initDeeplink({
+  sendToRenderer: sendToRendererWhenReady,
+  getWindow: () => mainWindow
+})
+
 /** Stat each arg; keep only real files and directories. CLI flags and bogus paths are dropped. */
 function classifyPaths(paths: string[]): OpenItem[] {
   const out: OpenItem[] = []
@@ -116,6 +147,9 @@ if (process.env['E2E_TEST'] !== '1') {
     app.quit()
   } else {
     app.on('second-instance', (_event, argv) => {
+      // Windows/Linux deliver novapad:// activations for a running instance
+      // through argv of the second process.
+      extractDeeplinkArgs(argv).forEach(handleDeeplinkUrl)
       // Unpackaged runs carry the bundle path at argv[1] — skip it so the
       // main script itself is never treated as a user-opened file.
       const items = classifyPaths(argv.slice(app.isPackaged ? 1 : 2))
@@ -135,6 +169,13 @@ if (process.env['E2E_TEST'] !== '1') {
 app.on('open-file', (event, filePath) => {
   event.preventDefault()
   if (filePath) dispatchOpenItems(classifyPaths([filePath]))
+})
+
+// macOS delivers novapad:// activations here (both cold start and running app).
+// handleDeeplinkUrl awaits app.whenReady internally, so early delivery is safe.
+app.on('open-url', (event, url) => {
+  event.preventDefault()
+  handleDeeplinkUrl(url)
 })
 
 function createWindow(): void {
@@ -220,6 +261,8 @@ app.whenReady().then(() => {
   if (process.env['E2E_TEST'] !== '1') {
     const initialItems = classifyPaths(process.argv.slice(app.isPackaged ? 1 : 2))
     if (initialItems.length) pendingOpenItems.push(...initialItems)
+    // Cold launch via a novapad:// link on Windows/Linux puts the URL in argv.
+    extractDeeplinkArgs(process.argv).forEach(handleDeeplinkUrl)
   }
 
   // Content-Security-Policy as a response header (defense in depth alongside the
@@ -290,9 +333,14 @@ app.on('window-all-closed', () => {
 // pendingOpenItems comment for the full race. We drain the queue here.
 ipcMain.on('app:renderer-ready', () => {
   rendererReady = true
-  if (pendingOpenItems.length === 0) return
-  const items = pendingOpenItems.splice(0, pendingOpenItems.length)
-  dispatchOpenItems(items)
+  if (pendingOpenItems.length > 0) {
+    const items = pendingOpenItems.splice(0, pendingOpenItems.length)
+    dispatchOpenItems(items)
+  }
+  if (pendingRendererMessages.length > 0 && mainWindow) {
+    const messages = pendingRendererMessages.splice(0, pendingRendererMessages.length)
+    for (const m of messages) mainWindow.webContents.send(m.channel, ...m.args)
+  }
 })
 
 ipcMain.on('app:close-cancelled', () => {

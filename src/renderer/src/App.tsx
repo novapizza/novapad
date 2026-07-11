@@ -42,36 +42,7 @@ const TransformOverlay = lazy(() =>
   import('./components/Transform/TransformOverlay').then((m) => ({ default: m.TransformOverlay }))
 )
 
-/** Decide which preview component to render for a given buffer. */
-function detectPreviewKind(
-  language: string | null | undefined,
-  filePath: string | null | undefined,
-  content: string | null | undefined
-): 'markdown' | 'sqlplan' | 'csv' | 'json' | null {
-  if (language === 'markdown') return 'markdown'
-  // .csv / .tsv extension wins (Monaco may load these as plain text).
-  const ext = filePath?.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1]
-  if (ext === 'csv' || ext === 'tsv') return 'csv'
-  if (language === 'csv') return 'csv'
-  // .sqlplan files load as XML in Monaco; detect by extension OR by content
-  // so any XML buffer containing a SQL Server ShowPlan is also routed here.
-  if (ext === 'sqlplan') return 'sqlplan'
-  if ((language === 'xml' || language === 'html') && content) {
-    const head = content.slice(0, 4096)
-    if (/<ShowPlanXML|http:\/\/schemas\.microsoft\.com\/sqlserver\/2004\/07\/showplan/.test(head)) {
-      return 'sqlplan'
-    }
-  }
-  // JSON: either Monaco language is json, or buffer body starts with { or [.
-  // The body-sniff covers untitled tabs where the user just pasted raw JSON
-  // before Magika has refined the language.
-  if (language === 'json') return 'json'
-  if (content) {
-    const head = content.trimStart().slice(0, 1)
-    if (head === '{' || head === '[') return 'json'
-  }
-  return null
-}
+import { detectPreviewKind } from './utils/previewKind'
 import { Toaster, toast } from './components/ui/sonner'
 import { useEditorStore } from './store/editorStore'
 import { useUIStore } from './store/uiStore'
@@ -90,7 +61,7 @@ export default function App() {
   const { activeId, buffers } = useEditorStore()
   const activeBuffer = buffers.find((b) => b.id === activeId)
   const activeKind = activeBuffer?.kind ?? 'file'
-  const { theme, showToolbar, showStatusBar, showBottomPanel, showSidebar, openFind, csvViewerOpen, csvViewerText, csvViewerFileName, showPreview, previewFullscreen, compareOpen, transformOpen, splitView } = useUIStore()
+  const { theme, showToolbar, showStatusBar, showBottomPanel, showSidebar, openFind, csvViewerOpen, csvViewerText, csvViewerFileName, showPreview, previewFullscreen, previewLayout, compareOpen, transformOpen, splitView } = useUIStore()
   // Auto-close the preview pane when the user switches tabs. Without this,
   // toggling preview on (say) a .md tab would leave it open across every
   // tab whose buffer type also happens to be previewable, which surprises
@@ -128,10 +99,13 @@ export default function App() {
   const previewKind = (showPreview && activeKind === 'file' && activeBuffer)
     ? detectPreviewKind(activeBuffer.language, activeBuffer.filePath, activeBuffer.content ?? null)
     : null
-  // Side-by-side panel only renders when preview is open AND not fullscreen —
+  // Side-by-side panel renders only for the 'side' layout, not fullscreen —
   // in fullscreen the preview pane positions itself as a top-level overlay
   // covering the whole window, so reserving split-panel space would be wasted.
-  const previewVisible = previewKind !== null && !previewFullscreen
+  const previewVisible = previewKind !== null && !previewFullscreen && previewLayout === 'side'
+  // Inline layout: preview replaces the editor within the current tab area
+  // (an overlay over EditorPane), keeping the tab bar / toolbar / status bar.
+  const previewInlineVisible = previewKind !== null && !previewFullscreen && previewLayout === 'inline'
   const previewFullscreenVisible = previewKind !== null && previewFullscreen
   // Split View: a second editor mirroring the active file buffer. Suppressed
   // for virtual tabs (settings/plugins) and while a preview is fullscreen.
@@ -140,7 +114,7 @@ export default function App() {
   // three defaultSizes always sum to 100 (react-resizable-panels normalizes,
   // but matching keeps the initial layout stable).
   const editorContentSize = splitVisible && previewVisible ? 40 : splitVisible || previewVisible ? 55 : 100
-  const { openFiles, newFile, saveBuffer, saveActiveAs, closeBuffer, reloadBuffer, loadBuffer, restoreSession } = useFileOps()
+  const { openFiles, openRemoteFile, openInlineContent, newFile, saveBuffer, saveActiveAs, closeBuffer, reloadBuffer, loadBuffer, restoreSession } = useFileOps()
   // Mount window-level keyboard (Alt+Left/Right or Ctrl+-) and mouse
   // back/forward button listeners that drive navigation history.
   useNavigationShortcuts()
@@ -216,6 +190,40 @@ export default function App() {
   useEffect(() => {
     window.api.on('menu:file-new', () => newFile())
     window.api.on('menu:file-open', (...args) => openFiles(args[0] as string[]))
+    window.api.on('deeplink:open', (...args) => {
+      const p = args[0] as { fileName: string; content: string; sourceUrl: string; line?: number; col?: number; preview?: boolean }
+      const id = openRemoteFile(p)
+      let host = ''
+      try { host = new URL(p.sourceUrl).host } catch { /* display-only */ }
+      useUIStore.getState().addToast(`Opened read-only from ${host || 'deeplink'}`, 'info')
+      // Run after the editor has bound the new buffer's model. The preview
+      // toggle must also wait: switching to the new tab fires App's auto-close
+      // layout effect, which would immediately close a preview enabled too early.
+      if (p.line || p.preview) {
+        setTimeout(() => {
+          const editor = editorRegistry.get()
+          if (p.line && editor) {
+            editor.setPosition({ lineNumber: p.line, column: p.col ?? 1 })
+            editor.revealLineInCenter(p.line)
+          }
+          if (p.preview) {
+            const buf = useEditorStore.getState().getBuffer(id)
+            const kind = buf ? detectPreviewKind(buf.language, buf.filePath, buf.content ?? null) : null
+            if (kind) {
+              useUIStore.getState().setPreviewLayout('side')
+              useUIStore.getState().setShowPreview(true)
+            } else {
+              useUIStore.getState().addToast('No preview available for this file type — opened in the editor.', 'warn')
+            }
+          }
+        }, 150)
+      }
+    })
+    window.api.on('deeplink:new', (...args) => {
+      const p = args[0] as { title: string; content: string; language: string | null }
+      openInlineContent(p)
+      useUIStore.getState().addToast(`Created "${p.title}" from a link`, 'info')
+    })
     window.api.on('menu:file-save', () => {
       const id = useEditorStore.getState().activeId
       if (id) saveBuffer(id)
@@ -489,6 +497,8 @@ export default function App() {
     return () => {
       window.api.off('menu:file-new')
       window.api.off('menu:file-open')
+      window.api.off('deeplink:open')
+      window.api.off('deeplink:new')
       window.api.off('menu:file-save')
       window.api.off('menu:file-save-as')
       window.api.off('menu:file-save-all')
@@ -649,6 +659,20 @@ export default function App() {
                             {activeKind === 'pluginDetail' && activeBuffer?.pluginId && (
                               <div className="absolute inset-0 bg-background z-10">
                                 <PluginDetailTab pluginId={activeBuffer.pluginId} />
+                              </div>
+                            )}
+                            {previewInlineVisible && (
+                              <div className="absolute inset-0 bg-background z-10" data-testid="preview-inline">
+                                <Suspense fallback={
+                                  <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
+                                    Loading preview…
+                                  </div>
+                                }>
+                                  {previewKind === 'markdown' && <MarkdownPreviewPane />}
+                                  {previewKind === 'sqlplan' && <SqlPlanPreviewPane />}
+                                  {previewKind === 'csv' && <TableLensPreviewPane />}
+                                  {previewKind === 'json' && <JsonPreviewPane />}
+                                </Suspense>
                               </div>
                             )}
                           </>

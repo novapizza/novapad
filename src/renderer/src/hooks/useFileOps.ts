@@ -284,6 +284,73 @@ export function useFileOps() {
     schedulePreload(ghostFileIds, allIds[activeIdx], loadBuffer)
   }, [loadBuffer, addToast])
 
+  /**
+   * Open remote content fetched by a novapad:// deeplink as a read-only tab.
+   * The buffer has no filePath — Save / Save As both go through the save
+   * dialog and turn it into a normal editable local file.
+   */
+  const openRemoteFile = useCallback((payload: { fileName: string; content: string; sourceUrl: string }): string => {
+    const existing = useEditorStore.getState().buffers.find((b) => b.sourceUrl === payload.sourceUrl)
+    if (existing) {
+      useEditorStore.getState().setActive(existing.id)
+      return existing.id
+    }
+    const eol: EOLType = payload.content.includes('\r\n') ? 'CRLF' : 'LF'
+    const id = addBuffer({
+      filePath: null,
+      title: payload.fileName,
+      content: payload.content,
+      isDirty: false,
+      encoding: 'UTF-8',
+      hasBom: false,
+      eol,
+      language: detectLanguage(payload.fileName),
+      mtime: 0,
+      viewState: null,
+      savedViewState: null,
+      bookmarks: [],
+      loaded: true,
+      missing: false,
+      isLargeFile: payload.content.length >= LARGE_FILE_THRESHOLD,
+      isReadOnly: true,
+      sourceUrl: payload.sourceUrl
+    })
+    useEditorStore.getState().setActive(id)
+    return id
+  }, [addBuffer])
+
+  /**
+   * Open inline content delivered by a novapad://new deeplink as a new,
+   * editable, untitled tab (e.g. a web app's "Send to NovaPad"). Marked dirty
+   * so the user is prompted to Save before it can be lost. Same-content links
+   * are not deduped — each click is treated as a distinct new document.
+   */
+  const openInlineContent = useCallback((p: { title: string; content: string; language: string | null }): string => {
+    const langValid = !!p.language && monaco.languages.getLanguages().some((l) => l.id === p.language)
+    const language = langValid ? p.language! : detectLanguage(p.title)
+    const eol: EOLType = p.content.includes('\r\n') ? 'CRLF' : 'LF'
+    const id = addBuffer({
+      filePath: null,
+      title: p.title || 'untitled',
+      content: p.content,
+      // Content arrived from outside and isn't saved anywhere yet — treat as modified.
+      isDirty: p.content.length > 0,
+      encoding: 'UTF-8',
+      hasBom: false,
+      eol,
+      language,
+      mtime: 0,
+      viewState: null,
+      savedViewState: null,
+      bookmarks: [],
+      loaded: true,
+      missing: false,
+      isLargeFile: p.content.length >= LARGE_FILE_THRESHOLD
+    })
+    useEditorStore.getState().setActive(id)
+    return id
+  }, [addBuffer])
+
   const newFile = useCallback(() => {
     const currentBuffers = useEditorStore.getState().buffers
     const usedNumbers = new Set(
@@ -355,7 +422,8 @@ export function useFileOps() {
       isDirty: false,
       savedVersionId: buf.model?.getAlternativeVersionId() ?? 0,
       content,
-      ...(pathAssigned ? { language } : {})
+      // A deeplink buffer saved to disk becomes a normal editable local file.
+      ...(pathAssigned ? { language, isReadOnly: false, sourceUrl: null } : {})
     })
     window.api.file.addRecent(filePath)
     if (result.magikaSample?.byteLength) {
@@ -392,7 +460,10 @@ export function useFileOps() {
       isDirty: false,
       savedVersionId: buf.model?.getAlternativeVersionId() ?? 0,
       content,
-      language
+      language,
+      // A deeplink buffer saved to disk becomes a normal editable local file.
+      isReadOnly: false,
+      sourceUrl: null
     })
     window.api.file.addRecent(res.filePath)
     if (result.magikaSample?.byteLength) {
@@ -445,7 +516,7 @@ export function useFileOps() {
     window.api.watch.add(newPath)
   }, [updateBuffer])
 
-  return { openFiles, newFile, saveBuffer, saveActiveAs, closeBuffer, reloadBuffer, loadBuffer, restoreSession, updateRenamedBuffer }
+  return { openFiles, openRemoteFile, openInlineContent, newFile, saveBuffer, saveActiveAs, closeBuffer, reloadBuffer, loadBuffer, restoreSession, updateRenamedBuffer }
 }
 
 /**

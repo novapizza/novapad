@@ -35,28 +35,40 @@ security review.
 > commit/push regardless of who runs it, add a git hook or CI check — tracked in
 > `.docs/features/security-hardening/plan.md` (Phase 5).
 
-## Release Notes — keep in sync on every commit
+## Release Notes & Changelog — keep in sync on every commit
 
-The "What's New" tab is driven by a per-version content map in
-`src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`. The top entry of `RELEASE_NOTES`
-is the **in-progress** release (its `version` must equal the current `package.json` version).
+Two artifacts must reflect every user-facing change, and both must be updated in the **same
+commit** as the change:
+
+1. **In-app "What's New" tab** — driven by a per-version content map in
+   `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`. The top entry of `RELEASE_NOTES`
+   is the **in-progress** release (its `version` must equal the current `package.json` version).
+2. **`CHANGELOG.md`** (repo root) — a [Keep a Changelog](https://keepachangelog.com/)–style
+   history. New entries go under the top-most version heading (`## [Unreleased]` when no bump is
+   pending, otherwise the current `package.json` version), grouped by
+   `Added` / `Changed` / `Fixed` / `Removed`. The changelog starts at **1.5.8** — do not backfill
+   earlier versions.
 
 Whenever you make a commit that changes **user-facing behavior** (features, UX, notable fixes),
-you MUST update the release notes in the same commit:
+you MUST update **both** in the same commit:
 
-- **No version bump:** edit the top `RELEASE_NOTES` entry — add or adjust a `highlights` item
-  describing the change. Skip purely internal commits (refactors, tests, CI, deps) that a user
-  would never notice.
-- **`package.json` version was bumped:** refresh `releaseNotes.tsx` first — add a **new** entry
-  at the top of `RELEASE_NOTES` with `version` set to the new `package.json` version, then
-  record this commit's changes under it. Leave older entries in place.
+- **No version bump:** edit the top `RELEASE_NOTES` entry (add/adjust a `highlights` item) **and**
+  add a line under `## [Unreleased]` in `CHANGELOG.md`. Skip purely internal commits (refactors,
+  tests, CI, deps) that a user would never notice.
+- **`package.json` version was bumped:** add a **new** top entry to `RELEASE_NOTES` with the new
+  `version` **and** promote `## [Unreleased]` in `CHANGELOG.md` to a `## [X.Y.Z]` heading (leave a
+  fresh empty `## [Unreleased]` above it), moving any items that actually ship under the new
+  version. Leave older entries in place in both files.
 
 Rules:
 - `RELEASE_NOTES[0].version` must always match `package.json`'s `version`. If they drift, the
   tab falls back to the newest existing entry and ships **stale notes under a new version
   number** — the exact bug this map was built to prevent.
-- Bodies are `ReactNode`, so write real JSX (bold lead-ins, `<span className="font-mono">`
-  for sizes/paths, links). Keep the array sorted newest-first.
+- `CHANGELOG.md`'s newest version heading must also match `package.json`'s `version` once a bump
+  lands (an `## [Unreleased]` section may sit above it between releases).
+- `releaseNotes.tsx` bodies are `ReactNode`, so write real JSX (bold lead-ins,
+  `<span className="font-mono">` for sizes/paths, links). Keep the array sorted newest-first.
+  `CHANGELOG.md` is plain Markdown, also newest-first.
 
 > **Enforcement scope:** This rule binds Claude Code sessions, same as Security Review above.
 > For hard enforcement, add a CI check asserting `RELEASE_NOTES[0].version === package.json
@@ -79,14 +91,17 @@ Steps to release version `X.Y.Z` (trunk-based — commit straight to `master`):
    covering everything landed since the previous `vX.Y.(Z-1)` tag. If features were appended to
    the prior (already-tagged) entry while its version sat unbumped, **move them** into the new
    entry so each version's notes match what actually shipped under it.
-3. `npm run build` to verify the renderer/TSX compiles (ignore the `"use client"` node_modules
+3. Update `CHANGELOG.md`: promote `## [Unreleased]` to `## [X.Y.Z]` (leave a fresh empty
+   `## [Unreleased]` above it) and update the compare/tag links at the bottom. The newest heading
+   must match `package.json`'s new version and mirror the `releaseNotes.tsx` entry.
+4. `npm run build` to verify the renderer/TSX compiles (ignore the `"use client"` node_modules
    warnings; a real failure shows `RollupError`/`Transform failed`. Note: piping the build
    through `Select-Object -First N` can surface a spurious exit 255 from a broken pipe — confirm
    with a full run if unsure).
-4. Run `/security-review` (required before any commit/push).
-5. Commit as `chore(release): X.Y.Z` and push to `master`.
-6. `git tag -a vX.Y.Z -m "Release X.Y.Z"` and `git push origin vX.Y.Z` — this fires CI.
-7. Confirm the run started: `gh run list --workflow=release.yml --limit 3`. A full publish takes
+5. Run `/security-review` (required before any commit/push).
+6. Commit as `chore(release): X.Y.Z` and push to `master`.
+7. `git tag -a vX.Y.Z -m "Release X.Y.Z"` and `git push origin vX.Y.Z` — this fires CI.
+8. Confirm the run started: `gh run list --workflow=release.yml --limit 3`. A full publish takes
    ~14–16 min.
 
 Tags are annotated and named `vX.Y.Z` (the `v` prefix is required by the workflow's `v*.*.*`

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { PreviewButtonsDemo } from './PreviewButtonsDemo'
 
 /**
  * Per-version "What's New" content map.
@@ -30,6 +31,61 @@ export interface ReleaseNote {
 }
 
 export const RELEASE_NOTES: ReleaseNote[] = [
+  {
+    version: '1.5.8',
+    summary: (
+      <>
+        Open files in NovaPad from a link — the new <span className="font-mono text-sm text-primary">novapad://</span>{' '}
+        deeplink scheme (great for Slack), plus VS Code-style preview buttons on the tab bar.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'Deeplinks (novapad://)',
+        body: (
+          <>
+            Click a link in Slack, a browser, or an internal tool to open a file in NovaPad.
+            <ul className="mt-3 space-y-2.5">
+              <li>
+                <span className="font-mono text-sm font-semibold text-primary">open</span>
+                <span className="font-mono text-sm text-muted-foreground">?url=&lt;https&gt;&amp;line=N</span>
+                <span className="text-muted-foreground"> — read-only tab</span>
+              </li>
+              <li>
+                <span className="font-mono text-sm font-semibold text-primary">preview</span>
+                <span className="font-mono text-sm text-muted-foreground">?url=&lt;https&gt;</span>
+                <span className="text-muted-foreground"> — read-only + preview pane</span>
+              </li>
+              <li>
+                <span className="font-mono text-sm font-semibold text-primary">new</span>
+                <span className="font-mono text-sm text-muted-foreground">?title=…&amp;content=…</span>
+                <span className="text-muted-foreground"> — new editable tab</span>
+              </li>
+            </ul>
+            <div className="mt-3 rounded bg-secondary/40 p-3 font-mono text-sm break-all">
+              <span className="text-primary">novapad://open</span>
+              <span className="text-foreground">?url=https%3A%2F%2Fhost%2Freport.md&amp;line=42</span>
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">
+              <span className="font-mono">https</span> only; unknown hosts ask before opening. Remote files
+              open read-only (use <strong>Save&nbsp;As</strong> to edit locally).
+            </p>
+          </>
+        )
+      },
+      {
+        title: 'Preview buttons on the tab bar',
+        body: (
+          <>
+            For previewable files (Markdown, JSON, CSV, SQL plan), two buttons sit next to{' '}
+            <span className="font-mono text-sm">+</span>: <strong>Preview</strong> (replaces the editor in
+            the tab) and <strong>Open Preview to the Side</strong> (<span className="font-mono text-sm">Ctrl/Cmd+P</span>).
+            <PreviewButtonsDemo />
+          </>
+        )
+      }
+    ]
+  },
   {
     version: '1.5.7',
     summary: (
