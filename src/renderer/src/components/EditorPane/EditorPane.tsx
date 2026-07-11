@@ -9,7 +9,8 @@ import { useBookmarks } from '../../hooks/useBookmarks'
 import { useFileOps } from '../../hooks/useFileOps'
 import { refineLanguageAsync, sampleFromString } from '../../utils/refineLanguage'
 import { beautify, detectBeautifyFormat } from '../../utils/beautify'
-import { registerNppThemes, nppThemeName } from '../../utils/monacoThemes'
+import { registerNppThemes } from '../../utils/monacoThemes'
+import { monacoThemeFor } from '../../utils/themes'
 import { registerLogLanguage } from '../../utils/logLanguage'
 import { EditorContextMenu } from './EditorContextMenu'
 
@@ -466,7 +467,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
 
     const cfg = useConfigStore.getState()
     const editor = monaco.editor.create(containerRef.current, {
-      theme: nppThemeName(theme),
+      theme: monacoThemeFor(theme),
       fontSize: cfg.fontSize,
       fontFamily: cfg.fontFamily,
       lineNumbers: cfg.showLineNumbers ? 'on' : 'off',
@@ -663,7 +664,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
   // Update theme
   useEffect(() => {
     if (editorRef.current) {
-      monaco.editor.setTheme(nppThemeName(theme))
+      monaco.editor.setTheme(monacoThemeFor(theme))
     }
   }, [theme])
 

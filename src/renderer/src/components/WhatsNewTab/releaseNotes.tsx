@@ -45,9 +45,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         title: 'New look — logo, icon & theme',
         body: (
           <>
-            NovaPad has a new <strong>{'{ N }'}</strong> logo and app icon, and a color theme drawn from it:
-            a <strong>violet</strong> accent in light mode and a <strong>Dracula</strong>-based palette in
-            dark mode (editor and chrome in one tone).
+            NovaPad has a new <strong>{'{ N }'}</strong> logo and app icon. Light mode keeps its familiar
+            <strong> blue</strong> accent, while dark mode gets a <strong>Dracula</strong>-based palette
+            (editor and chrome in one tone) with a <strong>violet</strong> accent. Pick a theme from the new
+            picker (<span className="font-mono text-sm">Settings ▸ Appearance</span>, or the gear menu ▸{' '}
+            <strong>Themes</strong>) — including a new <strong>Solarized Light</strong>.
           </>
         )
       },

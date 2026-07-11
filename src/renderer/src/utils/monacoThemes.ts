@@ -130,6 +130,51 @@ const DRACULA_COLORS: monaco.editor.IColors = {
   'editorBracketMatch.border': '#bd93f9'
 }
 
+// ---------- Solarized Light ----------
+// Canonical Solarized palette (Ethan Schoonover). Light base.
+const SOLARIZED_LIGHT_RULES: monaco.editor.ITokenThemeRule[] = [
+  { token: '', foreground: '657b83', background: 'fdf6e3' },
+  { token: 'comment', foreground: '93a1a1', fontStyle: 'italic' },
+  { token: 'string', foreground: '2aa198' },
+  { token: 'string.key.json', foreground: '268bd2' },
+  { token: 'string.value.json', foreground: '2aa198' },
+  { token: 'number', foreground: 'd33682' },
+  { token: 'constant', foreground: 'cb4b16' },
+  { token: 'constant.language', foreground: 'cb4b16' },
+  { token: 'regexp', foreground: 'dc322f' },
+  { token: 'keyword', foreground: '859900' },
+  { token: 'operator', foreground: '859900' },
+  { token: 'storage', foreground: '859900' },
+  { token: 'type', foreground: 'b58900' },
+  { token: 'type.identifier', foreground: 'b58900' },
+  { token: 'namespace', foreground: 'b58900' },
+  { token: 'function', foreground: '268bd2' },
+  { token: 'identifier', foreground: '657b83' },
+  { token: 'variable', foreground: '657b83' },
+  { token: 'variable.parameter', foreground: 'cb4b16' },
+  { token: 'delimiter', foreground: '657b83' },
+  { token: 'tag', foreground: '268bd2' },
+  { token: 'attribute.name', foreground: '859900' },
+  { token: 'attribute.value', foreground: '2aa198' },
+  ...LOG_LIGHT_RULES
+]
+
+const SOLARIZED_LIGHT_COLORS: monaco.editor.IColors = {
+  'editor.background': '#fdf6e3',
+  'editor.foreground': '#657b83',
+  'editor.lineHighlightBackground': '#eee8d5',
+  'editor.selectionBackground': '#d9d2b8',
+  'editor.selectionHighlightBackground': '#e4dcc4',
+  'editorCursor.foreground': '#657b83',
+  'editorWhitespace.foreground': '#d9d2b8',
+  'editorLineNumber.foreground': '#93a1a1',
+  'editorLineNumber.activeForeground': '#586e75',
+  'editorIndentGuide.background': '#eee8d5',
+  'editorIndentGuide.activeBackground': '#93a1a1',
+  'editorBracketMatch.background': '#eee8d5',
+  'editorBracketMatch.border': '#268bd2'
+}
+
 let registered = false
 
 export function registerNppThemes(): void {
@@ -155,6 +200,13 @@ export function registerNppThemes(): void {
     inherit: true,
     rules: DRACULA_RULES,
     colors: DRACULA_COLORS
+  })
+
+  monaco.editor.defineTheme('solarized-light', {
+    base: 'vs',
+    inherit: true,
+    rules: SOLARIZED_LIGHT_RULES,
+    colors: SOLARIZED_LIGHT_COLORS
   })
 }
 

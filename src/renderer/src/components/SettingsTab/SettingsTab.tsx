@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useUIStore } from '../../store/uiStore'
 import { useConfigStore, AppConfig } from '../../store/configStore'
 import { usePluginStore, PluginSettingField } from '../../store/pluginStore'
 import { cn } from '../../lib/utils'
 import { ShortcutsSection } from './ShortcutsSection'
+import { ThemeGallery } from './ThemeGallery'
+import { ThemeDrawer } from './ThemeDrawer'
 import { useAltHeld } from '../../hooks/useAltHeld'
 import { useAltMnemonics, MnemonicHandlers } from '../../hooks/useAltMnemonics'
 import { MnemonicLabel, parseMnemonic } from '../../utils/mnemonic'
@@ -42,9 +44,10 @@ export function SettingsTab() {
   const { plugins, pluginSettings, pluginConfigs, fetchPluginSettings, setPluginConfig } = usePluginStore()
   const pendingCategory = useUIStore((s) => s.pendingSettingsCategory)
   const setPendingCategory = useUIStore((s) => s.setPendingSettingsCategory)
-  const [activeTab, setActiveTab] = useState<PrefTab>(
-    () => (useUIStore.getState().pendingSettingsCategory as PrefTab | null) ?? 'general'
-  )
+  // Active category lives in the store, not local state, so it survives the
+  // SettingsTab unmounting when the user switches to another tab and back.
+  const activeTab = useUIStore((s) => s.settingsCategory) as PrefTab
+  const setActiveTab = useUIStore((s) => s.setSettingsCategory)
 
   // Fetch plugin settings schemas on mount
   useEffect(() => {
@@ -82,6 +85,10 @@ export function SettingsTab() {
 
   const set = <K extends keyof AppConfig>(key: K, val: AppConfig[K]) => config.setProp(key, val)
 
+  // Theme picker drawer (slides in on the left of the Settings row, pushing the
+  // category list right). Local + ephemeral — closes when leaving Settings.
+  const [themeDrawerOpen, setThemeDrawerOpen] = useState(false)
+
   return (
     <div className="flex flex-col flex-1 h-full overflow-hidden bg-background" data-testid="settings-tab">
       <div className="px-4 py-3 border-b border-border">
@@ -90,6 +97,14 @@ export function SettingsTab() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
+        {/* Theme picker drawer — pushes the category list right when open */}
+        {themeDrawerOpen && (
+          <ThemeDrawer
+            value={config.theme}
+            onSelect={(t) => { useUIStore.getState().setTheme(t); set('theme', t) }}
+            onClose={() => setThemeDrawerOpen(false)}
+          />
+        )}
         {/* Category list */}
         <div className="w-[160px] border-r border-border shrink-0 py-2 overflow-y-auto editor-scrollbar">
           {TABS.map((t) => (
@@ -99,7 +114,7 @@ export function SettingsTab() {
                 'w-full text-left px-3 py-1.5 text-sm cursor-pointer bg-transparent border-none text-foreground transition-colors hover:bg-secondary',
                 activeTab === t.id && 'bg-primary/15 text-primary font-medium'
               )}
-              onClick={() => setActiveTab(t.id)}
+              onClick={() => { setActiveTab(t.id); setThemeDrawerOpen(false) }}
               data-testid={`settings-category-${t.id}`}
             >
               <MnemonicLabel label={t.label} show={altHeld} />
@@ -147,13 +162,8 @@ export function SettingsTab() {
           )}
 
           {activeTab === 'appearance' && (
-            <div className="flex flex-col gap-3 max-w-[520px]">
-              <Row label="Theme">
-                <select className={cn(inputCls, 'max-w-[200px]')} value={config.theme} onChange={(e) => { const t = e.target.value as 'light' | 'dark'; useUIStore.getState().setTheme(t); set('theme', t) }}>
-                  <option value="dark">Dark</option>
-                  <option value="light">Light</option>
-                </select>
-              </Row>
+            <div className="flex flex-col gap-5 max-w-[520px]">
+              <ThemeGallery value={config.theme} onOpen={() => setThemeDrawerOpen(true)} />
               <Row label="Render whitespace">
                 <select className={cn(inputCls, 'max-w-[200px]')} value={config.renderWhitespace} onChange={(e) => set('renderWhitespace', e.target.value as AppConfig['renderWhitespace'])}>
                   <option value="none">None</option>

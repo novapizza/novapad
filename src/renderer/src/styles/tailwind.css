@@ -46,7 +46,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 15%;
 
-    --primary: 262 72% 55%;
+    --primary: 215 80% 50%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 14% 90%;
@@ -55,7 +55,7 @@
     --muted: 220 14% 92%;
     --muted-foreground: 220 10% 46%;
 
-    --accent: 262 72% 55%;
+    --accent: 215 80% 50%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
@@ -63,7 +63,7 @@
 
     --border: 220 13% 87%;
     --input: 220 13% 87%;
-    --ring: 262 72% 55%;
+    --ring: 215 80% 50%;
 
     --radius: 0.25rem;
 
@@ -76,31 +76,31 @@
     --tab-hover: 220 14% 96%;
     --tab-foreground: 220 20% 15%;
     --tab-muted: 220 10% 50%;
-    --statusbar: 262 70% 50%;
+    --statusbar: 215 80% 50%;
     --statusbar-foreground: 0 0% 100%;
     --explorer: 220 14% 97%;
     --explorer-foreground: 220 20% 25%;
-    --explorer-hover: 262 55% 93%;
-    --explorer-active: 262 70% 95%;
+    --explorer-hover: 215 60% 90%;
+    --explorer-active: 215 80% 95%;
     --gutter: 220 14% 94%;
     --gutter-foreground: 220 10% 60%;
-    --line-highlight: 262 60% 96%;
+    --line-highlight: 215 60% 95%;
 
     --sidebar-background: 220 14% 97%;
     --sidebar-foreground: 220 20% 25%;
-    --sidebar-primary: 262 72% 55%;
+    --sidebar-primary: 215 80% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 262 55% 93%;
+    --sidebar-accent: 215 60% 90%;
     --sidebar-accent-foreground: 220 20% 15%;
     --sidebar-border: 220 13% 87%;
-    --sidebar-ring: 262 72% 55%;
+    --sidebar-ring: 215 80% 50%;
 
     /* JSON syntax tokens (Notepad++ palette). Light theme uses saturated mid
      * shades so contrast is strong on the near-white preview background.
      * The .dark block below switches to pastel-300 equivalents. */
-    --tok-key:    262 60% 48%;
+    --tok-key:    215 80% 40%;
     --tok-string: 145 65% 32%;
-    --tok-bool:   288 60% 52%;
+    --tok-bool:   262 65% 50%;
     --tok-null:   215 10% 45%;
     --tok-num:     24 85% 45%;
     --tok-brace:  215 15% 35%;

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Settings as SettingsIcon, Sun, Moon } from 'lucide-react'
+import { Settings as SettingsIcon, Palette } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
-import { useConfigStore } from '../../store/configStore'
 import { useEditorStore } from '../../store/editorStore'
 import { shortcutMod } from '../../utils/platform'
 
@@ -13,7 +12,6 @@ import { shortcutMod } from '../../utils/platform'
  */
 export function SettingsMenu() {
   const mod = shortcutMod()
-  const { theme } = useUIStore()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -35,9 +33,9 @@ export function SettingsMenu() {
     }
   }, [open])
 
-  const toggleTheme = () => {
-    useUIStore.getState().toggleTheme()
-    useConfigStore.getState().setProp('theme', useUIStore.getState().theme)
+  const openThemes = () => {
+    useUIStore.getState().setPendingSettingsCategory('appearance')
+    useEditorStore.getState().openVirtualTab('settings')
     setOpen(false)
   }
 
@@ -67,16 +65,12 @@ export function SettingsMenu() {
         >
           <button
             role="menuitem"
-            onClick={toggleTheme}
+            onClick={openThemes}
             className="w-full flex items-center gap-2.5 px-3 py-2 text-base text-popover-foreground hover:bg-secondary transition-colors"
-            data-testid="settings-menu-theme"
+            data-testid="settings-menu-themes"
           >
-            <span className="w-5 flex justify-center shrink-0">
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </span>
-            <span className="flex-1 text-left">
-              {theme === 'dark' ? 'Toggle Light Mode' : 'Toggle Dark Mode'}
-            </span>
+            <span className="w-5 flex justify-center shrink-0"><Palette size={18} /></span>
+            <span className="flex-1 text-left">Themes</span>
           </button>
 
           <div className="h-px bg-border mx-2 my-1" />

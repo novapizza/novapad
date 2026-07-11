@@ -5,8 +5,8 @@ export interface AppConfig {
   language: string
   maxRecentFiles: number
 
-  /** Persisted app chrome + Monaco theme */
-  theme: 'light' | 'dark'
+  /** Persisted app chrome + Monaco theme (theme id from utils/themes.ts). */
+  theme: string
 
   // Editor
   fontSize: number

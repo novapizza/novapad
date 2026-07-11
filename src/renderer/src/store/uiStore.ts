@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { SchemaModel } from '../utils/schemaParse/types'
 
-type Theme = 'light' | 'dark'
+type Theme = string
 export type BottomPanelId = 'findResults' | 'console'
 
 export type UIToggleKey =
@@ -93,6 +93,9 @@ interface UIState {
    *  to that category, then clears the value. Used to deep-link from the gear menu
    *  and the native "Keyboard Shortcuts" menu item. */
   pendingSettingsCategory: string | null
+  /** Currently-selected Settings category. Kept in the store (not local component
+   *  state) so it survives the SettingsTab unmounting when the user switches tabs. */
+  settingsCategory: string
   /**
    * Developer Tools panel (UUID/epoch/color/cron/lorem/jwt/url/csp/hash). A
    * single modal hosts every tool; `activeToolId` selects which one is shown.
@@ -143,6 +146,7 @@ interface UIState {
   openTransform: (model: SchemaModel, kind: 'prisma' | 'dbml' | 'ddl', title: string) => void
   closeTransform: () => void
   setPendingSettingsCategory: (cat: string | null) => void
+  setSettingsCategory: (cat: string) => void
   openTool: (id: string, args?: Record<string, unknown>) => void
   closeTools: () => void
 }
@@ -187,6 +191,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   transformKind: null,
   transformTitle: null,
   pendingSettingsCategory: null,
+  settingsCategory: 'general',
   toolsPanelOpen: false,
   activeToolId: null,
   toolArgs: null,
@@ -297,6 +302,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   closeTransform: () =>
     set({ transformOpen: false, transformModel: null, transformKind: null, transformTitle: null }),
   setPendingSettingsCategory: (cat) => set({ pendingSettingsCategory: cat }),
+  setSettingsCategory: (cat) => set({ settingsCategory: cat }),
   openTool: (id, args) => set({ toolsPanelOpen: true, activeToolId: id, toolArgs: args ?? null }),
   closeTools: () => set({ toolsPanelOpen: false, toolArgs: null })
 }))

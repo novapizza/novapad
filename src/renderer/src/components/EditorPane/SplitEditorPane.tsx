@@ -4,7 +4,7 @@ import { Columns2, X } from 'lucide-react'
 import { useEditorStore } from '../../store/editorStore'
 import { useUIStore } from '../../store/uiStore'
 import { useConfigStore } from '../../store/configStore'
-import { nppThemeName } from '../../utils/monacoThemes'
+import { monacoThemeFor } from '../../utils/themes'
 
 /**
  * Second editor view shown when Split View is enabled. It is a *mirror* of the
@@ -33,7 +33,7 @@ export const SplitEditorPane: React.FC = () => {
     if (!containerRef.current) return
     const cfg = useConfigStore.getState()
     const editor = monaco.editor.create(containerRef.current, {
-      theme: nppThemeName(theme),
+      theme: monacoThemeFor(theme),
       fontSize: cfg.fontSize,
       fontFamily: cfg.fontFamily,
       lineNumbers: cfg.showLineNumbers ? 'on' : 'off',
@@ -60,7 +60,7 @@ export const SplitEditorPane: React.FC = () => {
 
   // Theme is global in Monaco; keep in sync when the app theme flips.
   useEffect(() => {
-    if (editorRef.current) monaco.editor.setTheme(nppThemeName(theme))
+    if (editorRef.current) monaco.editor.setTheme(monacoThemeFor(theme))
   }, [theme])
 
   // Bind to (or release) the active buffer's model.

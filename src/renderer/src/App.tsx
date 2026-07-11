@@ -43,6 +43,7 @@ const TransformOverlay = lazy(() =>
 )
 
 import { detectPreviewKind } from './utils/previewKind'
+import { applyTheme } from './utils/themes'
 import { Toaster, toast } from './components/ui/sonner'
 import { useEditorStore } from './store/editorStore'
 import { useUIStore } from './store/uiStore'
@@ -132,14 +133,12 @@ export default function App() {
     if (filePaths) openFiles(filePaths)
   }, [openFiles])
 
-  // Apply theme to root — .dark class on <html> drives Tailwind theme
+  // Apply the theme to <html>: toggles the .dark base class and sets any
+  // theme-specific CSS-variable overrides (see utils/themes.ts).
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
+    applyTheme(theme)
   }, [theme])
+
 
   // Load config on startup and apply persisted theme to UI
   useEffect(() => {
