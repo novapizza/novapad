@@ -52,5 +52,5 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 - **Settings page reset its selected category** when you switched to another tab and back — the
   active category is now preserved.
 
-[Unreleased]: https://github.com/novapizza/notepadandmore/compare/v1.5.8...HEAD
-[1.5.8]: https://github.com/novapizza/notepadandmore/releases/tag/v1.5.8
+[Unreleased]: https://github.com/novapizza/novapad/compare/v1.5.8...HEAD
+[1.5.8]: https://github.com/novapizza/novapad/releases/tag/v1.5.8

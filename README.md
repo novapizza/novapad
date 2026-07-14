@@ -30,17 +30,13 @@ A lightweight, fast, and modern text editor for Windows and macOS. Built on Elec
 - **Session restore** — buffers, cursor positions, view state, and workspace folder are restored on launch.
 - **Auto-update** via electron-updater (GitHub Releases).
 
-## Install
-
-Download the latest installer from the [Releases page](https://github.com/haht-dev/novapad-releases/releases) and run it. Per-user install — no admin/UAC needed on Windows.
-
 ## Build from source
 
 Requires Node.js 20+ and npm.
 
 ```bash
-git clone https://github.com/emtyty/notepadandmore
-cd notepadandmore
+git clone https://github.com/novapizza/novapad
+cd novapad
 npm install
 
 npm run dev          # start with hot reload

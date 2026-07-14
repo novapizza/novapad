@@ -81,7 +81,7 @@ Slack does not reliably linkify custom schemes, so post a normal `https://` link
     for (const k of ['line', 'col']) if (params.get(k)) deeplink.searchParams.set(k, params.get(k))
     location.href = deeplink.toString()
     document.getElementById('msg').innerHTML =
-      'If nothing happened, NovaPad may not be installed. <a href="https://github.com/novapizza/notepadandmore/releases/latest">Download it here</a>.'
+      'If nothing happened, NovaPad may not be installed. <a href="https://github.com/novapizza/novapad/releases/latest">Download it here</a>.'
   } else {
     document.getElementById('msg').textContent = 'Missing or invalid ?url= parameter (https only).'
   }
