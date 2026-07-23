@@ -32,6 +32,39 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.5.9',
+    summary: (
+      <>
+        A quality pass on <strong>Find &amp; Replace</strong> — it no longer loses editor focus or hides
+        behind other panels — plus an option to stop the editor from auto-enabling Word Wrap on long lines.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'Find & Replace focus and overlay fixes',
+        body: (
+          <>
+            Closing the Find &amp; Replace dialog (<span className="font-mono text-sm">Esc</span> or the ✕ button)
+            now returns focus to the editor, so you can keep typing right away. The dialog also no longer gets
+            stuck <strong>behind</strong> other full-screen panels (About, Quick Open, Tools): opening one of
+            these now closes the others, so Find &amp; Replace can't end up visible-but-unclickable.
+          </>
+        )
+      },
+      {
+        title: 'Auto word wrap is now optional',
+        body: (
+          <>
+            Beautifying or pasting content with very long lines still turns on <strong>Word Wrap</strong> for
+            you by default. If you'd rather it never toggle Word Wrap on its own, uncheck{' '}
+            <strong>Auto word wrap on long lines</strong> in{' '}
+            <span className="font-mono text-sm">Settings ▸ Editor</span>.
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.5.8',
     summary: (
       <>
@@ -105,28 +138,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             <span className="font-mono text-sm">-</span> / <span className="font-mono text-sm">0</span> now zoom the
             entire app (UI and editor) and work everywhere — even on the Welcome screen. The zoom level is
             remembered across launches.
-          </>
-        )
-      },
-      {
-        title: 'Find & Replace focus and overlay fixes',
-        body: (
-          <>
-            Closing the Find &amp; Replace dialog (<span className="font-mono text-sm">Esc</span> or the ✕ button)
-            now returns focus to the editor, so you can keep typing right away. The dialog also no longer gets
-            stuck <strong>behind</strong> other full-screen panels (About, Quick Open, Tools): opening one of
-            these now closes the others, so Find &amp; Replace can't end up visible-but-unclickable.
-          </>
-        )
-      },
-      {
-        title: 'Auto word wrap is now optional',
-        body: (
-          <>
-            Beautifying or pasting content with very long lines still turns on <strong>Word Wrap</strong> for
-            you by default. If you'd rather it never toggle Word Wrap on its own, uncheck{' '}
-            <strong>Auto word wrap on long lines</strong> in{' '}
-            <span className="font-mono text-sm">Settings ▸ Editor</span>.
           </>
         )
       }

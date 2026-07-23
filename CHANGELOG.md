@@ -10,6 +10,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+## [1.5.9]
+
 ### Added
 - **"Auto word wrap on long lines" setting** (Settings ▸ Editor, default **on**). Controls whether
   beautifying or pasting content with over-long lines auto-enables Word Wrap. Turn it off to keep
@@ -66,5 +68,6 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 - **Settings page reset its selected category** when you switched to another tab and back — the
   active category is now preserved.
 
-[Unreleased]: https://github.com/novapizza/novapad/compare/v1.5.8...HEAD
+[Unreleased]: https://github.com/novapizza/novapad/compare/v1.5.9...HEAD
+[1.5.9]: https://github.com/novapizza/novapad/compare/v1.5.8...v1.5.9
 [1.5.8]: https://github.com/novapizza/novapad/releases/tag/v1.5.8
