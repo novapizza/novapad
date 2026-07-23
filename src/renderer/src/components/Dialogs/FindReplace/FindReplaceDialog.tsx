@@ -6,6 +6,7 @@ import { useAltHeld } from '../../../hooks/useAltHeld'
 import { useAltMnemonics, MnemonicHandlers } from '../../../hooks/useAltMnemonics'
 import { MnemonicLabel } from '../../../utils/mnemonic'
 import { isWindows } from '../../../utils/platform'
+import { editorRegistry } from '../../../utils/editorRegistry'
 import { cn } from '../../../lib/utils'
 
 type DialogTab = 'find' | 'replace' | 'findInFiles' | 'mark'
@@ -207,10 +208,19 @@ export function FindReplaceDialog() {
   }, [showFindReplace, findOpenNonce]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clear the vivid current-match decoration when the dialog closes so
-  // the editor returns to its normal appearance.
+  // the editor returns to its normal appearance, and return keyboard focus
+  // to the editor. This dialog is hand-rolled (not a Radix dialog), so
+  // nothing restores focus automatically: on close the focused control (the
+  // ✕ button or an input) unmounts and the browser drops focus to
+  // <body>, leaving the editor unable to receive typing or shortcuts until
+  // the user clicks it. Refocus in the cleanup — it runs after the dialog's
+  // DOM is removed, so the editor keeps focus rather than being overwritten.
   useEffect(() => {
     if (showFindReplace) {
-      return () => { engine.clearCurrentMatchHighlight() }
+      return () => {
+        engine.clearCurrentMatchHighlight()
+        editorRegistry.get()?.focus()
+      }
     }
   }, [showFindReplace]) // eslint-disable-line react-hooks/exhaustive-deps
 

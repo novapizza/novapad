@@ -151,6 +151,26 @@ interface UIState {
   closeTools: () => void
 }
 
+/**
+ * The top-level overlays that all live on the same fixed z-[9000] layer in
+ * App.tsx (Find & Replace, About, Quick Open, Tools). They each create their
+ * own stacking context at the same z-index, so when two are open at once the
+ * later one in the DOM wins — and the modal ones (About/QuickOpen/Tools) have a
+ * full-screen pointer-events backdrop that then swallows clicks meant for
+ * whatever is behind it. Find & Replace is non-modal and rendered first, so it
+ * was the usual victim: it stayed visible but became unclickable when another
+ * overlay was opened on top (e.g. via the OS menu or a shortcut, which fire
+ * even while a modal is up). Spreading this into every open-action makes the
+ * layer mutually exclusive: opening one overlay closes the others, so a
+ * blocking backdrop can never sit over another dialog.
+ */
+const CLOSE_TOP_OVERLAYS = {
+  showFindReplace: false,
+  showAbout: false,
+  quickOpenVisible: false,
+  toolsPanelOpen: false,
+} as const
+
 export const useUIStore = create<UIState>((set, get) => ({
   theme: 'dark',
   showToolbar: true,
@@ -249,7 +269,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   setWorkspaceFolder: (path) => set({ workspaceFolder: path }),
   setExpandedFolders: (paths) => set({ expandedFolders: paths }),
   openFind: (mode = 'find', initialTerm = '') =>
-    set((s) => ({ showFindReplace: true, findReplaceMode: mode, findInitialTerm: initialTerm, findOpenNonce: s.findOpenNonce + 1 })),
+    set((s) => ({ ...CLOSE_TOP_OVERLAYS, showFindReplace: true, findReplaceMode: mode, findInitialTerm: initialTerm, findOpenNonce: s.findOpenNonce + 1 })),
   closeFind: () => set({ showFindReplace: false }),
   togglePreview: () =>
     set((s) => ({
@@ -282,8 +302,8 @@ export const useUIStore = create<UIState>((set, get) => ({
     })),
   setMarkdownPreview: (v) =>
     set((s) => ({ showPreview: v, showMarkdownPreview: v, previewFullscreen: v ? s.previewFullscreen : false })),
-  setShowAbout: (v) => set({ showAbout: v }),
-  setQuickOpenVisible: (v) => set({ quickOpenVisible: v }),
+  setShowAbout: (v) => set(v ? { ...CLOSE_TOP_OVERLAYS, showAbout: true } : { showAbout: false }),
+  setQuickOpenVisible: (v) => set(v ? { ...CLOSE_TOP_OVERLAYS, quickOpenVisible: true } : { quickOpenVisible: false }),
   setShowBottomPanel: (v) => set({ showBottomPanel: v }),
   setActiveBottomPanel: (p) => set({ activeBottomPanel: p }),
 
@@ -303,6 +323,6 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ transformOpen: false, transformModel: null, transformKind: null, transformTitle: null }),
   setPendingSettingsCategory: (cat) => set({ pendingSettingsCategory: cat }),
   setSettingsCategory: (cat) => set({ settingsCategory: cat }),
-  openTool: (id, args) => set({ toolsPanelOpen: true, activeToolId: id, toolArgs: args ?? null }),
+  openTool: (id, args) => set({ ...CLOSE_TOP_OVERLAYS, toolsPanelOpen: true, activeToolId: id, toolArgs: args ?? null }),
   closeTools: () => set({ toolsPanelOpen: false, toolArgs: null })
 }))

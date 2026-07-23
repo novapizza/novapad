@@ -10,6 +10,15 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+### Fixed
+- **Find & Replace no longer loses editor focus on close.** Closing the dialog (Esc or the ✕
+  button) now returns keyboard focus to the editor, so typing and shortcuts work immediately
+  without clicking back into the document.
+- **Find & Replace no longer gets stuck behind other overlays.** The full-screen dialogs that
+  share the top overlay layer (Find & Replace, About, Quick Open, Tools) are now mutually
+  exclusive — opening one closes the others. Previously a second overlay's backdrop could sit on
+  top of Find & Replace, leaving it visible but unclickable.
+
 ## [1.5.8]
 
 ### Added

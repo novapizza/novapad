@@ -107,6 +107,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             remembered across launches.
           </>
         )
+      },
+      {
+        title: 'Find & Replace focus and overlay fixes',
+        body: (
+          <>
+            Closing the Find &amp; Replace dialog (<span className="font-mono text-sm">Esc</span> or the ✕ button)
+            now returns focus to the editor, so you can keep typing right away. The dialog also no longer gets
+            stuck <strong>behind</strong> other full-screen panels (About, Quick Open, Tools): opening one of
+            these now closes the others, so Find &amp; Replace can't end up visible-but-unclickable.
+          </>
+        )
       }
     ]
   },
