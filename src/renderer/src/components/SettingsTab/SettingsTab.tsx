@@ -153,6 +153,7 @@ export function SettingsTab() {
               </Row>
               <CheckRow label="Insert spaces (not tabs)" checked={config.insertSpaces} onChange={(v) => set('insertSpaces', v)} />
               <CheckRow label="Word wrap" checked={config.wordWrap} onChange={(v) => set('wordWrap', v)} />
+              <CheckRow label="Auto word wrap on long lines" checked={config.autoWrapLongLines} onChange={(v) => set('autoWrapLongLines', v)} />
               <CheckRow label="Show line numbers" checked={config.showLineNumbers} onChange={(v) => set('showLineNumbers', v)} />
               <CheckRow label="Highlight current line" checked={config.highlightCurrentLine} onChange={(v) => set('highlightCurrentLine', v)} />
               <CheckRow label="Render indentation guides" checked={config.renderIndentGuides} onChange={(v) => set('renderIndentGuides', v)} />

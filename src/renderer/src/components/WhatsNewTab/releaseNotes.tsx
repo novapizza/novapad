@@ -118,6 +118,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             these now closes the others, so Find &amp; Replace can't end up visible-but-unclickable.
           </>
         )
+      },
+      {
+        title: 'Auto word wrap is now optional',
+        body: (
+          <>
+            Beautifying or pasting content with very long lines still turns on <strong>Word Wrap</strong> for
+            you by default. If you'd rather it never toggle Word Wrap on its own, uncheck{' '}
+            <strong>Auto word wrap on long lines</strong> in{' '}
+            <span className="font-mono text-sm">Settings ▸ Editor</span>.
+          </>
+        )
       }
     ]
   },

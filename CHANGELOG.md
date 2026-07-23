@@ -10,6 +10,11 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+### Added
+- **"Auto word wrap on long lines" setting** (Settings ▸ Editor, default **on**). Controls whether
+  beautifying or pasting content with over-long lines auto-enables Word Wrap. Turn it off to keep
+  the app from ever toggling Word Wrap for you.
+
 ### Fixed
 - **Find & Replace no longer loses editor focus on close.** Closing the dialog (Esc or the ✕
   button) now returns keyboard focus to the editor, so typing and shortcuts work immediately

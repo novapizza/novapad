@@ -395,7 +395,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
         // result can still contain long string values — so we leave wrap on
         // rather than restoring afterwards. Persisted via configStore so the
         // menu checkbox and next launch stay in sync.
-        if (!cfg.wordWrap) {
+        if (!cfg.wordWrap && useConfigStore.getState().autoWrapLongLines) {
           const lineCount = model.getLineCount()
           let hasLongLine = false
           for (let line = 1; line <= lineCount; line++) {
@@ -581,7 +581,11 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
       // horizontally to the cursor and the text reads as fragments. Match
       // beautify's behavior — persist via configStore so the menu checkbox and
       // next launch stay in sync.
-      if (model && !useConfigStore.getState().wordWrap) {
+      if (
+        model &&
+        !useConfigStore.getState().wordWrap &&
+        useConfigStore.getState().autoWrapLongLines
+      ) {
         const { contentWidth } = editor.getLayoutInfo()
         const charW = editor.getOption(monaco.editor.EditorOption.fontInfo)
           .typicalHalfwidthCharacterWidth

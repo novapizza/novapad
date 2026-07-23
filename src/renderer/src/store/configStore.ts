@@ -14,6 +14,8 @@ export interface AppConfig {
   tabSize: number
   insertSpaces: boolean
   wordWrap: boolean
+  /** Auto-enable wordWrap when beautifying/pasting content with over-long lines. */
+  autoWrapLongLines: boolean
   showLineNumbers: boolean
   renderWhitespace: 'none' | 'boundary' | 'all'
   renderIndentGuides: boolean
@@ -63,6 +65,7 @@ export const CONFIG_DEFAULTS: AppConfig = {
   tabSize: 4,
   insertSpaces: true,
   wordWrap: false,
+  autoWrapLongLines: true,
   showLineNumbers: true,
   renderWhitespace: 'none',
   renderIndentGuides: true,
