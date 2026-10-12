@@ -673,8 +673,8 @@ test.describe('Open Folder Feature', () => {
         await expect(sidebar.getByText('Delete')).toBeVisible()
         await expect(sidebar.getByText('Copy Path')).toBeVisible()
 
-        // 4. Assert text=/Reveal in (Finder|Explorer)/ visible
-        await expect(sidebar.locator('text=/Reveal in (Finder|Explorer)/').first()).toBeVisible()
+        // 4. Assert text=/Reveal in (Finder|Explorer|File Manager)/ visible
+        await expect(sidebar.locator('text=/Reveal in (Finder|Explorer|File Manager)/').first()).toBeVisible()
       } finally {
         fs.rmSync(tmpDir, { recursive: true, force: true })
       }

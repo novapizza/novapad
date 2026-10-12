@@ -10,6 +10,14 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+### Added
+- **Linux builds.** `pnpm run package:linux` produces an AppImage, an rpm, and a deb. The rpm/deb
+  add an app-menu entry, icons, *Open With* for text/source files, and the `novapad://` link
+  handler; tagged releases now publish Linux packages and `latest-linux.yml` so the AppImage can
+  auto-update (rpm/deb installs update through a new package). On Linux the in-app menu bar is the
+  only one (Alt no longer reveals a second native bar), Alt-key menu mnemonics work as on Windows,
+  and files opened from GNOME-style file managers (passed as `file://` URIs) load correctly.
+
 ## [1.6.6]
 
 ### Added

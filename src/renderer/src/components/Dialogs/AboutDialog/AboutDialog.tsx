@@ -3,7 +3,7 @@ import { useUIStore } from '../../../store/uiStore'
 import { useAltHeld } from '../../../hooks/useAltHeld'
 import { useAltMnemonics } from '../../../hooks/useAltMnemonics'
 import { MnemonicLabel } from '../../../utils/mnemonic'
-import { isWindows } from '../../../utils/platform'
+import { usesAltMnemonics } from '../../../utils/platform'
 import logoUrl from '../../../assets/logo-animated.svg'
 
 export function AboutDialog() {
@@ -11,7 +11,7 @@ export function AboutDialog() {
   const [version, setVersion] = useState<string>('')
   const altHeld = useAltHeld()
   useAltMnemonics(
-    showAbout && isWindows(),
+    showAbout && usesAltMnemonics(),
     { O: () => setShowAbout(false) },
     { allowInsideInputs: true, priority: true },
   )

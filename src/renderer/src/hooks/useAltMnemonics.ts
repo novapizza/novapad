@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { isWindows } from '../utils/platform'
+import { usesAltMnemonics } from '../utils/platform'
 
 export type MnemonicHandlers = Record<string, () => void>
 
@@ -43,13 +43,13 @@ export function useAltMnemonics(
   const priority = options.priority ?? false
 
   useEffect(() => {
-    if (!enabled || !isWindows()) return
+    if (!enabled || !usesAltMnemonics()) return
     if (priority) changePriority(+1)
     return () => { if (priority) changePriority(-1) }
   }, [enabled, priority])
 
   useEffect(() => {
-    if (!enabled || !isWindows()) return
+    if (!enabled || !usesAltMnemonics()) return
     const requireAlt = options.requireAlt ?? true
     const allowInsideInputs = options.allowInsideInputs ?? false
     const scope: HTMLElement | Document | Window =

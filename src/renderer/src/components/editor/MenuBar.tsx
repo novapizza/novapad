@@ -12,7 +12,7 @@ import {
 import { useUIStore } from '../../store/uiStore'
 import { useEditorStore } from '../../store/editorStore'
 import { usePluginStore } from '../../store/pluginStore'
-import { isMacOS, isWindows, shortcutMod, shortcutAlt } from '../../utils/platform'
+import { isMacOS, usesAltMnemonics, shortcutMod, shortcutAlt } from '../../utils/platform'
 import { MnemonicLabel, parseMnemonic } from '../../utils/mnemonic'
 import { useAltHeld } from '../../hooks/useAltHeld'
 import { useAltMnemonics } from '../../hooks/useAltMnemonics'
@@ -435,13 +435,13 @@ export function MenuBar({
       setHoveredSubmenu(null)
     }
   }
-  useAltMnemonics(isWindows(), topLevelHandlers, { allowInsideInputs: true })
+  useAltMnemonics(usesAltMnemonics(), topLevelHandlers, { allowInsideInputs: true })
 
   const menuItemsRef = useRef(menuItems)
   menuItemsRef.current = menuItems
 
   useEffect(() => {
-    if (!isWindows() || !activeMenu) return
+    if (!usesAltMnemonics() || !activeMenu) return
     const items = menuItemsRef.current[activeMenu]
     if (!items) return
     const onKey = (e: KeyboardEvent) => {

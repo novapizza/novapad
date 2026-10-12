@@ -340,4 +340,89 @@ dmg:
     width: 540
     height: 380
 
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: rpm
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  artifactName: "${productName}-${version}-linux-${arch}.${ext}"
+  # Must stay in sync with build/fuses.cjs, which locates the Linux binary
+  # at <appOutDir>/<productFilename lowercased>.
+  executableName: novapad
+  # Directory of NxN.png files — electron-builder installs each size into
+  # the hicolor icon theme so launchers pick a sharp icon at any scale.
+  icon: resources/icons/png
+  category: Development;TextEditor
+  synopsis: Lightweight, fast, modern text editor
+  # Used as the .desktop Comment (menu tooltip); package.json's description
+  # lists every platform, which reads oddly inside a Linux app menu.
+  description: A lightweight, fast, and modern text editor
+  # rpm/deb require a maintainer; without it electron-builder demands an
+  # author email in package.json (which is intentionally empty).
+  maintainer: NovaPad
+  vendor: NovaPad
+  # Override the top-level `compression: maximum`. That setting is tuned for
+  # the NSIS installer, but for an AppImage it xz-compresses the squashfs the
+  # app runs *from*. Electron's random reads (200 MB binary, 10 MB renderer
+  # bundle) then thrash single-threaded block decompression, and launch stalls
+  # for minutes with no window. `normal` trades ~25 MB of size for a 3 s start.
+  # (`appImage:` has no compression option, so this sits on `linux:` and the
+  # rpm/deb blocks below override it.)
+  compression: normal
+  # Linux "Open With" is driven by MIME types in the .desktop file, not file
+  # extensions. Mirrors the fileAssociations list above (shared-mime-info
+  # names; some formats have two aliases in the wild, so both are listed).
+  mimeTypes:
+    - text/plain
+    - text/markdown
+    - text/x-log
+    - application/json
+    - application/xml
+    - text/xml
+    - application/yaml
+    - application/x-yaml
+    - application/toml
+    - text/csv
+    - text/tab-separated-values
+    - text/javascript
+    - application/javascript
+    - application/x-typescript
+    - text/html
+    - text/css
+    - text/x-scss
+    - text/x-less
+    - text/x-python
+    - text/x-python3
+    - application/x-ruby
+    - application/x-php
+    - text/x-java
+    - text/x-csharp
+    - text/x-csrc
+    - text/x-chdr
+    - text/x-c++src
+    - text/x-c++hdr
+    - text/x-go
+    - text/rust
+    - text/x-kotlin
+    - text/x-lua
+    - text/x-r
+    - application/x-shellscript
+    - text/x-sql
+    - text/x-rst
+  desktop:
+    entry:
+      StartupWMClass: NovaPad
+      Keywords: text;editor;notepad;code;markdown;json;
+
+# rpm/deb hand `compression` straight to fpm, which rejects `normal`. They are
+# unpacked to disk at install time, so maximum compression costs nothing at
+# launch.
+rpm:
+  compression: xz
+deb:
+  compression: xz
+
 # publish config is built dynamically in electron-builder.cjs based on env vars

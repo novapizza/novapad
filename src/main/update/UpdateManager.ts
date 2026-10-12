@@ -27,6 +27,13 @@ export class UpdateManager {
       this.log('info', 'disabled (unpackaged)')
       return
     }
+    // Linux: only the AppImage self-updates (it swaps its own file, no root).
+    // rpm/deb live under /opt and electron-updater would install them via a
+    // polkit password prompt on quit — those users update through a package.
+    if (process.platform === 'linux' && !process.env['APPIMAGE']) {
+      this.log('info', 'disabled (rpm/deb install — update via package manager)')
+      return
+    }
     if (!(await this.canWriteInstallDir())) {
       this.log('info', 'disabled (no write access to install dir — manual installer required)')
       return

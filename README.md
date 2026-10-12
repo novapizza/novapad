@@ -1,6 +1,6 @@
 # NovaPad
 
-A lightweight, fast, and modern text editor for Windows and macOS. Built on Electron + React + Monaco Editor.
+A lightweight, fast, and modern text editor for Windows, macOS, and Linux. Built on Electron + React + Monaco Editor.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -24,35 +24,45 @@ A lightweight, fast, and modern text editor for Windows and macOS. Built on Elec
 - **Welcome screen + What's New tab** — recent files + pinned actions on launch; auto-opened changelog after updates.
 - **Plugin system** — VS Code-style extension manager; plugins load from `~/.config/notepad-and-more/plugins/`. Plugins can register commands and contribute menu items.
 - **Native OS integration**
-  - Registered for `Open With` on Windows and macOS for ~50 text/source extensions.
-  - Open files from Explorer / Finder; subsequent opens forward to the running instance.
+  - Registered for `Open With` on Windows and macOS for ~50 text/source extensions, and for the matching MIME types on Linux (rpm/deb).
+  - Open files from Explorer / Finder / your Linux file manager; subsequent opens forward to the running instance.
   - Recent Files menu entries on Windows and macOS Dock.
 - **Session restore** — buffers, cursor positions, view state, and workspace folder are restored on launch.
 - **Auto-update** via electron-updater (GitHub Releases).
 
 ## Build from source
 
-Requires Node.js 20+ and npm.
+Requires Node.js 20+ and [pnpm](https://pnpm.io) 9 (the version is pinned in `package.json`; `corepack enable` picks it up automatically).
+
+> **Use pnpm, not npm.** `.npmrc` sets `omit=optional` to skip an unused ~300 MB TensorFlow binary; under npm that also drops the platform binaries rollup and esbuild need, and the build fails with `Cannot find module '@rollup/rollup-<platform>'`.
 
 ```bash
 git clone https://github.com/novapizza/novapad
 cd novapad
-npm install
+pnpm install
 
-npm run dev          # start with hot reload
-npm run build        # compile (electron-vite)
-npm run package:win  # produce dist/NovaPad Setup <version>.exe
-npm run package:mac  # produce dist/NovaPad-<version>-mac.dmg + .zip
+pnpm run dev            # start with hot reload
+pnpm run build          # compile (electron-vite)
+pnpm run package:win    # produce dist/NovaPad-Setup-<version>.exe
+pnpm run package:mac    # produce dist/NovaPad-<version>-mac-<arch>.zip + .dmg
+pnpm run package:linux  # produce dist/NovaPad-<version>-linux-<arch>.{AppImage,rpm,deb}
 ```
+
+### Linux packages
+
+- **rpm / deb** — install with your package manager (`sudo dnf install ./NovaPad-*.rpm` or `sudo apt install ./NovaPad-*.deb`). Adds the app-menu entry, icons, `Open With` for text/source files, and the `novapad://` link handler.
+- **AppImage** — single portable file (`chmod +x` and run). No menu entry or file associations unless you integrate it with a tool such as Gear Lever or AppImageLauncher.
+
+Building the rpm/deb on Fedora needs `rpm-build` and `libxcrypt-compat` (electron-builder's bundled `fpm` links against `libcrypt.so.1`). Debian/Ubuntu hosts need `rpm` only if they also build the rpm.
 
 ## Tests
 
 End-to-end tests run against the built app via Playwright + Electron driver.
 
 ```bash
-npm run test:e2e          # build + run the full suite
-npm run test:e2e:headed   # with a visible window
-npm run test:e2e:report   # open the HTML report from the last run
+pnpm run test:e2e          # build + run the full suite
+pnpm run test:e2e:headed   # with a visible window
+pnpm run test:e2e:report   # open the HTML report from the last run
 ```
 
 > **Note:** if your shell has `ELECTRON_RUN_AS_NODE=1` exported (some Electron tooling sets this), the test fixture forcibly clears it before launching — otherwise `electron.exe` boots as plain Node and every test fails with "Process failed to launch!".
@@ -97,7 +107,7 @@ State boundaries:
 
 ## Contributing
 
-Pull requests welcome. Please run `npm run build` and the relevant test suite before submitting.
+Pull requests welcome. Please run `pnpm run build` and the relevant test suite before submitting.
 
 ## License
 

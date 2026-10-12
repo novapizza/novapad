@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { isWindows } from '../utils/platform'
+import { usesAltMnemonics } from '../utils/platform'
 
 type Subscriber = (value: boolean) => void
 
@@ -32,7 +32,7 @@ function install() {
 export function useAltHeld(): boolean {
   const [held, setHeld] = useState(altHeld)
   useEffect(() => {
-    if (!isWindows()) return
+    if (!usesAltMnemonics()) return
     install()
     subscribers.add(setHeld)
     setHeld(altHeld)

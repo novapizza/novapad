@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { useUIStore } from '../../store/uiStore'
 import { useFileOps } from '../../hooks/useFileOps'
 import { cn } from '../../lib/utils'
+import { fileManagerName } from '../../utils/platform'
 
 interface TreeNode {
   name: string
@@ -186,7 +187,7 @@ function TreeNodeRow({ node, depth, expanded, edit, onToggle, onOpen, onContextM
             <ContextMenuItem onClick={() => handleRename(node)}>Rename</ContextMenuItem>
             <ContextMenuItem onClick={() => handleCopyPath(node)}>Copy Path</ContextMenuItem>
             <ContextMenuItem onClick={() => handleReveal(node)}>
-              Reveal in {window.api.platform === 'darwin' ? 'Finder' : 'Explorer'}
+              Reveal in {fileManagerName()}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => handleNewFile(node)}>New File…</ContextMenuItem>

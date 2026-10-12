@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useAltHeld } from '../../hooks/useAltHeld'
 import { useAltMnemonics } from '../../hooks/useAltMnemonics'
 import { MnemonicLabel } from '../../utils/mnemonic'
-import { isWindows } from '../../utils/platform'
+import { usesAltMnemonics } from '../../utils/platform'
 
 interface GoToLineInputProps {
   currentLine: number
@@ -22,7 +22,7 @@ export const GoToLineInput: React.FC<GoToLineInputProps> = ({
   const altHeld = useAltHeld()
 
   useAltMnemonics(
-    isWindows(),
+    usesAltMnemonics(),
     { L: () => inputRef.current?.focus() },
     { allowInsideInputs: true, priority: true },
   )

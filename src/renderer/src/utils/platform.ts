@@ -34,3 +34,18 @@ export function isWindows(): boolean {
   }
   return false
 }
+
+/**
+ * Alt-key mnemonics (Alt+F opens File, underlined access keys while Alt is
+ * held). Native convention on Windows and on Linux desktops (GTK/KDE); macOS
+ * has no equivalent and uses ⌥ for character input instead.
+ */
+export function usesAltMnemonics(): boolean {
+  return !isMacOS()
+}
+
+/** Name of the OS file manager, for "Reveal in …" labels. */
+export function fileManagerName(): 'Finder' | 'Explorer' | 'File Manager' {
+  if (isMacOS()) return 'Finder'
+  return isWindows() ? 'Explorer' : 'File Manager'
+}

@@ -10,7 +10,7 @@ import { ThemeDrawer } from './ThemeDrawer'
 import { useAltHeld } from '../../hooks/useAltHeld'
 import { useAltMnemonics, MnemonicHandlers } from '../../hooks/useAltMnemonics'
 import { MnemonicLabel, parseMnemonic } from '../../utils/mnemonic'
-import { isWindows } from '../../utils/platform'
+import { usesAltMnemonics } from '../../utils/platform'
 
 type PrefTab = 'general' | 'editor' | 'appearance' | 'newDoc' | 'backup' | 'completion' | 'shortcuts' | 'ai' | 'extensions'
 
@@ -84,7 +84,7 @@ export function SettingsTab() {
     }
     return h
   })()
-  useAltMnemonics(isWindows(), tabHandlers, { allowInsideInputs: true, priority: true })
+  useAltMnemonics(usesAltMnemonics(), tabHandlers, { allowInsideInputs: true, priority: true })
 
   const set = <K extends keyof AppConfig>(key: K, val: AppConfig[K]) => config.setProp(key, val)
 

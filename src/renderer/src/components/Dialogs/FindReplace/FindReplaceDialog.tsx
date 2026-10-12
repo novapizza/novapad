@@ -5,7 +5,7 @@ import { useSearchEngine } from '../../../hooks/useSearchEngine'
 import { useAltHeld } from '../../../hooks/useAltHeld'
 import { useAltMnemonics, MnemonicHandlers } from '../../../hooks/useAltMnemonics'
 import { MnemonicLabel } from '../../../utils/mnemonic'
-import { isWindows } from '../../../utils/platform'
+import { usesAltMnemonics } from '../../../utils/platform'
 import { editorRegistry } from '../../../utils/editorRegistry'
 import { cn } from '../../../lib/utils'
 
@@ -325,7 +325,7 @@ export function FindReplaceDialog() {
   })()
 
   useAltMnemonics(
-    showFindReplace && isWindows(),
+    showFindReplace && usesAltMnemonics(),
     mnemonicHandlers,
     { allowInsideInputs: true, priority: true },
   )

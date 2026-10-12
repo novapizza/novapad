@@ -41,6 +41,19 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ),
     highlights: [
       {
+        title: 'NovaPad on Linux',
+        body: (
+          <>
+            NovaPad now ships for Linux as an <span className="font-mono text-sm">.AppImage</span>,{' '}
+            <span className="font-mono text-sm">.rpm</span>, and{' '}
+            <span className="font-mono text-sm">.deb</span>. The rpm and deb packages add NovaPad to your app
+            menu, register it under <em>Open With</em> for text and source files, and handle{' '}
+            <span className="font-mono text-sm">novapad://</span> links. Alt-key menu shortcuts (
+            <span className="font-mono text-sm">Alt+F</span> for File, and so on) work just like on Windows.
+          </>
+        )
+      },
+      {
         title: 'Search inside the Markdown preview',
         body: (
           <>

@@ -219,9 +219,9 @@ test.describe('Feature 2: File Browser Panel', () => {
       await expect(sidebar.getByText('Delete')).toBeVisible()
       await expect(sidebar.getByText('Copy Path')).toBeVisible()
 
-      // Platform-aware: "Reveal in Finder" (macOS) or "Reveal in Explorer" (Windows/Linux)
+      // Platform-aware: "Reveal in Finder" (macOS), "Explorer" (Windows), "File Manager" (Linux)
       await expect(
-        sidebar.locator('text=/Reveal in (Finder|Explorer)/').first()
+        sidebar.locator('text=/Reveal in (Finder|Explorer|File Manager)/').first()
       ).toBeVisible()
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true })

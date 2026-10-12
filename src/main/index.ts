@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, Menu, session } from 'electron'
 import { join, resolve } from 'path'
 import * as fs from 'fs'
+import { fileURLToPath } from 'url'
 import { DEEPLINK_SCHEME, initDeeplink, handleDeeplinkUrl, extractDeeplinkArgs } from './deeplink'
 import { buildMenu } from './menu'
 import { registerFileHandlers } from './ipc/fileHandlers'
@@ -83,12 +84,18 @@ function sendToRendererWhenReady(channel: string, ...args: unknown[]): void {
 // Register novapad:// with the OS. In dev (process.defaultApp) the protocol
 // must point at the electron binary + the app path, otherwise the OS would try
 // to launch the bare Electron shell without our main script.
-if (process.defaultApp) {
-  if (process.argv.length >= 2) {
-    app.setAsDefaultProtocolClient(DEEPLINK_SCHEME, process.execPath, [resolve(process.argv[1])])
+// Linux is skipped: there the scheme is declared by the .desktop file the
+// rpm/deb installs (MimeType=x-scheme-handler/novapad). The runtime call
+// shells out to `xdg-mime default <desktop file>`, which fails without a
+// desktopName, and from an AppImage would register a transient /tmp mount.
+if (process.platform !== 'linux') {
+  if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+      app.setAsDefaultProtocolClient(DEEPLINK_SCHEME, process.execPath, [resolve(process.argv[1])])
+    }
+  } else {
+    app.setAsDefaultProtocolClient(DEEPLINK_SCHEME)
   }
-} else {
-  app.setAsDefaultProtocolClient(DEEPLINK_SCHEME)
 }
 
 initDeeplink({
@@ -99,9 +106,13 @@ initDeeplink({
 /** Stat each arg; keep only real files and directories. CLI flags and bogus paths are dropped. */
 function classifyPaths(paths: string[]): OpenItem[] {
   const out: OpenItem[] = []
-  for (const p of paths) {
-    if (!p || p.startsWith('-')) continue
+  for (const arg of paths) {
+    if (!arg || arg.startsWith('-')) continue
     try {
+      // Linux .desktop entries launch with %U, and GNOME/GIO hands local files
+      // over as file:// URIs rather than plain paths. fileURLToPath throws on
+      // non-local hosts, which lands in the catch below like any bogus arg.
+      const p = arg.startsWith('file://') ? fileURLToPath(arg) : arg
       const s = fs.statSync(p)
       if (s.isFile()) out.push({ kind: 'file', path: p })
       else if (s.isDirectory()) out.push({ kind: 'folder', path: p })
@@ -186,12 +197,11 @@ function createWindow(): void {
     minWidth: 600,
     minHeight: 400,
     show: false,
-    // Linux: autohide so Alt reveals the native menu (legacy behavior preserved).
-    // Windows: do NOT autohide — autoHideMenuBar:true causes Alt to toggle the
-    // bar back into view, producing two menus stacked with the custom React
+    // Windows/Linux: do NOT autohide — autoHideMenuBar:true causes Alt to toggle
+    // the bar back into view, producing two menus stacked with the custom React
     // MenuBar. setMenuBarVisibility(false) below + a re-hide inside buildMenu
     // keep the native bar permanently invisible.
-    autoHideMenuBar: process.platform === 'linux',
+    autoHideMenuBar: false,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -205,12 +215,11 @@ function createWindow(): void {
     }
   })
 
-  // Windows-only: also force the native menu bar fully hidden so Alt no
+  // Windows/Linux: also force the native menu bar fully hidden so Alt no
   // longer reveals it. The custom React <MenuBar> already covers every
-  // action, and on some Windows configs autoHideMenuBar leaves the bar
-  // visible after an Alt tap — which produced a "two menus stacked" look
-  // (native bar + React bar). Linux keeps the autoHide-on-Alt behavior.
-  if (process.platform === 'win32') {
+  // action, and autoHideMenuBar leaves the bar reachable via an Alt tap —
+  // which produced a "two menus stacked" look (native bar + React bar).
+  if (process.platform !== 'darwin') {
     mainWindow.setMenuBarVisibility(false)
   }
 
@@ -357,7 +366,7 @@ ipcMain.on('session:save', (_event, session) => {
 // unlike the env-var-based window.api.appVersion which is unreliable in prod).
 ipcMain.handle('app:get-version', () => app.getVersion())
 
-// Toggle DevTools from the custom in-app menu (native menu is hidden by autoHideMenuBar).
+// Toggle DevTools from the custom in-app menu (native menu bar is hidden on Windows/Linux).
 ipcMain.on('dev:toggle-devtools', () => {
   const win = BrowserWindow.getFocusedWindow() ?? mainWindow
   win?.webContents.toggleDevTools()

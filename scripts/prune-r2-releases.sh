@@ -10,8 +10,9 @@
 # Only versioned artifacts are eligible for deletion:
 #   NovaPad-Setup-<ver>.exe[.blockmap]      (Windows NSIS)
 #   NovaPad-<ver>-mac-<arch>.zip[.blockmap] (macOS zip — used by the updater)
+#   NovaPad-<ver>-linux-<arch>.{AppImage,rpm,deb}[.blockmap] (Linux)
 # Unversioned keys are NEVER touched:
-#   latest.yml / latest-mac.yml / latest-mac-arm64.yml (update manifests)
+#   latest.yml / latest-mac.yml / latest-mac-arm64.yml / latest-linux.yml (update manifests)
 #   NovaPad-<arch>.dmg                                  (overwritten each build)
 # A key with no extractable X.Y.Z is skipped by design — that is the safety net
 # protecting the manifests and DMGs.

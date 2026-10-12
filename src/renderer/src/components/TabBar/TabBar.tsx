@@ -15,6 +15,7 @@ import { useEditorStore } from '../../store/editorStore'
 import { useUIStore } from '../../store/uiStore'
 import { detectPreviewKind } from '../../utils/previewKind'
 import { cn } from '../../lib/utils'
+import { fileManagerName } from '../../utils/platform'
 
 interface TabBarProps {
   /** Async — dirty buffers show a modal confirm before closing. */
@@ -290,7 +291,7 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) 
                       Reload from Disk
                     </ContextMenuItem>
                     <ContextMenuItem onClick={() => copyPath(buf.id)}>Copy File Path</ContextMenuItem>
-                    <ContextMenuItem onClick={() => revealInExplorer(buf.id)}>Reveal in Explorer</ContextMenuItem>
+                    <ContextMenuItem onClick={() => revealInExplorer(buf.id)}>Reveal in {fileManagerName()}</ContextMenuItem>
                   </>
                 )
               })()}
