@@ -10,13 +10,9 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+## [1.6.7]
+
 ### Added
-- **Linux builds.** `pnpm run package:linux` produces an AppImage, an rpm, and a deb. The rpm/deb
-  add an app-menu entry, icons, *Open With* for text/source files, and the `novapad://` link
-  handler; tagged releases now publish Linux packages and `latest-linux.yml` so the AppImage can
-  auto-update (rpm/deb installs update through a new package). On Linux the in-app menu bar is the
-  only one (Alt no longer reveals a second native bar), Alt-key menu mnemonics work as on Windows,
-  and files opened from GNOME-style file managers (passed as `file://` URIs) load correctly.
 - **Large JSON record viewer.** `.json` / `.ndjson` / `.jsonl` files of 50 MB or more open in a
   record viewer instead of the text editor. The file is indexed in a worker (an array of records or
   NDJSON; ~7 s per GB) and browsed as a virtual list with per-record tree expansion, text filter,
@@ -24,8 +20,16 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
   modal) and delete with undo/redo, and `Ctrl+S` / Save As that stream the changes to disk through
   a temp file. Files below the threshold are untouched. Deep single-object JSON and UTF-16 sources
   are refused with a clear message.
+- **AI Assistant on the toolbar and in the Settings menu.** A sparkle button after Notes on the
+  toolbar opens the assistant (or *Settings ▸ AI Assistant* while it is still off), and the
+  *Settings* menu now links straight to the AI Assistant page — both were missing, so the feature
+  was hard to find before a key was set up.
 
 ### Fixed
+- **Opening a file from Explorer while NovaPad was closed did not focus it.** Restoring the last
+  session could switch back to the previously active tab, and a file that was already in the
+  session opened a second tab. The file you opened is now focused, in its existing tab. On Windows
+  the already-open check also ignores path case and slash direction.
 - Opening a file over ~512 MB no longer fails with the V8 internals message *Cannot create a string
   longer than 0x1fffffe8 characters*. Non-JSON files above 256 MB are refused up front with the file
   size and the limit in the message.
@@ -36,6 +40,12 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 ## [1.6.6]
 
 ### Added
+- **Linux builds.** `pnpm run package:linux` produces an AppImage, an rpm, and a deb. The rpm/deb
+  add an app-menu entry, icons, *Open With* for text/source files, and the `novapad://` link
+  handler; tagged releases now publish Linux packages and `latest-linux.yml` so the AppImage can
+  auto-update (rpm/deb installs update through a new package). On Linux the in-app menu bar is the
+  only one (Alt no longer reveals a second native bar), Alt-key menu mnemonics work as on Windows,
+  and files opened from GNOME-style file managers (passed as `file://` URIs) load correctly.
 - **Search in Markdown Preview.** The preview pane has a search bar (magnifier button in the
   header, or `Ctrl/Cmd+F` while the preview is focused or fullscreen) with match count,
   Enter / Shift+Enter navigation, and live highlighting of every match in the rendered document.
@@ -220,7 +230,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 - **Settings page reset its selected category** when you switched to another tab and back — the
   active category is now preserved.
 
-[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.6...HEAD
+[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.7...HEAD
+[1.6.7]: https://github.com/novapizza/novapad/compare/v1.6.6...v1.6.7
 [1.6.6]: https://github.com/novapizza/novapad/compare/v1.6.5...v1.6.6
 [1.6.5]: https://github.com/novapizza/novapad/compare/v1.6.0...v1.6.5
 [1.6.0]: https://github.com/novapizza/novapad/compare/v1.5.9...v1.6.0

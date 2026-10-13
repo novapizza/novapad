@@ -32,6 +32,52 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.7',
+    summary: (
+      <>
+        Open <strong>JSON files up to 1 GB</strong> in a new record viewer, find the AI assistant from the
+        toolbar, and files opened from Explorer now land in the right tab.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'Open JSON files up to 1 GB',
+        body: (
+          <>
+            <span className="font-mono text-sm">.json</span> / <span className="font-mono text-sm">.ndjson</span>{' '}
+            files of <span className="font-mono text-sm">50 MB</span> or more now open in a{' '}
+            <strong>record viewer</strong> instead of the text editor: an array of records (or NDJSON) is indexed in
+            the background and browsed as a virtual list, with each record expandable as a tree. Filter records by
+            text, run a dot-path <em>Extract</em> across every record (with export to file), edit or delete
+            individual records, and <span className="font-mono text-sm">Ctrl+S</span> streams the changes back to
+            disk without ever loading the file into memory. Smaller files keep the regular editor and JSON Mighty
+            Tools exactly as before.
+          </>
+        )
+      },
+      {
+        title: 'AI Assistant on the toolbar',
+        body: (
+          <>
+            A sparkle button at the right end of the toolbar opens the AI assistant — or, until you&apos;ve added
+            an API key, takes you to <strong>Settings ▸ AI Assistant</strong> to set it up. The{' '}
+            <em>Settings</em> menu also links straight to that page now.
+          </>
+        )
+      },
+      {
+        title: 'Files opened from Explorer get focus',
+        body: (
+          <>
+            Double-clicking a file in Explorer while NovaPad was closed could leave you on the tab from your last
+            session, or open a second copy of a file that was already open. NovaPad now restores your session
+            first and then switches to the file you opened, in its existing tab.
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.6.6',
     summary: (
       <>
@@ -50,21 +96,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             menu, register it under <em>Open With</em> for text and source files, and handle{' '}
             <span className="font-mono text-sm">novapad://</span> links. Alt-key menu shortcuts (
             <span className="font-mono text-sm">Alt+F</span> for File, and so on) work just like on Windows.
-          </>
-        )
-      },
-      {
-        title: 'Open JSON files up to 1 GB',
-        body: (
-          <>
-            <span className="font-mono text-sm">.json</span> / <span className="font-mono text-sm">.ndjson</span>{' '}
-            files of <span className="font-mono text-sm">50 MB</span> or more now open in a{' '}
-            <strong>record viewer</strong> instead of the text editor: an array of records (or NDJSON) is indexed in
-            the background and browsed as a virtual list, with each record expandable as a tree. Filter records by
-            text, run a dot-path <em>Extract</em> across every record (with export to file), edit or delete
-            individual records, and <span className="font-mono text-sm">Ctrl+S</span> streams the changes back to
-            disk without ever loading the file into memory. Smaller files keep the regular editor and JSON Mighty
-            Tools exactly as before.
           </>
         )
       },
