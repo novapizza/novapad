@@ -73,6 +73,14 @@ let rendererReady = false
  */
 const pendingRendererMessages: Array<{ channel: string; args: unknown[] }> = []
 
+/**
+ * Saved session, held for 'app:renderer-ready' and sent ahead of everything
+ * else there. Sending it on did-finish-load raced the cold-launch file open:
+ * the restore re-activated the session's last tab over the file the user
+ * double-clicked, and opened a second tab when that file was in the session.
+ */
+let pendingSession: unknown = null
+
 function sendToRendererWhenReady(channel: string, ...args: unknown[]): void {
   if (!mainWindow || !rendererReady) {
     pendingRendererMessages.push({ channel, args })
@@ -318,7 +326,10 @@ app.whenReady().then(() => {
 
   // Restore last session (skip in E2E mode for clean test state)
   if (process.env['E2E_TEST'] !== '1') {
-    SessionManager.getInstance().restore(mainWindow!)
+    SessionManager.getInstance().restore((session) => {
+      if (rendererReady && mainWindow) mainWindow.webContents.send('session:restore', session)
+      else pendingSession = session
+    })
   }
 
   app.on('activate', () => {
@@ -344,6 +355,12 @@ app.on('window-all-closed', () => {
 // pendingOpenItems comment for the full race. We drain the queue here.
 ipcMain.on('app:renderer-ready', () => {
   rendererReady = true
+  // Session first: IPC to one webContents is ordered, so the renderer sees
+  // session:restore before menu:file-open and can sequence the two.
+  if (pendingSession !== null && mainWindow) {
+    mainWindow.webContents.send('session:restore', pendingSession)
+    pendingSession = null
+  }
   if (pendingOpenItems.length > 0) {
     const items = pendingOpenItems.splice(0, pendingOpenItems.length)
     dispatchOpenItems(items)

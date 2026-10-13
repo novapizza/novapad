@@ -6,11 +6,12 @@ import {
   ZoomIn, ZoomOut, RotateCcw,
   IndentIncrease, IndentDecrease, MessageSquare,
   ArrowUpDown, Eraser,
-  Files, ListTree, Map as MapIcon, StickyNote,
+  Files, ListTree, Map as MapIcon, StickyNote, Sparkles,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { editorRegistry } from '../../utils/editorRegistry'
 import { useUIStore } from '../../store/uiStore'
+import { runCommand } from '../../commands/registry'
 import { shortcutMod } from '../../utils/platform'
 
 interface ToolbarProps {
@@ -122,6 +123,9 @@ export function Toolbar({ onNew, onOpen, onSave, onSaveAll, onFind, onReplace, o
       // Notes stacks below the active panel rather than replacing it, so it goes
       // through toggleNotesPanel instead of toggleSidebarPanel.
       { icon: <StickyNote size={sz} />, title: `Notes (${mod}+Shift+N)`, action: () => useUIStore.getState().toggleNotesPanel(), color: C_ORANGE },
+      // Always shown, even with AI off: the command sends the user to
+      // Settings ▸ AI Assistant until a key is set up, so this is how they find it.
+      { icon: <Sparkles size={sz} />, title: `AI Assistant (${mod}+Shift+A)`, action: () => runCommand('view.aiAssistant'), color: C_PURPLE },
     ],
   ]
 

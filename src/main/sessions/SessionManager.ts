@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
 import { BackupManager } from './BackupManager'
@@ -178,7 +178,13 @@ export class SessionManager {
     }
   }
 
-  restore(win: BrowserWindow): void {
+  /**
+   * Hands the saved session to `send`. The caller queues it behind the
+   * renderer's 'app:renderer-ready' so it reaches the renderer *before* any
+   * file passed on the command line — the renderer restores the session first,
+   * then opens and focuses that file (see the session gate in App.tsx).
+   */
+  restore(send: (session: Session) => void): void {
     const session = this.load()
 
     // Orphan-backup cleanup: any backup file in userData/backup/ that the
@@ -196,10 +202,6 @@ export class SessionManager {
       console.warn('[SessionManager] backup cleanup failed:', err)
     }
 
-    if (session) {
-      win.webContents.once('did-finish-load', () => {
-        win.webContents.send('session:restore', session)
-      })
-    }
+    if (session) send(session)
   }
 }

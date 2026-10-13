@@ -54,6 +54,12 @@ export interface IsolatedAppOptions {
    * for tests that exercise session restore (Tests 6, 10).
    */
   skipSessionRestore?: boolean
+  /**
+   * Extra argv after the app entry, e.g. a file path to simulate Explorer's
+   * "Open with NovaPad" on cold launch. Only read when skipSessionRestore is
+   * false — main ignores argv paths under E2E_TEST.
+   */
+  extraArgs?: string[]
 }
 
 /** Launch Electron with an isolated userData dir. */
@@ -66,7 +72,7 @@ export async function launchIsolated(opts: IsolatedAppOptions): Promise<{ app: E
   }
 
   const app = await electron.launch({
-    args: [APP_ENTRY, `--user-data-dir=${opts.userDataDir}`],
+    args: [APP_ENTRY, `--user-data-dir=${opts.userDataDir}`, ...(opts.extraArgs ?? [])],
     env: env as Record<string, string>,
     timeout: 15_000,
   })

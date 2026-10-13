@@ -152,6 +152,12 @@ export default function App() {
   const sidePaneSize = Math.round((100 - editorContentSize) / Math.max(1, editorPaneCount - 1))
   const fileOps = useFileOps()
   const { openFiles, openRemoteFile, openInlineContent, newFile, saveBuffer, saveActiveAs, closeBuffer, reloadBuffer, loadBuffer, restoreSession } = fileOps
+  // Settles once the cold-launch session restore is done. Main sends
+  // session:restore before menu:file-open; opening the file only after the
+  // restore lets the file keep focus (the restore re-activates the session's
+  // last tab) and lets openFiles find the restored tab instead of adding a
+  // duplicate when the file was already in the session.
+  const sessionRestoredRef = useRef<Promise<unknown>>(Promise.resolve())
   // Bridge the hook's handle out to the command registry, whose handlers are
   // plain functions and can't call a hook. Same pattern as editorRegistry.
   useEffect(() => {
@@ -220,7 +226,8 @@ export default function App() {
   // restore in E2E mode, or there is no session.json on a fresh install
   // outside test mode), still let the auto-open fire after a short window.
   useEffect(() => {
-    const t = setTimeout(() => setReadyForAutoOpen(true), 200)
+    // Still waits on an in-flight restore, if one started within the window.
+    const t = setTimeout(() => { void sessionRestoredRef.current.then(() => setReadyForAutoOpen(true)) }, 200)
     return () => clearTimeout(t)
   }, [])
 
@@ -282,7 +289,9 @@ export default function App() {
   // Wire up menu IPC events
   useEffect(() => {
     window.api.on('menu:file-new', () => newFile())
-    window.api.on('menu:file-open', (...args) => openFiles(args[0] as string[]))
+    window.api.on('menu:file-open', (...args) => {
+      void sessionRestoredRef.current.then(() => openFiles(args[0] as string[]))
+    })
     window.api.on('deeplink:open', (...args) => {
       const p = args[0] as { fileName: string; content: string; sourceUrl: string; line?: number; col?: number; preview?: boolean }
       const id = openRemoteFile(p)
@@ -469,7 +478,10 @@ export default function App() {
       // contains only a "What's New" virtual tab and no files still needs
       // restoreSession to walk session.virtualTabs).
       if (session?.files?.length || session?.virtualTabs?.length) {
-        restoreSession(session)
+        // A failed restore must not block the file the user asked to open.
+        sessionRestoredRef.current = restoreSession(session).catch((err) => {
+          console.error('[session] restore failed', err)
+        })
       }
       // Restore sidebar/file-browser state. Set expandedFolders BEFORE the
       // workspaceFolder so FileBrowserPanel's load effect can rebuild the tree
@@ -489,9 +501,11 @@ export default function App() {
       if (typeof session?.notesVisible === 'boolean') {
         useUIStore.getState().setShowNotes(session.notesVisible)
       }
-      // Mark the auto-open trigger ready: any restored buffers are now in
-      // place, so the auto-open will append AFTER them (BR-002 + Test 6).
-      setReadyForAutoOpen(true)
+      // Mark the auto-open trigger ready once the restored buffers are in
+      // place, so the auto-open appends AFTER them (BR-002 + Test 6).
+      // restoreSession is async — flagging ready synchronously let What's New
+      // land ahead of the restored tabs.
+      void sessionRestoredRef.current.then(() => setReadyForAutoOpen(true))
     })
 
     // Before close: check for unsaved buffers, flush config, then save session.

@@ -6,9 +6,21 @@ import { detectLanguage } from '../utils/languageDetect'
 import { refineLanguageAsync } from '../utils/refineLanguage'
 import { languageToExtension } from '../utils/languageToExtension'
 import { backupApi } from '../utils/backupApi'
+import { isWindows } from '../utils/platform'
 
 function basename(p: string): string {
   return p.replace(/\\/g, '/').split('/').pop() ?? p
+}
+
+/**
+ * Windows paths are case-insensitive and accept either slash, so Explorer's
+ * `C:\a\b.json` and a tab opened as `c:/a/b.json` are the same file.
+ */
+function samePath(a: string, b: string): boolean {
+  if (a === b) return true
+  if (!isWindows()) return false
+  const norm = (p: string): string => p.replace(/\//g, '\\').toLowerCase()
+  return norm(a) === norm(b)
 }
 
 /** Files above this threshold get large-file optimizations (no syntax highlighting, etc.) */
@@ -54,7 +66,7 @@ export function useFileOps() {
   const openFiles = useCallback(async (filePaths: string[]) => {
     for (const fp of filePaths) {
       // Don't open same file twice — read fresh state to avoid stale closure
-      const existing = useEditorStore.getState().buffers.find((b) => b.filePath === fp)
+      const existing = useEditorStore.getState().buffers.find((b) => !!b.filePath && samePath(b.filePath, fp))
       if (existing) {
         useEditorStore.getState().setActive(existing.id)
         continue

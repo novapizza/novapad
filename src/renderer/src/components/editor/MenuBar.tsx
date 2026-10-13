@@ -391,6 +391,8 @@ export function MenuBar({
         { label: '&Backup', action: cmd('settings.open.backup') },
         { label: 'Auto-Co&mpletion', action: cmd('settings.open.completion') },
         { label: '&Keyboard Shortcuts', icon: <Keyboard size={18} />, action: cmd('settings.open.shortcuts') },
+        // Mnemonic I, not A — &A is taken by Appearance (matches SettingsTab).
+        { label: 'A&I Assistant', action: cmd('settings.open.ai') },
         { separator: true, label: '' },
         { label: themeLabel, icon: <ThemeIcon size={18} />, action: cmd('prefs.toggleTheme') },
       ]
