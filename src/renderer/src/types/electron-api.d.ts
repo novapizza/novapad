@@ -98,6 +98,19 @@ interface ElectronAPI {
     remove: (filePath: string) => Promise<void>
   }
 
+  /** Large JSON record viewer. See src/main/ipc/largeJsonHandlers.ts. */
+  largeJson: {
+    open: (filePath: string) => Promise<{ docId: string | null; size: number; encoding: string; error: string | null }>
+    getRecords: (docId: string, start: number, count: number) => Promise<{ start: number; records: string[]; error?: string }>
+    search: (docId: string, opId: string, query: string, limit?: number) => Promise<{ error: string | null }>
+    extract: (docId: string, opId: string, path: string, limit?: number) => Promise<{ error: string | null }>
+    extractToFile: (docId: string, path: string, outPath: string, format: 'plain' | 'json') => Promise<{ count: number; error: string | null }>
+    save: (docId: string, overlay: Array<[number, string | null]>, targetPath: string | null) => Promise<{ mtime: number; size: number; error: string | null }>
+    reindex: (docId: string) => Promise<{ error: string | null }>
+    cancel: (docId: string, opId: string) => Promise<void>
+    close: (docId: string) => Promise<void>
+  }
+
   backup: {
     write: (filename: string, content: string) => Promise<unknown>
     read: (filename: string) => Promise<string | null>

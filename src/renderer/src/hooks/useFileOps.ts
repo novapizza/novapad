@@ -6,6 +6,8 @@ import { detectLanguage } from '../utils/languageDetect'
 import { refineLanguageAsync } from '../utils/refineLanguage'
 import { languageToExtension } from '../utils/languageToExtension'
 import { backupApi } from '../utils/backupApi'
+import { routeFileOpen, tooLargeMessage } from '../utils/largeFileRouting'
+import { openLargeJsonBuffer, saveLargeJson, closeLargeJsonDoc, reloadLargeJson } from '../utils/largeJsonOps'
 import { isWindows } from '../utils/platform'
 
 function basename(p: string): string {
@@ -76,6 +78,20 @@ export function useFileOps() {
       const stat = await window.api.file.stat(fp)
       const isLargeFile = stat.exists && stat.size >= LARGE_FILE_THRESHOLD
 
+      // Size guard. Big JSON goes to the record viewer; anything else past the
+      // cap is refused here instead of dying inside iconv.decode with V8's
+      // "Cannot create a string longer than 0x1fffffe8 characters".
+      const route = stat.exists ? routeFileOpen(fp, stat.size) : 'normal'
+      if (route === 'tooLarge') {
+        addToast(tooLargeMessage(fp, stat.size), 'error')
+        continue
+      }
+      if (route === 'largeJson') {
+        const ljId = await openLargeJsonBuffer(fp, stat.size)
+        if (ljId) useEditorStore.getState().setActive(ljId)
+        continue
+      }
+
       const result = await window.api.file.read(fp)
       if (result.error) {
         addToast(`Failed to open: ${result.error}`, 'error')
@@ -124,6 +140,19 @@ export function useFileOps() {
       const isLargeFile = stat.exists && stat.size >= LARGE_FILE_THRESHOLD
       if (isLargeFile) {
         useEditorStore.getState().updateBuffer(id, { isLargeFile: true })
+      }
+
+      // Same size guard as openFiles — session-restored ghosts of big JSON
+      // become record-viewer tabs; over-cap files are flagged instead of read.
+      const route = stat.exists ? routeFileOpen(buf.filePath, stat.size) : 'normal'
+      if (route === 'tooLarge') {
+        useEditorStore.getState().updateBuffer(id, { missing: true, loaded: true })
+        addToast(tooLargeMessage(buf.filePath, stat.size), 'error')
+        return false
+      }
+      if (route === 'largeJson') {
+        const ok = await openLargeJsonBuffer(buf.filePath, stat.size, id)
+        return ok !== null
       }
 
       const result = await window.api.file.read(buf.filePath)
@@ -407,6 +436,9 @@ export function useFileOps() {
     // Can't save a ghost buffer that hasn't been loaded yet
     if (!buf.loaded) return false
 
+    // Record-viewer tabs stream their edit overlay through the worker.
+    if (buf.kind === 'largeJson') return saveLargeJson(id, null)
+
     let filePath = buf.filePath
     let pathAssigned = false
     if (!filePath) {
@@ -456,6 +488,8 @@ export function useFileOps() {
     const res = await window.api.file.saveDialog(buf.filePath ?? buf.title, suggestedExt)
     if (res.canceled || !res.filePath) return false
 
+    if (buf.kind === 'largeJson') return saveLargeJson(buf.id, res.filePath)
+
     const content = buf.model?.getValue() ?? buf.content
     const result = await window.api.file.write(res.filePath, content, buf.encoding, buf.eol, buf.hasBom)
     if (result.error) {
@@ -503,6 +537,7 @@ export function useFileOps() {
       if (!fresh) return
     }
     if (buf.filePath) window.api.watch.remove(buf.filePath)
+    if (buf.kind === 'largeJson') closeLargeJsonDoc(id)
     removeBuffer(id)
   }, [removeBuffer])
 
@@ -522,6 +557,7 @@ export function useFileOps() {
       )
       if (!ok) return
     }
+    if (buf.kind === 'largeJson') { await reloadLargeJson(id); return }
     const result = await window.api.file.read(buf.filePath)
     if (result.error) { addToast(`Reload failed: ${result.error}`, 'error'); return }
     buf.model?.setValue(result.content)

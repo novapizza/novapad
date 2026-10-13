@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react'
-import { X, Plus, ChevronLeft, ChevronRight, Settings as SettingsIcon, Keyboard, Puzzle, Lock, Eye, Columns2 } from 'lucide-react'
+import { X, Plus, ChevronLeft, ChevronRight, Settings as SettingsIcon, Keyboard, Puzzle, Lock, Eye, Columns2, Braces } from 'lucide-react'
 import logoUrl from '../../assets/logo-mark.svg'
 import {
   ContextMenu,
@@ -192,7 +192,9 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) 
         onWheel={handleWheel}
       >
         {buffers.map((buf) => {
-          const isVirtual = buf.kind !== 'file'
+          // Large-JSON tabs are file-backed (path tooltip, dirty star) but have
+          // no Monaco model, so they are excluded from Compare below.
+          const isVirtual = buf.kind !== 'file' && buf.kind !== 'largeJson'
           return (
           <ContextMenu key={buf.id}>
             <ContextMenuTrigger asChild>
@@ -227,6 +229,7 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) 
                 {buf.kind === 'shortcuts' && <Keyboard size={18} className="shrink-0 opacity-80" />}
                 {buf.kind === 'whatsNew' && <img src={logoUrl} alt="" className="w-[18px] h-[18px] shrink-0" draggable={false} />}
                 {(buf.kind === 'pluginManager' || buf.kind === 'pluginDetail') && <Puzzle size={18} className="shrink-0 opacity-80" />}
+                {buf.kind === 'largeJson' && <Braces size={16} className="shrink-0 opacity-80" data-testid="tab-largejson-icon" />}
 
                 {/* Read-only (deeplink remote) indicator */}
                 {buf.isReadOnly && <Lock size={13} className="shrink-0 opacity-70" data-testid="tab-readonly-icon" />}
@@ -255,7 +258,7 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) 
               <ContextMenuItem onClick={() => onClose?.(buf.id)}>Close</ContextMenuItem>
               <ContextMenuItem onClick={() => closeOthers(buf.id)}>Close Others</ContextMenuItem>
               <ContextMenuItem onClick={() => closeAll()}>Close All</ContextMenuItem>
-              {!isVirtual && (() => {
+              {buf.kind === 'file' && (() => {
                 // Only file buffers are eligible — virtual tabs (settings,
                 // plugins, etc.) have no comparable content. Disable the
                 // entry when there's nothing else open to diff against.

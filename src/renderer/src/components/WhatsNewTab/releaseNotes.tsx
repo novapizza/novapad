@@ -54,6 +54,21 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         )
       },
       {
+        title: 'Open JSON files up to 1 GB',
+        body: (
+          <>
+            <span className="font-mono text-sm">.json</span> / <span className="font-mono text-sm">.ndjson</span>{' '}
+            files of <span className="font-mono text-sm">50 MB</span> or more now open in a{' '}
+            <strong>record viewer</strong> instead of the text editor: an array of records (or NDJSON) is indexed in
+            the background and browsed as a virtual list, with each record expandable as a tree. Filter records by
+            text, run a dot-path <em>Extract</em> across every record (with export to file), edit or delete
+            individual records, and <span className="font-mono text-sm">Ctrl+S</span> streams the changes back to
+            disk without ever loading the file into memory. Smaller files keep the regular editor and JSON Mighty
+            Tools exactly as before.
+          </>
+        )
+      },
+      {
         title: 'Search inside the Markdown preview',
         body: (
           <>

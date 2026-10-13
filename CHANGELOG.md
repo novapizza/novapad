@@ -17,6 +17,21 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
   auto-update (rpm/deb installs update through a new package). On Linux the in-app menu bar is the
   only one (Alt no longer reveals a second native bar), Alt-key menu mnemonics work as on Windows,
   and files opened from GNOME-style file managers (passed as `file://` URIs) load correctly.
+- **Large JSON record viewer.** `.json` / `.ndjson` / `.jsonl` files of 50 MB or more open in a
+  record viewer instead of the text editor. The file is indexed in a worker (an array of records or
+  NDJSON; ~7 s per GB) and browsed as a virtual list with per-record tree expansion, text filter,
+  dot-path *Extract* across every record (inline preview + export to file), per-record edit (Monaco
+  modal) and delete with undo/redo, and `Ctrl+S` / Save As that stream the changes to disk through
+  a temp file. Files below the threshold are untouched. Deep single-object JSON and UTF-16 sources
+  are refused with a clear message.
+
+### Fixed
+- Opening a file over ~512 MB no longer fails with the V8 internals message *Cannot create a string
+  longer than 0x1fffffe8 characters*. Non-JSON files above 256 MB are refused up front with the file
+  size and the limit in the message.
+- Every file open and save shipped a second full copy of the file over IPC: the 16 KB Magika sample
+  was a view onto the whole file buffer, and structured clone serialises the entire backing buffer.
+  It is now a real 16 KB copy.
 
 ## [1.6.6]
 

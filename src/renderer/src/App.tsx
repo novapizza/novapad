@@ -35,6 +35,9 @@ const TableLensPreviewPane = lazy(() =>
 const JsonPreviewPane = lazy(() =>
   import('./components/JsonPreview/JsonPreviewPane').then((m) => ({ default: m.JsonPreviewPane }))
 )
+const LargeJsonTab = lazy(() =>
+  import('./components/LargeJson/LargeJsonTab').then((m) => ({ default: m.LargeJsonTab }))
+)
 const CompareOverlay = lazy(() =>
   import('./components/Compare/CompareOverlay').then((m) => ({ default: m.CompareOverlay }))
 )
@@ -56,6 +59,7 @@ import { useNotesStore } from './store/notesStore'
 import { useAiStore } from './store/aiStore'
 import { AiBadge } from './components/AiAssistant/AiBadge'
 import { useFileOps, SessionData } from './hooks/useFileOps'
+import { installLargeJsonListeners } from './utils/largeJsonOps'
 import { useFileDrop } from './hooks/useFileDrop'
 import { useNavigationShortcuts } from './hooks/useNavigation'
 import { useUpdateEvents } from './hooks/useUpdateEvents'
@@ -453,6 +457,9 @@ export default function App() {
     window.addEventListener('window:minimize', handleWindowMinimize)
     window.addEventListener('window:zoom', handleWindowZoom)
 
+    // Large-JSON worker progress / streamed results → largeJsonStore
+    const offLargeJson = installLargeJsonListeners()
+
     // External file change notifications
     window.api.on('file:externally-changed', (...args) => {
       const fp = args[0] as string
@@ -568,9 +575,12 @@ export default function App() {
       // Session v3: virtualTabs first, then files. activeIndex is a flat index into virtualTabs++files.
       // When `rememberUnsavedOnExit` is on, untitled buffers (no filePath) are kept too as long as
       // they have a backupPath that the snapshot timer has been writing to.
-      const virtualBuffers = freshState.buffers.filter((b) => b.kind !== 'file')
+      // Large-JSON tabs are file-backed: persist them as files (restored as
+      // ghosts, re-routed to the record viewer by size on load).
+      const isFileLike = (k: string): boolean => k === 'file' || k === 'largeJson'
+      const virtualBuffers = freshState.buffers.filter((b) => !isFileLike(b.kind))
       const fileBuffers = freshState.buffers.filter((b) => {
-        if (b.kind !== 'file') return false
+        if (!isFileLike(b.kind)) return false
         if (b.filePath) return true
         return remember && !!b.backupPath
       })
@@ -653,6 +663,7 @@ export default function App() {
       window.api.off('menu:folder-open')
       window.api.off('menu:goto-file')
       window.api.off('menu:command-palette')
+      offLargeJson()
       window.api.off('file:externally-changed')
       window.api.off('file:externally-deleted')
       window.api.off('menu:plugin-manager')
@@ -791,6 +802,17 @@ export default function App() {
                             {activeKind === 'pluginDetail' && activeBuffer?.pluginId && (
                               <div className="absolute inset-0 bg-background z-10">
                                 <PluginDetailTab pluginId={activeBuffer.pluginId} />
+                              </div>
+                            )}
+                            {activeKind === 'largeJson' && (
+                              <div className="absolute inset-0 bg-background z-10">
+                                <Suspense fallback={
+                                  <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
+                                    Loading record viewer…
+                                  </div>
+                                }>
+                                  <LargeJsonTab bufferId={activeId} />
+                                </Suspense>
                               </div>
                             )}
                             {previewInlineVisible && (

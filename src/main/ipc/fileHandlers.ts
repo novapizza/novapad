@@ -34,7 +34,10 @@ export function registerFileHandlers(): void {
           (raw.length >= 3 && raw[0] === 0xEF && raw[1] === 0xBB && raw[2] === 0xBF) // UTF-8
         )
       // Send the Magika sample as plain bytes (up to 16KB is enough for detection).
-      const magikaSample = new Uint8Array(raw.buffer, raw.byteOffset, Math.min(raw.length, 16384))
+      // Must be a COPY, not a view: structured clone serialises a TypedArray's
+      // entire backing ArrayBuffer, so a view over `raw.buffer` would ship the
+      // whole file over IPC a second time.
+      const magikaSample = new Uint8Array(raw.subarray(0, Math.min(raw.length, 16384)))
       return { content, encoding, eol, mtime: stats.mtimeMs, hasBom, magikaSample, error: null }
     } catch (err: any) {
       return { content: '', encoding: 'UTF-8', eol: 'LF', mtime: 0, hasBom: false, magikaSample: new Uint8Array(0), error: err.message }
@@ -57,7 +60,8 @@ export function registerFileHandlers(): void {
       // Tell the file watcher to ignore the change event our own write will trigger
       markSelfSaved(filePath)
       fs.writeFileSync(filePath, buf)
-      const magikaSample = new Uint8Array(buf.buffer, buf.byteOffset, Math.min(buf.length, 16384))
+      // Copy, not a view — see file:read for why.
+      const magikaSample = new Uint8Array(buf.subarray(0, Math.min(buf.length, 16384)))
       return { error: null, magikaSample }
     } catch (err: any) {
       return { error: err.message, magikaSample: new Uint8Array(0) }

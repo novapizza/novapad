@@ -8,6 +8,7 @@ import { registerFileHandlers } from './ipc/fileHandlers'
 import { registerConfigHandlers } from './ipc/configHandlers'
 import { registerPluginHandlers } from './ipc/pluginHandlers'
 import { registerSearchHandlers } from './ipc/searchHandlers'
+import { registerLargeJsonHandlers } from './ipc/largeJsonHandlers'
 import { registerWatchHandlers } from './ipc/watchHandlers'
 import { registerUpdateHandlers } from './ipc/updateHandlers'
 import { registerBackupHandlers } from './ipc/backupHandlers'
@@ -310,6 +311,7 @@ app.whenReady().then(() => {
   // Register handlers that need mainWindow reference
   registerSearchHandlers(mainWindow!)
   registerWatchHandlers(mainWindow!)
+  registerLargeJsonHandlers(mainWindow!)
 
   // Auto-update: write-access check, periodic checks, silent install on hide
   const updateManager = new UpdateManager(mainWindow!)

@@ -3,7 +3,8 @@ import * as monaco from 'monaco-editor'
 
 export type EOLType = 'CRLF' | 'LF' | 'CR'
 
-export type BufferKind = 'file' | 'settings' | 'shortcuts' | 'whatsNew' | 'pluginManager' | 'pluginDetail'
+/** 'largeJson' = a file tab rendered by the record viewer (no Monaco model; see LargeJsonTab). */
+export type BufferKind = 'file' | 'largeJson' | 'settings' | 'shortcuts' | 'whatsNew' | 'pluginManager' | 'pluginDetail'
 
 export interface Buffer {
   id: string
@@ -51,6 +52,8 @@ interface EditorState {
   addBuffer: (buf: Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath' | 'savedVersionId' | 'isReadOnly' | 'sourceUrl'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null; isReadOnly?: boolean; sourceUrl?: string | null }) => string
   addGhostBuffer: (buf: Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath' | 'savedVersionId' | 'isReadOnly' | 'sourceUrl'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null; isReadOnly?: boolean; sourceUrl?: string | null }) => string
   hydrateBuffer: (id: string, patch: { content: string; encoding: string; eol: EOLType; mtime: number; hasBom?: boolean }) => void
+  /** Add a large-JSON record-viewer tab (kind 'largeJson', no Monaco model). */
+  addLargeJsonBuffer: (buf: { filePath: string; title: string; encoding: string; mtime: number }) => string
   removeBuffer: (id: string) => void
   updateBuffer: (id: string, patch: Partial<Buffer>) => void
   setActive: (id: string) => void
@@ -116,6 +119,42 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           : b
       )
     }))
+  },
+
+  addLargeJsonBuffer: (buf) => {
+    const id = newId()
+    set((s) => ({
+      buffers: [
+        ...s.buffers,
+        {
+          id,
+          kind: 'largeJson' as const,
+          pluginId: null,
+          filePath: buf.filePath,
+          title: buf.title,
+          content: '',
+          isDirty: false,
+          savedVersionId: 0,
+          encoding: buf.encoding,
+          hasBom: false,
+          eol: 'LF',
+          language: 'json',
+          mtime: buf.mtime,
+          viewState: null,
+          savedViewState: null,
+          model: null,
+          bookmarks: [],
+          loaded: true,
+          missing: false,
+          isLargeFile: true,
+          backupPath: null,
+          isReadOnly: false,
+          sourceUrl: null
+        }
+      ],
+      activeId: s.activeId ?? id
+    }))
+    return id
   },
 
   removeBuffer: (id) => {

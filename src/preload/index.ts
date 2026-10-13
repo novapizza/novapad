@@ -94,6 +94,26 @@ const api = {
     remove: (filePath: string) => ipcRenderer.invoke('watch:remove', filePath)
   },
 
+  // Large JSON record viewer (files ≥ 50 MB). One worker per open document in
+  // main; progress and streamed results arrive on 'largejson:progress' and
+  // 'largejson:chunk'.
+  largeJson: {
+    open: (filePath: string) => ipcRenderer.invoke('largejson:open', filePath),
+    getRecords: (docId: string, start: number, count: number) =>
+      ipcRenderer.invoke('largejson:get-records', docId, start, count),
+    search: (docId: string, opId: string, query: string, limit?: number) =>
+      ipcRenderer.invoke('largejson:search', docId, opId, query, limit),
+    extract: (docId: string, opId: string, path: string, limit?: number) =>
+      ipcRenderer.invoke('largejson:extract', docId, opId, path, limit),
+    extractToFile: (docId: string, path: string, outPath: string, format: 'plain' | 'json') =>
+      ipcRenderer.invoke('largejson:extract-to-file', docId, path, outPath, format),
+    save: (docId: string, overlay: Array<[number, string | null]>, targetPath: string | null) =>
+      ipcRenderer.invoke('largejson:save', docId, overlay, targetPath),
+    reindex: (docId: string) => ipcRenderer.invoke('largejson:reindex', docId),
+    cancel: (docId: string, opId: string) => ipcRenderer.invoke('largejson:cancel', docId, opId),
+    close: (docId: string) => ipcRenderer.invoke('largejson:close', docId)
+  },
+
   // Backup operations (snapshot of dirty/untitled buffers)
   backup: {
     write: (filename: string, content: string) =>
@@ -194,6 +214,7 @@ const api = {
       'plugin:open-csv-viewer',
       'file:externally-changed', 'file:externally-deleted',
       'search:chunk', 'search:progress', 'search:done',
+      'largejson:progress', 'largejson:chunk',
       'menu:check-for-updates',
       'update:checking', 'update:available', 'update:not-available',
       'update:downloading', 'update:downloaded', 'update:error',
@@ -229,6 +250,7 @@ const api = {
       'plugin:open-csv-viewer',
       'file:externally-changed', 'file:externally-deleted',
       'search:chunk', 'search:progress', 'search:done',
+      'largejson:progress', 'largejson:chunk',
       'menu:check-for-updates',
       'update:checking', 'update:available', 'update:not-available',
       'update:downloading', 'update:downloaded', 'update:error',
