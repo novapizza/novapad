@@ -32,6 +32,33 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.8',
+    summary: (
+      <>
+        The CSV preview grows into a <strong>real table editor</strong> — Excel-style fill, paste from
+        spreadsheets, column editing — and saves straight back to the file.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'Table Lens edits like a spreadsheet',
+        body: (
+          <>
+            The CSV preview (<span className="font-mono text-sm">Ctrl+P</span> on a{' '}
+            <span className="font-mono text-sm">.csv</span> / <span className="font-mono text-sm">.tsv</span> file)
+            now edits cells in a multi-line box (double-click, <span className="font-mono text-sm">Enter</span> or{' '}
+            <span className="font-mono text-sm">F2</span>), fills down Excel-style by dragging the corner of a cell
+            (with series like <span className="font-mono text-sm">A0001</span>, dates, weekdays and months), pastes
+            ranges copied from Excel, adds and renames columns, and has undo/redo, find &amp; replace and a
+            sum/average footer. <span className="font-mono text-sm">Ctrl+S</span> in the table writes it back to
+            the file, keeping its delimiter and line endings — and unsaved table edits mark the tab as modified so
+            they&apos;re never lost.
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.6.7',
     summary: (
       <>
@@ -72,22 +99,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             Double-clicking a file in Explorer while NovaPad was closed could leave you on the tab from your last
             session, or open a second copy of a file that was already open. NovaPad now restores your session
             first and then switches to the file you opened, in its existing tab.
-          </>
-        )
-      },
-      {
-        title: 'Table Lens edits like a spreadsheet',
-        body: (
-          <>
-            The CSV preview (<span className="font-mono text-sm">Ctrl+P</span> on a{' '}
-            <span className="font-mono text-sm">.csv</span> / <span className="font-mono text-sm">.tsv</span> file)
-            now edits cells in a multi-line box (double-click, <span className="font-mono text-sm">Enter</span> or{' '}
-            <span className="font-mono text-sm">F2</span>), fills down Excel-style by dragging the corner of a cell
-            (with series like <span className="font-mono text-sm">A0001</span>, dates, weekdays and months), pastes
-            ranges copied from Excel, adds and renames columns, and has undo/redo, find &amp; replace and a
-            sum/average footer. <span className="font-mono text-sm">Ctrl+S</span> in the table writes it back to
-            the file, keeping its delimiter and line endings — and unsaved table edits mark the tab as modified so
-            they&apos;re never lost.
           </>
         )
       }
