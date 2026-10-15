@@ -10,6 +10,20 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+### Added
+- **Table Lens (CSV preview) catches up with devtool.** Multi-line cell editor (double-click,
+  `Enter`, `F2` or start typing; arrows/`Tab` move the selection, `Delete` clears); Excel-style fill
+  handle with series fill (codes like `A0001`, numbered text, ordinals, dates, weekdays, months,
+  quarters) and *Copy cells / Fill series* options; paste ranges from Excel/Sheets with `Ctrl+V` and
+  a *Paste values…* dialog that can target a new column; insert, rename (double-click the header)
+  and duplicate columns; shift-click to select a range of rows; undo/redo, find & replace, a
+  sum/average/count footer and multi-column sort.
+- **Saving from Table Lens.** `Ctrl+S` in the table writes it into the tab's text and saves the
+  file, keeping the original delimiter, line endings and encoding. Unsaved table edits mark the tab
+  as modified (so Save All, AutoSave and the close/quit prompts include them) and move into the text
+  when you switch tabs or close the preview. If the text was also edited by hand, NovaPad asks before
+  replacing it.
+
 ## [1.6.7]
 
 ### Added

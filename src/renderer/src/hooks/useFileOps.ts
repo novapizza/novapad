@@ -9,6 +9,7 @@ import { backupApi } from '../utils/backupApi'
 import { routeFileOpen, tooLargeMessage } from '../utils/largeFileRouting'
 import { openLargeJsonBuffer, saveLargeJson, closeLargeJsonDoc, reloadLargeJson } from '../utils/largeJsonOps'
 import { isWindows } from '../utils/platform'
+import { flushTableEdits } from '../components/CsvViewer/tableLensBridge'
 
 function basename(p: string): string {
   return p.replace(/\\/g, '/').split('/').pop() ?? p
@@ -439,6 +440,9 @@ export function useFileOps() {
     // Record-viewer tabs stream their edit overlay through the worker.
     if (buf.kind === 'largeJson') return saveLargeJson(id, null)
 
+    // Unsaved Table Lens edits live in the table until now — move them into the text first.
+    if (!(await flushTableEdits(id))) return false
+
     let filePath = buf.filePath
     let pathAssigned = false
     if (!filePath) {
@@ -489,6 +493,7 @@ export function useFileOps() {
     if (res.canceled || !res.filePath) return false
 
     if (buf.kind === 'largeJson') return saveLargeJson(buf.id, res.filePath)
+    if (!(await flushTableEdits(buf.id))) return false
 
     const content = buf.model?.getValue() ?? buf.content
     const result = await window.api.file.write(res.filePath, content, buf.encoding, buf.eol, buf.hasBom)

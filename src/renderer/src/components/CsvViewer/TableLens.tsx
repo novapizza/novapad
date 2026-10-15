@@ -1,74 +1,155 @@
+// Ported from devtool/components/TableLens.tsx (b933f50). NovaPad differences: seeded from
+// `initialCsvText`, CSV/TSV only, saves through the host (editor buffer) instead of the File
+// System Access API, native confirms, and keys scoped to the table root (`data-own-shortcuts`).
+// See .docs/features/table-lens-sync.
 import React, { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Upload, Trash2, Download, Search, ChevronDown, X, Loader2, ArrowUp, ArrowDown, ArrowUpDown, Copy, MoreHorizontal, Paintbrush, WrapText, Pin, PinOff, EyeOff, Eye } from 'lucide-react';
+import { Upload, Trash2, Download, Search, ChevronDown, X, Loader2, ArrowUp, ArrowDown, ArrowUpDown, Copy, MoreHorizontal, Paintbrush, WrapText, Pin, PinOff, EyeOff, Eye, Undo2, Redo2, Replace, Sigma, Plus, Pencil, ArrowLeftToLine, ArrowRightToLine, ClipboardPaste, Save } from 'lucide-react';
+import TableLensCellEditor, { type CommitMove } from './TableLensCellEditor';
+import TableLensFillOptions from './TableLensFillOptions';
+import TableLensPasteDialog, { type PasteDialogResult } from './TableLensPasteDialog';
+import {
+  Row, CFRule, SortKey, CF_COLORS, CF_OPS, matchCFRule,
+  exportData, computeSummary, findMatches, replaceAll, multiSort,
+  fillColumn, setColumnValues, fillRangePositions, moveCell,
+  type FindOptions, type ColumnSummary, type ExportFormat,
+} from '../../utils/tableLensUtils';
+import {
+  buildFillValues, canFillSeries, fillValueAt, isDayFirstLocale, resolveFillMode,
+  type FillDirection, type FillMode,
+} from '../../utils/tableLensFill';
+import {
+  validateColumnName, nextColumnName, dedupeColumnName, renameColumn, renameRecordKey, insertColumn,
+  removeColumn, insertNextTo, orderColumns, removeRows, duplicateRows, selectRange,
+  type TableSnapshot, type InsertSide,
+} from '../../utils/tableLensColumns';
+import { parseClipboardGrid, planPaste, applyPaste, toClipboardCell } from '../../utils/tableLensPaste';
+import { getSaveFormat, getSaveWarning, serializeTable, type SaveSource } from '../../utils/tableLensSave';
+import { useHistory } from '../../utils/tableLensHistory';
 
-type Row = Record<string, string>;
-
-// ── Conditional Formatting ────────────────────────────────────────
-type CFRule = { id: string; col: string; op: string; value: string; color: string };
-
-const CF_COLORS = [
-  { label: 'Red',    swatch: '#ef4444', cell: 'rgba(239,68,68,0.15)' },
-  { label: 'Orange', swatch: '#f97316', cell: 'rgba(249,115,22,0.15)' },
-  { label: 'Yellow', swatch: '#eab308', cell: 'rgba(234,179,8,0.22)' },
-  { label: 'Green',  swatch: '#22c55e', cell: 'rgba(34,197,94,0.15)' },
-  { label: 'Blue',   swatch: '#3b82f6', cell: 'rgba(59,130,246,0.15)' },
-  { label: 'Purple', swatch: '#a855f7', cell: 'rgba(168,85,247,0.15)' },
-  { label: 'Pink',   swatch: '#ec4899', cell: 'rgba(236,72,153,0.15)' },
-  { label: 'Teal',   swatch: '#14b8a6', cell: 'rgba(20,184,166,0.15)' },
-];
-
-const CF_OPS = [
-  { value: 'contains',     label: 'contains' },
-  { value: 'not_contains', label: 'not contains' },
-  { value: 'equals',       label: '= equals' },
-  { value: 'not_equals',   label: '≠ not equals' },
-  { value: 'starts_with',  label: 'starts with' },
-  { value: 'ends_with',    label: 'ends with' },
-  { value: 'gt',           label: '> greater than' },
-  { value: 'lt',           label: '< less than' },
-  { value: 'gte',          label: '≥ greater or equal' },
-  { value: 'lte',          label: '≤ less or equal' },
-  { value: 'is_empty',     label: 'is empty' },
-  { value: 'is_not_empty', label: 'is not empty' },
-];
-
-function matchCFRule(cellVal: string, op: string, ruleVal: string): boolean {
-  const cv = cellVal.toLowerCase(), rv = ruleVal.toLowerCase();
-  const num = Number(cellVal), rnum = Number(ruleVal);
-  const isNum = !isNaN(num) && cellVal !== '', rIsNum = !isNaN(rnum) && ruleVal !== '';
-  switch (op) {
-    case 'contains':     return cv.includes(rv);
-    case 'not_contains': return !cv.includes(rv);
-    case 'equals':       return cv === rv;
-    case 'not_equals':   return cv !== rv;
-    case 'starts_with':  return cv.startsWith(rv);
-    case 'ends_with':    return cv.endsWith(rv);
-    case 'gt':           return isNum && rIsNum && num > rnum;
-    case 'lt':           return isNum && rIsNum && num < rnum;
-    case 'gte':          return isNum && rIsNum && num >= rnum;
-    case 'lte':          return isNum && rIsNum && num <= rnum;
-    case 'is_empty':     return cellVal === '';
-    case 'is_not_empty': return cellVal !== '';
-    default:             return false;
-  }
-}
-
-const ROW_H = 33;   // px — must match actual row height
+const ROW_H = 33;
 const OVERSCAN = 25;
+/** Width of the sticky checkbox + row-number columns */
+const ROW_GUTTER_W = 36 + 40;
+const EDGE_SCROLL_ZONE = 32;
+const KEY_MOVES: Record<string, [number, number]> = {
+  ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1],
+};
 
-// ── Utilities ────────────────────────────────────────────────────
-function toCSV(cols: string[], rows: Row[]): string {
-  const e = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  return [cols.map(e).join(','), ...rows.map(r => cols.map(c => e(r[c])).join(','))].join('\n');
+/** A cell addressed by its index in `data` (stable across sort/filter) and column name */
+type CellRef = { row: number; col: string };
+
+/** Ambiguous slash dates (3/4/2024) follow the browser locale, as Excel does */
+const FILL_OPTS = { dayFirst: isDayFirstLocale() };
+
+/** The fill just applied — kept so Auto Fill Options can redo it in the other mode */
+interface LastFill {
+  col: string;
+  targets: number[];
+  direction: FillDirection;
+  sourceValue: string;
+  mode: FillMode;
+  before: Row[];
+  anchor: DOMRect;
 }
 
-function downloadCSV(name: string, content: string) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8;' }));
-  a.download = name;
-  a.click();
+const fillLabel = (mode: FillMode, count: number, col: string) =>
+  mode === 'series' ? `Fill series (${count} cells) in "${col}"` : `Fill ${count} cells in "${col}"`;
+
+/** Short message shown in the table footer (save results, paste summaries, validation errors) */
+type Notice = { text: string; tone: 'info' | 'error' };
+const NOTICE_MS = 6000;
+
+// ── Host contract — NovaPad saves through whoever embeds the table ──
+/** Serializes the table for the host; `markSaved` clears "Unsaved" once the host has stored the text */
+export interface TableWriter {
+  serialize(newline?: string): Promise<{ text: string; markSaved: () => void }>;
+  /** Why saving can't round-trip the opened text exactly — confirm with the user first — or null */
+  saveWarning(): string | null;
 }
+
+/** Combos the table handles itself; the app-wide shortcut dispatcher skips them inside the table */
+const OWN_SHORTCUTS = 'Mod+S Mod+Shift+S Mod+F Mod+Z Mod+Y Mod+Shift+Z F2';
+
+/** Native prompt — window.confirm() would freeze the renderer's message loop in Electron */
+const confirmDialog = (message: string, detail: string, confirmLabel: string): Promise<boolean> =>
+  window.api.dialog.confirm(message, detail, confirmLabel);
+
+const TABLE_FILE_RE = /\.(csv|tsv|tab)$/i;
+
+interface ParsedTable { cols: string[]; rows: Row[]; source: SaveSource }
+
+/** Parse delimited text (string or File) into string cells, remembering what saving needs to match it */
+async function parseDelimited(input: string | File, name: string): Promise<ParsedTable> {
+  const Papa = await import('papaparse');
+  const isTSV = /\.(tsv|tab)$/i.test(name);
+  return new Promise((resolve, reject) => {
+    Papa.default.parse<Row & { __parsed_extra?: string[] }>(input as never, {
+      header: true,
+      skipEmptyLines: true,
+      worker: false,
+      delimiter: isTSV ? '\t' : undefined,
+      error: (err: Error) => reject(err),
+      complete: (result) => {
+        const cols = result.meta.fields || [];
+        let extraFieldRows = 0;
+        const rows = result.data.map((r) => {
+          if (r.__parsed_extra) extraFieldRows++;
+          return Object.fromEntries(cols.map((c) => [c, String(r[c] ?? '')]));
+        });
+        const trailingNewline = typeof input === 'string' && /[\r\n]$/.test(input);
+        resolve({ cols, rows, source: { delimiter: result.meta.delimiter, trailingNewline, extraFieldRows } });
+      },
+    });
+  });
+}
+
+const isEditableTarget = (target: EventTarget | null) =>
+  !!(target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable="true"]');
+
+// ── HeaderNameInput — inline column rename ───────────────────────
+interface HeaderNameInputProps {
+  initial: string;
+  /** Returns false when the name is rejected (editing stays open) */
+  onCommit: (value: string) => boolean;
+  onCancel: () => void;
+}
+
+const HeaderNameInput: React.FC<HeaderNameInputProps> = ({ initial, onCommit, onCancel }) => {
+  const [value, setValue] = useState(initial);
+  const [invalid, setInvalid] = useState(false);
+  const doneRef = useRef(false);
+
+  const commit = () => {
+    if (doneRef.current) return true;
+    const ok = onCommit(value);
+    doneRef.current = ok;
+    setInvalid(!ok);
+    return ok;
+  };
+
+  return (
+    <input
+      autoFocus
+      value={value}
+      onFocus={e => e.target.select()}
+      onChange={e => { setValue(e.target.value); setInvalid(false); }}
+      onKeyDown={e => {
+        e.stopPropagation();
+        if (e.key === 'Enter') commit();
+        if (e.key === 'Escape') { doneRef.current = true; onCancel(); }
+      }}
+      // Leaving with an invalid name abandons the rename rather than trapping focus
+      onBlur={() => { if (!commit()) { doneRef.current = true; onCancel(); } }}
+      onClick={e => e.stopPropagation()}
+      aria-label="Column name"
+      aria-invalid={invalid}
+      className={`flex-1 min-w-0 font-bold text-[11px] bg-white dark:bg-slate-900 border rounded px-1.5 py-0.5 outline-none text-slate-700 dark:text-slate-200 ${
+        invalid ? 'border-red-400' : 'border-blue-400'
+      }`}
+    />
+  );
+};
 
 function useDebounce<T>(value: T, ms: number): T {
   const [dv, setDv] = useState(value);
@@ -79,7 +160,7 @@ function useDebounce<T>(value: T, ms: number): T {
   return dv;
 }
 
-// ── FilterCell — lazy distinct values, only computed on dropdown open ──
+// ── FilterCell ───────────────────────────────────────────────────
 interface FilterCellProps {
   value: string;
   onChange: (v: string) => void;
@@ -87,7 +168,8 @@ interface FilterCellProps {
   active: boolean;
 }
 
-const PAGE = 60; // items per page in dropdown
+const PAGE = 60;
+const EMPTY_FILTER = '\0__EMPTY__';
 
 const FilterCell: React.FC<FilterCellProps> = ({ value, onChange, getOptions, active }) => {
   const [open, setOpen] = useState(false);
@@ -98,6 +180,7 @@ const FilterCell: React.FC<FilterCellProps> = ({ value, onChange, getOptions, ac
   const dropRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
+    if (value === EMPTY_FILTER) return options;
     const q = value.toLowerCase();
     return q ? options.filter(o => o.toLowerCase().includes(q)) : options;
   }, [options, value]);
@@ -108,12 +191,11 @@ const FilterCell: React.FC<FilterCellProps> = ({ value, onChange, getOptions, ac
   const openDrop = () => {
     if (!inputRef.current) return;
     setDropRect(inputRef.current.getBoundingClientRect());
-    setOptions(getOptions()); // lazy — computed only here
+    setOptions(getOptions());
     setPage(1);
     setOpen(true);
   };
 
-  // Reset page when search text changes
   useEffect(() => { setPage(1); }, [value]);
 
   useEffect(() => {
@@ -128,7 +210,6 @@ const FilterCell: React.FC<FilterCellProps> = ({ value, onChange, getOptions, ac
 
   useEffect(() => {
     if (!open) return;
-    // Only close on scroll that happens OUTSIDE the dropdown
     const close = (e: Event) => {
       if (dropRef.current?.contains(e.target as Node)) return;
       setOpen(false);
@@ -143,7 +224,7 @@ const FilterCell: React.FC<FilterCellProps> = ({ value, onChange, getOptions, ac
         <input
           ref={inputRef}
           type="text"
-          value={value}
+          value={value === EMPTY_FILTER ? '(empty)' : value}
           onChange={e => onChange(e.target.value)}
           onFocus={openDrop}
           onClick={e => { e.stopPropagation(); openDrop(); }}
@@ -157,6 +238,7 @@ const FilterCell: React.FC<FilterCellProps> = ({ value, onChange, getOptions, ac
         {value ? (
           <button
             onMouseDown={e => { e.preventDefault(); onChange(''); setOpen(false); }}
+            aria-label="Clear"
             className="absolute right-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
           >
             <X size={10} />
@@ -177,20 +259,27 @@ const FilterCell: React.FC<FilterCellProps> = ({ value, onChange, getOptions, ac
               Freetext: "{value}"
             </div>
           )}
-          {visible.map((v: string) => (
-            <button
-              key={v}
-              onMouseDown={e => { e.preventDefault(); onChange(value === v ? '' : v); setOpen(false); }}
-              className={`w-full text-left px-3 py-1.5 text-xs cursor-pointer truncate transition-colors ${
-                value === v
-                  ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-              }`}
-              title={v}
-            >
-              {v === '' ? <span className="italic text-slate-400 dark:text-slate-500">(empty)</span> : v}
-            </button>
-          ))}
+          {visible.map((v: string) => {
+            const isEmptyOpt = v === '';
+            const selected = isEmptyOpt ? value === EMPTY_FILTER : value === v;
+            const next = isEmptyOpt
+              ? (value === EMPTY_FILTER ? '' : EMPTY_FILTER)
+              : (value === v ? '' : v);
+            return (
+              <button
+                key={v}
+                onMouseDown={e => { e.preventDefault(); onChange(next); setOpen(false); }}
+                className={`w-full text-left px-3 py-1.5 text-xs cursor-pointer truncate transition-colors ${
+                  selected
+                    ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                }`}
+                title={v}
+              >
+                {isEmptyOpt ? <span className="italic text-slate-400 dark:text-slate-500">(empty)</span> : v}
+              </button>
+            );
+          })}
           {hasMore && (
             <button
               onMouseDown={e => { e.preventDefault(); setPage(p => p + 1); }}
@@ -206,33 +295,190 @@ const FilterCell: React.FC<FilterCellProps> = ({ value, onChange, getOptions, ac
   );
 };
 
-// ── Main component ────────────────────────────────────────────────
-interface TableLensProps {
-  initialCsvText?: string;
-  initialFileName?: string;
+// ── Grid DOM helpers (cell selection, fill handle) ──────────────
+function findCellEl(container: HTMLElement, pos: number, col: string): HTMLElement | null {
+  return container.querySelector<HTMLElement>(`tr[data-pos="${pos}"] > td[data-col="${CSS.escape(col)}"]`);
 }
 
-const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }) => {
+/** Viewport bounds of the scrollable body area — excludes sticky header/footer and scrollbars */
+function getBodyBounds(container: HTMLElement) {
+  const rect = container.getBoundingClientRect();
+  const head = container.querySelector('thead')?.getBoundingClientRect();
+  const foot = container.querySelector('tfoot')?.getBoundingClientRect();
+  return {
+    left: rect.left,
+    right: rect.left + container.clientWidth,
+    top: head?.bottom ?? rect.top,
+    bottom: Math.min(rect.top + container.clientHeight, foot?.top ?? Infinity),
+  };
+}
+
+/** Display position of the body row under the pointer, clamped into the visible body area */
+function hitTestRowPos(container: HTMLElement, x: number, y: number): number | null {
+  const b = getBodyBounds(container);
+  const px = Math.max(b.left + 1, Math.min(b.right - 1, x));
+  const py = Math.max(b.top + 1, Math.min(b.bottom - 1, y));
+  const tr = document.elementFromPoint(px, py)?.closest<HTMLElement>('tr[data-pos]');
+  return tr ? Number(tr.dataset.pos) : null;
+}
+
+/** Auto-scroll speed while dragging near the top/bottom edge of the body */
+function edgeScrollDelta(container: HTMLElement, y: number): number {
+  const b = getBodyBounds(container);
+  if (y < b.top + EDGE_SCROLL_ZONE) return -Math.min(40, Math.ceil((b.top + EDGE_SCROLL_ZONE - y) / 2));
+  if (y > b.bottom - EDGE_SCROLL_ZONE) return Math.min(40, Math.ceil((y - b.bottom + EDGE_SCROLL_ZONE) / 2));
+  return 0;
+}
+
+function scrollCellIntoView(container: HTMLElement, cell: HTMLElement, stickyLeft: number) {
+  const b = getBodyBounds(container);
+  const r = cell.getBoundingClientRect();
+  if (r.top < b.top) container.scrollTop -= b.top - r.top;
+  else if (r.bottom > b.bottom) container.scrollTop += r.bottom - b.bottom;
+  if (cell.style.position === 'sticky') return;
+  const left = b.left + stickyLeft;
+  if (r.left < left) container.scrollLeft -= left - r.left;
+  else if (r.right > b.right) container.scrollLeft += r.right - b.right;
+}
+
+/**
+ * Keys reach the grid only when focus is on a non-form element inside the table. NovaPad: the
+ * focusable table root takes focus on cell click, so `document.body` (devtool's fallback) is not
+ * accepted — there it would steal keys from the editor beside the preview.
+ */
+function isGridKeyTarget(target: EventTarget | null, root: HTMLElement | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el || el.closest('input, textarea, select, button, [contenteditable="true"]')) return false;
+  return !!root?.contains(el);
+}
+
+// ── useFillHandle — Excel-style drag-to-fill down a column ──────
+/** `toggled`: Ctrl (Win) / Option (Mac) held — flips between copy and series, like Excel */
+interface FillDrag { src: number; to: number; toggled: boolean; x: number; y: number }
+
+const isFillToggle = (ev: { ctrlKey: boolean; altKey: boolean }) => ev.ctrlKey || ev.altKey;
+
+function useFillHandle(
+  scrollRef: React.RefObject<HTMLDivElement | null>,
+  onFill: (src: number, to: number, toggled: boolean) => void,
+) {
+  const [fillDrag, setFillDrag] = useState<FillDrag | null>(null);
+  const onFillRef = useRef(onFill);
+  useLayoutEffect(() => { onFillRef.current = onFill; }, [onFill]);
+  const stopRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => () => stopRef.current?.(), []);
+
+  const startFill = useCallback((e: React.MouseEvent, src: number) => {
+    const container = scrollRef.current;
+    if (e.button !== 0 || !container) return;
+    e.preventDefault();
+    e.stopPropagation();
+    let pointer = { x: e.clientX, y: e.clientY };
+    let to = src;
+    let toggled = isFillToggle(e);
+    let moved = false;
+    let frame = 0;
+    // State only updates when the target row or toggle changes, not on every mouse move
+    const publish = () => setFillDrag({ src, to, toggled, x: pointer.x, y: pointer.y });
+    const track = () => {
+      const pos = hitTestRowPos(container, pointer.x, pointer.y);
+      if (pos === null || pos === to) return;
+      to = pos;
+      publish();
+    };
+    const setToggled = (next: boolean) => {
+      if (next === toggled) return;
+      toggled = next;
+      publish();
+    };
+    const tick = () => {
+      const delta = moved ? edgeScrollDelta(container, pointer.y) : 0;
+      if (delta !== 0) { container.scrollTop += delta; track(); }
+      frame = requestAnimationFrame(tick);
+    };
+    const onMove = (ev: MouseEvent) => {
+      pointer = { x: ev.clientX, y: ev.clientY };
+      moved = true;
+      setToggled(isFillToggle(ev));
+      track();
+    };
+    const onKey = (ev: KeyboardEvent) => setToggled(isFillToggle(ev));
+    const stop = () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKey);
+      stopRef.current = null;
+      setFillDrag(null);
+    };
+    const onUp = (ev: MouseEvent) => {
+      stop();
+      if (to !== src) onFillRef.current(src, to, isFillToggle(ev));
+    };
+    stopRef.current = stop;
+    publish();
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKey);
+    frame = requestAnimationFrame(tick);
+  }, [scrollRef]);
+
+  return { fillDrag, startFill };
+}
+
+// ── Props ────────────────────────────────────────────────────────
+export interface TableLensProps {
+  /** Delimited text to load once on mount (the editor buffer, or a plugin's data) */
+  initialCsvText?: string;
+  initialFileName?: string;
+  /** Save / Ctrl+S. The host decides where the text goes; `table` serializes it. */
+  onSave?: (saveAs: boolean, table: TableWriter) => void | Promise<void>;
+  /** Called with a writer while the table has edits the host hasn't stored, and null once clean */
+  onUnsavedChange?: (table: TableWriter | null) => void;
+}
+
+// ── Main component ───────────────────────────────────────────────
+const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName, onSave, onUnsavedChange }) => {
   const [rawData, setRawData] = useState<Row[]>([]);
   const [data, setData] = useState<Row[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
 
-  // filterInputs = immediate (for controlled inputs)
-  // debouncedFilters = 300ms delayed (for actual row filtering)
   const [filterInputs, setFilterInputs] = useState<Record<string, string>>({});
   const debouncedFilters = useDebounce(filterInputs, 300);
   const isFiltering = JSON.stringify(filterInputs) !== JSON.stringify(debouncedFilters);
 
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [editCell, setEditCell] = useState<{ row: number; col: string } | null>(null);
+  const [activeCell, setActiveCell] = useState<CellRef | null>(null);
+  const [editCell, setEditCell] = useState<CellRef | null>(null);
   const [editVal, setEditVal] = useState('');
+  const [editAnchor, setEditAnchor] = useState<DOMRect | null>(null);
+  const [lastFill, setLastFill] = useState<LastFill | null>(null);
+  const [renamingCol, setRenamingCol] = useState<string | null>(null);
+  const [pasteDialogCol, setPasteDialogCol] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  // Save: how the text was delimited, and the snapshot last handed to the host (for "unsaved changes")
+  const [saveSource, setSaveSource] = useState<SaveSource>({});
+  const [savedSnapshot, setSavedSnapshot] = useState<TableSnapshot | null>(null);
+  const [saving, setSaving] = useState(false);
+  const selectAnchorRef = useRef<number | null>(null);
+  const sortClickTimerRef = useRef<number | null>(null);
   const [distinctCol, setDistinctCol] = useState('');
   const [distinctValues, setDistinctValues] = useState<string[]>([]);
   const [distinctLoading, setDistinctLoading] = useState(false);
   const [distinctPage, setDistinctPage] = useState(1);
   const DISTINCT_PAGE = 50;
-  const [sortCol, setSortCol] = useState<string | null>(null);
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // Multi-column sort (P1)
+  const [sortKeys, setSortKeys] = useState<SortKey[]>([]);
+
+  // Column reorder (drag)
+  const [colOrder, setColOrder] = useState<string[]>([]);
+  const dragColRef = useRef<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
+
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
   const resizeRef = useRef<{ col: string; startX: number; startW: number } | null>(null);
   const [colMenuCol, setColMenuCol] = useState<string | null>(null);
@@ -251,13 +497,120 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
   const [loading, setLoading] = useState(false);
   const [loadMsg, setLoadMsg] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // Virtual scroll
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [containerH, setContainerH] = useState(500);
 
+  // Global search (P0)
+  const [globalSearch, setGlobalSearch] = useState('');
+  const debouncedGlobalSearch = useDebounce(globalSearch, 300);
+
+  // Find & Replace (P0)
+  const [showFindReplace, setShowFindReplace] = useState(false);
+  const [findQuery, setFindQuery] = useState('');
+  const [findIsRegex, setFindIsRegex] = useState(false);
+  const [findCaseSensitive, setFindCaseSensitive] = useState(false);
+  const [findColumnScope, setFindColumnScope] = useState('');
+  const [replaceValue, setReplaceValue] = useState('');
+
+  // Export format
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('csv');
+
+  // Summary footer (P0)
+  const [showSummary, setShowSummary] = useState(false);
+
+  // Undo/Redo (P1) — each step restores rows, the as-loaded baseline and the column list together
+  const history = useHistory<TableSnapshot>(50);
+
   const hasData = data.length > 0;
+
+  // ── Tracked table setters (push to undo history) ───────────────
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  const rawRef = useRef(rawData);
+  rawRef.current = rawData;
+  const columnsRef = useRef(columns);
+  columnsRef.current = columns;
+
+  const currentSnapshot = useCallback(
+    (): TableSnapshot => ({ rows: dataRef.current, raw: rawRef.current, columns: columnsRef.current }),
+    [],
+  );
+
+  const applySnapshot = useCallback((s: TableSnapshot) => {
+    // Refs update immediately so a second change in the same event builds on this one
+    dataRef.current = s.rows;
+    rawRef.current = s.raw;
+    columnsRef.current = s.columns;
+    setData(s.rows);
+    setRawData(s.raw);
+    setColumns(s.columns);
+  }, []);
+
+  const commitTable = useCallback((update: (prev: TableSnapshot) => TableSnapshot, label: string) => {
+    setLastFill(null);
+    const next = update(currentSnapshot());
+    history.push(next, label);
+    applySnapshot(next);
+  }, [history, currentSnapshot, applySnapshot]);
+
+  const setDataWithHistory = useCallback((updater: (prev: Row[]) => Row[], label: string) => {
+    commitTable(s => ({ ...s, rows: updater(s.rows) }), label);
+  }, [commitTable]);
+
+  const isDirty = !!savedSnapshot && (data !== savedSnapshot.rows || columns !== savedSnapshot.columns);
+
+  const notify = useCallback((text: string, tone: Notice['tone'] = 'info') => setNotice({ text, tone }), []);
+
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), NOTICE_MS);
+    return () => clearTimeout(t);
+  }, [notice]);
+
+  // NovaPad: no beforeunload guard (in Electron it silently blocks closing the window) — unsaved
+  // edits are reported to the host, which marks the editor tab dirty instead.
+  const colOrderRef = useRef(colOrder);
+  colOrderRef.current = colOrder;
+  const saveSourceRef = useRef(saveSource);
+  saveSourceRef.current = saveSource;
+  const fileNameRef = useRef(fileName);
+  fileNameRef.current = fileName;
+  /** Commits an open cell edit, so saving mid-edit includes it */
+  const flushEditRef = useRef<() => void>(() => {});
+
+  // Stable for the component's lifetime and ref-based, so the host can still serialize after unmount
+  const writer = useMemo<TableWriter>(() => ({
+    async serialize(newline?: string) {
+      flushEditRef.current();
+      const snapshot = currentSnapshot();
+      const columns = orderColumns(snapshot.columns, colOrderRef.current);
+      const format = getSaveFormat(fileNameRef.current);
+      const text = await serializeTable(columns, snapshot.rows, format, saveSourceRef.current, newline);
+      return {
+        text,
+        markSaved: () => {
+          setSavedSnapshot(snapshot);
+          // Values beyond the header are gone from the saved text, so don't warn about them again
+          setSaveSource(s => (s.extraFieldRows ? { ...s, extraFieldRows: 0 } : s));
+        },
+      };
+    },
+    saveWarning: () => getSaveWarning(saveSourceRef.current),
+  }), [currentSnapshot]);
+
+  const onUnsavedChangeRef = useRef(onUnsavedChange);
+  onUnsavedChangeRef.current = onUnsavedChange;
+  useEffect(() => {
+    onUnsavedChangeRef.current?.(isDirty ? writer : null);
+  }, [isDirty, writer]);
+
+  useEffect(() => () => {
+    if (sortClickTimerRef.current) clearTimeout(sortClickTimerRef.current);
+  }, []);
 
   // Track container height for virtual scroll
   useLayoutEffect(() => {
@@ -272,30 +625,36 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
     setScrollTop(0);
-  }, [debouncedFilters, sortCol, sortDir]);
+  }, [debouncedFilters, sortKeys, debouncedGlobalSearch]);
 
-  // Filtered rows — uses debounced filters, excludes hidden rows
-  const filteredRows = useMemo(() =>
-    data
+  // Filtered rows — column filters + global search + hidden rows
+  const filteredRows = useMemo(() => {
+    const gq = debouncedGlobalSearch.toLowerCase();
+    return data
       .map((row, idx) => ({ idx, row }))
       .filter(({ row, idx }: { row: Row; idx: number }) =>
         !hiddenRows.has(idx) &&
-        columns.every(col => {
-          const f = (debouncedFilters[col] || '').toLowerCase();
-          return !f || String(row[col] ?? '').toLowerCase().includes(f);
-        })
-      ),
-    [data, debouncedFilters, columns, hiddenRows]
-  );
+        columns.every((col: string) => {
+          const raw = debouncedFilters[col] || '';
+          if (!raw) return true;
+          const cell = String(row[col] ?? '');
+          if (raw === EMPTY_FILTER) return cell === '';
+          return cell.toLowerCase().includes(raw.toLowerCase());
+        }) &&
+        (!gq || columns.some((col: string) => String(row[col] ?? '').toLowerCase().includes(gq)))
+      );
+  }, [data, debouncedFilters, columns, hiddenRows, debouncedGlobalSearch]);
+
+  const orderedColumns = useMemo(() => orderColumns(columns, colOrder), [columns, colOrder]);
 
   const visibleColumns = useMemo(() => [
-    ...columns.filter((c: string) => frozenCols.has(c) && !hiddenCols.has(c)),
-    ...columns.filter((c: string) => !frozenCols.has(c) && !hiddenCols.has(c)),
-  ], [columns, frozenCols, hiddenCols]);
+    ...orderedColumns.filter((c: string) => frozenCols.has(c) && !hiddenCols.has(c)),
+    ...orderedColumns.filter((c: string) => !frozenCols.has(c) && !hiddenCols.has(c)),
+  ], [orderedColumns, frozenCols, hiddenCols]);
 
   const frozenLeftOffsets = useMemo(() => {
     const offsets: Record<string, number> = {};
-    let left = 36 + 40; // checkbox + row#
+    let left = 36 + 40;
     for (const col of visibleColumns) {
       if (!frozenCols.has(col)) break;
       offsets[col] = left;
@@ -304,30 +663,39 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
     return offsets;
   }, [visibleColumns, frozenCols, colWidths]);
 
-  const sortedRows = useMemo(() => {
-    if (!sortCol) return filteredRows;
-    return [...filteredRows].sort((a, b) => {
-      const av = String(a.row[sortCol] ?? '');
-      const bv = String(b.row[sortCol] ?? '');
-      const an = Number(av), bn = Number(bv);
-      const cmp = !isNaN(an) && !isNaN(bn) && av !== '' && bv !== '' ? an - bn : av.localeCompare(bv);
-      return sortDir === 'asc' ? cmp : -cmp;
+  // Multi-column sort
+  const sortedRows = useMemo(
+    () => multiSort(filteredRows, sortKeys),
+    [filteredRows, sortKeys],
+  );
+
+  const handleSort = useCallback((col: string, additive: boolean) => {
+    setSortKeys(prev => {
+      const existing = prev.findIndex(k => k.col === col);
+      if (additive) {
+        // Shift+click: add or toggle
+        if (existing >= 0) {
+          const next = [...prev];
+          if (next[existing].dir === 'asc') {
+            next[existing] = { col, dir: 'desc' };
+          } else {
+            next.splice(existing, 1); // remove on third click
+          }
+          return next;
+        }
+        if (prev.length >= 3) return prev; // max 3
+        return [...prev, { col, dir: 'asc' }];
+      }
+      // Plain click: single sort cycle
+      if (existing >= 0 && prev.length === 1) {
+        if (prev[0].dir === 'asc') return [{ col, dir: 'desc' }];
+        return []; // clear
+      }
+      return [{ col, dir: 'asc' }];
     });
-  }, [filteredRows, sortCol, sortDir]);
+  }, []);
 
-  const handleSort = useCallback((col: string) => {
-    if (sortCol !== col) {
-      setSortCol(col);
-      setSortDir('asc');
-    } else if (sortDir === 'asc') {
-      setSortDir('desc');
-    } else {
-      setSortCol(null);
-      setSortDir('asc');
-    }
-  }, [sortCol, sortDir]);
-
-  // Virtual scroll window (bypassed when text wrap is on)
+  // Virtual scroll window
   const startIdx = wrapText ? 0 : Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
   const endIdx = wrapText ? sortedRows.length : Math.min(sortedRows.length, Math.ceil((scrollTop + containerH) / ROW_H) + OVERSCAN);
   const visibleRows = sortedRows.slice(startIdx, endIdx);
@@ -356,6 +724,29 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
     [data, rawData, columns]
   );
 
+  // Find & Replace — match set
+  const findOpts: FindOptions = useMemo(() => ({
+    isRegex: findIsRegex,
+    caseSensitive: findCaseSensitive,
+    columnScope: findColumnScope || undefined,
+  }), [findIsRegex, findCaseSensitive, findColumnScope]);
+
+  const findMatchSet = useMemo(
+    () => showFindReplace ? findMatches(data, columns, findQuery, findOpts) : new Set<string>(),
+    [showFindReplace, data, columns, findQuery, findOpts],
+  );
+
+  // Summary footer
+  const summaryData = useMemo<Record<string, ColumnSummary>>(() => {
+    if (!showSummary) return {};
+    const rows = sortedRows.map(r => r.row);
+    const result: Record<string, ColumnSummary> = {};
+    for (const col of visibleColumns) {
+      result[col] = computeSummary(col, rows);
+    }
+    return result;
+  }, [showSummary, sortedRows, visibleColumns]);
+
   const startResize = useCallback((col: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -375,13 +766,26 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
     document.addEventListener('mouseup', onUp);
   }, [colWidths]);
 
-  const loadParsed = useCallback((cols: string[], rows: Row[], name: string) => {
-    setColumns(cols);
-    setRawData(rows.map(r => ({ ...r })));
-    setData(rows.map(r => ({ ...r })));
+  const loadParsed = useCallback((
+    cols: string[],
+    rows: Row[],
+    name: string,
+    file: { source?: SaveSource; unsaved?: boolean } = {},
+  ) => {
+    const snapshot: TableSnapshot = { rows: rows.map(r => ({ ...r })), raw: rows.map(r => ({ ...r })), columns: cols };
+    applySnapshot(snapshot);
+    history.init(snapshot);
+    // A file dropped onto a host-backed table replaces the host's text, so it starts out unsaved
+    setSavedSnapshot(file.unsaved ? { rows: [], raw: [], columns: [] } : snapshot);
+    setSaveSource(file.source ?? {});
+    setLastFill(null);
+    setRenamingCol(null);
+    setPasteDialogCol(null);
+    selectAnchorRef.current = null;
     setFilterInputs({});
     setSelected(new Set());
     setEditCell(null);
+    setActiveCell(null);
     setDistinctCol('');
     setBatchCol(cols[0] || '');
     setFileName(name);
@@ -391,84 +795,213 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
     setHiddenCols(new Set());
     setFrozenCols(new Set());
     setScrollTop(0);
-  }, []);
+    setSortKeys([]);
+    setColOrder([]);
+    setGlobalSearch('');
+    setShowFindReplace(false);
+    setShowSummary(false);
+  }, [history, applySnapshot]);
 
-  // Auto-load CSV text passed in via props (when opened from a plugin)
-  useEffect(() => {
-    if (!initialCsvText) return;
-    const name = initialFileName || 'data.csv';
+  /** Parse and show delimited text; `unsaved` when it replaces what the host already has */
+  const loadTable = useCallback(async (input: string | File, name: string, unsaved = false) => {
     setLoading(true);
-    setLoadMsg('Parsing CSV...');
-    (async () => {
-      try {
-        const Papa = await import('papaparse');
-        await new Promise<void>((resolve) => {
-          Papa.default.parse<Row>(initialCsvText, {
-            header: true,
-            skipEmptyLines: true,
-            worker: false,
-            complete: (result) => {
-              const cols = result.meta.fields || [];
-              const rows = result.data.map((r) =>
-                Object.fromEntries(cols.map((c) => [c, String((r as Row)[c] ?? '')]))
-              );
-              setLoadMsg(`Loading ${rows.length.toLocaleString()} rows...`);
-              setTimeout(() => { loadParsed(cols, rows, name); resolve(); }, 16);
-            },
-          });
-        });
-      } finally {
-        setLoading(false);
-        setLoadMsg('');
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadFile = useCallback(async (file: File) => {
-    setLoading(true);
-    const name = file.name;
-
-    // Yield to paint the loading UI before heavy work
-    await new Promise(r => setTimeout(r, 30));
-
+    setLoadMsg(/\.(tsv|tab)$/i.test(name) ? 'Parsing TSV...' : 'Parsing CSV...');
+    await new Promise(r => setTimeout(r, 16));
     try {
-      {
-        setLoadMsg('Parsing CSV...');
-        const Papa = await import('papaparse');
-        await new Promise<void>(resolve => {
-          Papa.default.parse(file, {
-            header: true,
-            skipEmptyLines: true,
-            worker: false,
-            complete: (result: { meta: { fields?: string[] }; data: Row[] }) => {
-              const cols = result.meta.fields || [];
-              const rows = result.data.map(r => Object.fromEntries(cols.map(c => [c, String(r[c] ?? '')])));
-              setLoadMsg(`Loading ${rows.length.toLocaleString()} rows...`);
-              setTimeout(() => {
-                loadParsed(cols, rows, name);
-                resolve();
-              }, 16);
-            },
-          });
-        });
-      }
+      const { cols, rows, source } = await parseDelimited(input, name);
+      setLoadMsg(`Loading ${rows.length.toLocaleString()} rows...`);
+      await new Promise(r => setTimeout(r, 16));
+      loadParsed(cols, rows, name, { source, unsaved });
+    } catch (e) {
+      notify(`Couldn't read ${name}: ${(e as Error).message}`, 'error');
     } finally {
       setLoading(false);
       setLoadMsg('');
     }
-  }, [loadParsed]);
+  }, [loadParsed, notify]);
 
-  const commitEdit = useCallback(() => {
-    if (!editCell) return;
-    setData(prev => prev.map((r, i) => i === editCell.row ? { ...r, [editCell.col]: editVal } : r));
+  // Auto-load the text passed in by the host (the editor buffer, or a plugin's data) once on mount
+  useEffect(() => {
+    if (!initialCsvText) return;
+    void loadTable(initialCsvText, initialFileName || 'data.csv');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadFile = useCallback((file: File) => {
+    if (!TABLE_FILE_RE.test(file.name)) {
+      notify(`${file.name} isn't a CSV or TSV file`, 'error');
+      return;
+    }
+    void loadTable(file, file.name, initialCsvText !== undefined);
+  }, [loadTable, initialCsvText, notify]);
+
+  const openFile = useCallback(() => {
+    if (!loading) fileRef.current?.click();
+  }, [loading]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) loadFile(file);
+  }, [loadFile]);
+
+  // ── Cell selection, editing & fill ─────────────────────────────
+  const activePos = useMemo(
+    () => (activeCell ? sortedRows.findIndex(r => r.idx === activeCell.row) : -1),
+    [activeCell, sortedRows],
+  );
+
+  const revealCell = useCallback((pos: number, col: string) => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const cell = findCellEl(container, pos, col);
+    if (!cell) {
+      // Row is outside the virtualized window — jump to it
+      container.scrollTop = Math.max(0, pos * ROW_H - containerH / 2);
+      return;
+    }
+    const frozenW = visibleColumns.filter(c => frozenCols.has(c)).reduce((sum, c) => sum + (colWidths[c] ?? 140), 0);
+    scrollCellIntoView(container, cell, ROW_GUTTER_W + frozenW);
+  }, [containerH, visibleColumns, frozenCols, colWidths]);
+
+  const moveActive = useCallback((dRow: number, dCol: number) => {
+    if (!activeCell || activePos < 0) return;
+    const colIdx = visibleColumns.indexOf(activeCell.col);
+    if (colIdx < 0) return;
+    const next = moveCell(activePos, colIdx, dRow, dCol, sortedRows.length, visibleColumns.length);
+    const col = visibleColumns[next.colIdx];
+    setActiveCell({ row: sortedRows[next.pos].idx, col });
+    revealCell(next.pos, col);
+  }, [activeCell, activePos, visibleColumns, sortedRows, revealCell]);
+
+  const startEdit = useCallback((cell: CellRef, cellEl: HTMLElement, initial?: string) => {
+    setActiveCell(cell);
+    setEditCell(cell);
+    setEditVal(initial ?? dataRef.current[cell.row]?.[cell.col] ?? '');
+    setEditAnchor(cellEl.getBoundingClientRect());
+  }, []);
+
+  const openActiveEditor = useCallback((initial?: string) => {
+    if (!activeCell || activePos < 0 || !scrollRef.current) return;
+    const cellEl = findCellEl(scrollRef.current, activePos, activeCell.col);
+    if (cellEl) startEdit(activeCell, cellEl, initial);
+    else revealCell(activePos, activeCell.col);
+  }, [activeCell, activePos, startEdit, revealCell]);
+
+  const cancelEdit = useCallback(() => {
     setEditCell(null);
-  }, [editCell, editVal]);
+    setEditAnchor(null);
+  }, []);
+
+  const commitEdit = useCallback((move: CommitMove = 'none') => {
+    if (!editCell) return;
+    const { row, col } = editCell;
+    if (editVal !== (dataRef.current[row]?.[col] ?? '')) {
+      setDataWithHistory(prev => fillColumn(prev, [row], col, editVal), `Edit cell [${row},${col}]`);
+    }
+    cancelEdit();
+    if (move === 'down') moveActive(1, 0);
+    else if (move === 'right') moveActive(0, 1);
+    else if (move === 'left') moveActive(0, -1);
+  }, [editCell, editVal, setDataWithHistory, cancelEdit, moveActive]);
+  flushEditRef.current = () => commitEdit();
+
+  const clearActiveCell = useCallback(() => {
+    if (!activeCell || !dataRef.current[activeCell.row]?.[activeCell.col]) return;
+    const { row, col } = activeCell;
+    setDataWithHistory(prev => fillColumn(prev, [row], col, ''), `Clear cell [${row},${col}]`);
+  }, [activeCell, setDataWithHistory]);
+
+  const handleFill = useCallback((src: number, to: number, toggled: boolean) => {
+    const range = fillRangePositions(src, to);
+    if (!activeCell || !range || !sortedRows[src]) return;
+    const { col } = activeCell;
+    const sourceValue = dataRef.current[sortedRows[src].idx]?.[col] ?? '';
+    const direction: FillDirection = to > src ? 1 : -1;
+    // Nearest-first, so series values line up with distance from the source
+    const inRange = sortedRows.slice(range[0], range[1] + 1).map(r => r.idx);
+    const targets = direction === 1 ? inRange : inRange.reverse();
+    const mode = resolveFillMode(sourceValue, toggled, FILL_OPTS);
+    const before = dataRef.current;
+    const values = buildFillValues(sourceValue, targets.length, direction, mode, FILL_OPTS);
+    setDataWithHistory(prev => setColumnValues(prev, targets, col, values), fillLabel(mode, targets.length, col));
+    const endCell = scrollRef.current && findCellEl(scrollRef.current, to, col);
+    if (endCell && canFillSeries(sourceValue, FILL_OPTS)) {
+      setLastFill({ col, targets, direction, sourceValue, mode, before, anchor: endCell.getBoundingClientRect() });
+    }
+  }, [activeCell, sortedRows, setDataWithHistory]);
+
+  // Auto Fill Options: re-apply the last fill in the other mode, replacing it in history (one undo step)
+  const switchFillMode = useCallback((mode: FillMode) => {
+    if (!lastFill || mode === lastFill.mode) return;
+    const { before, targets, col, sourceValue, direction } = lastFill;
+    const values = buildFillValues(sourceValue, targets.length, direction, mode, FILL_OPTS);
+    const next: TableSnapshot = { ...currentSnapshot(), rows: setColumnValues(before, targets, col, values) };
+    history.replace(next, fillLabel(mode, targets.length, col));
+    applySnapshot(next);
+    setLastFill({ ...lastFill, mode });
+  }, [lastFill, history, currentSnapshot, applySnapshot]);
+
+  const closeFillOptions = useCallback(() => setLastFill(null), []);
+
+  const { fillDrag, startFill } = useFillHandle(scrollRef, handleFill);
+  const fillBounds = fillDrag ? [Math.min(fillDrag.src, fillDrag.to), Math.max(fillDrag.src, fillDrag.to)] : null;
+
+  // Value the last cell under the drag will get — shown next to the pointer like Excel
+  const fillPreview = useMemo(() => {
+    if (!fillDrag || !activeCell || fillDrag.to === fillDrag.src || !sortedRows[fillDrag.src]) return null;
+    const value = data[sortedRows[fillDrag.src].idx]?.[activeCell.col] ?? '';
+    const mode = resolveFillMode(value, fillDrag.toggled, FILL_OPTS);
+    return fillValueAt(value, fillDrag.to - fillDrag.src, mode, FILL_OPTS);
+  }, [fillDrag, activeCell, sortedRows, data]);
+
+  // Keyboard on the selected cell: arrows/Tab move, Enter/F2/typing edits, Delete clears, Esc deselects
+  useEffect(() => {
+    if (!activeCell || editCell) return;
+    const handler = (e: KeyboardEvent) => {
+      if (!isGridKeyTarget(e.target, rootRef.current) || e.ctrlKey || e.metaKey || e.altKey) return;
+      const delta = KEY_MOVES[e.key] ?? (e.key === 'Tab' ? [0, e.shiftKey ? -1 : 1] : null);
+      if (delta) { e.preventDefault(); moveActive(delta[0], delta[1]); return; }
+      if (e.key === 'Escape') { setActiveCell(null); return; }
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); clearActiveCell(); return; }
+      if (e.key === 'Enter' || e.key === 'F2') { e.preventDefault(); openActiveEditor(); return; }
+      if (e.key.length === 1) { e.preventDefault(); openActiveEditor(e.key); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [activeCell, editCell, moveActive, clearActiveCell, openActiveEditor]);
+
+  // NovaPad: closing the cell editor, rename box or paste dialog drops focus to <body>, outside the
+  // table root that scopes keys — take it back. Focus that moved somewhere real (the editor) stays.
+  useEffect(() => {
+    if (editCell || renamingCol !== null || pasteDialogCol !== null) return;
+    const t = setTimeout(() => {
+      const el = document.activeElement;
+      if (!el || el === document.body) rootRef.current?.focus({ preventScroll: true });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [editCell, renamingCol, pasteDialogCol]);
+
+  // Deselect when clicking outside the table (the floating editor counts as inside)
+  useEffect(() => {
+    if (!activeCell) return;
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (scrollRef.current?.contains(target) || target.closest('[data-cell-editor]')) return;
+      setActiveCell(null);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [activeCell]);
 
   const applyBatch = useCallback(() => {
     if (!batchCol || selected.size === 0) return;
-    setData(prev => prev.map((r, i) => selected.has(i) ? { ...r, [batchCol]: batchVal } : r));
-  }, [batchCol, batchVal, selected]);
+    setDataWithHistory(
+      prev => prev.map((r, i) => selected.has(i) ? { ...r, [batchCol]: batchVal } : r),
+      `Batch edit ${selected.size} rows`,
+    );
+  }, [batchCol, batchVal, selected, setDataWithHistory]);
 
   const toggleRow = useCallback((idx: number) => {
     setSelected(prev => {
@@ -486,49 +1019,105 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
     );
   }, [filteredRows]);
 
+  // Checkbox / row-number click: plain click toggles one row, Shift+click sets the whole on-screen
+  // range from the last plainly clicked row to the same state as that row
+  const handleRowCheck = useCallback((idx: number, shift: boolean) => {
+    const anchor = selectAnchorRef.current;
+    const anchorPos = anchor === null ? -1 : sortedRows.findIndex(r => r.idx === anchor);
+    const pos = sortedRows.findIndex(r => r.idx === idx);
+    if (!shift || anchor === null || anchorPos < 0 || pos < 0) {
+      toggleRow(idx);
+      selectAnchorRef.current = idx;
+      return;
+    }
+    const ids = sortedRows.slice(Math.min(anchorPos, pos), Math.max(anchorPos, pos) + 1).map(r => r.idx);
+    setSelected(prev => selectRange(prev, ids, prev.has(anchor)));
+  }, [sortedRows, toggleRow]);
+
   const deleteSelectedRows = useCallback(() => {
-    setData((prev: Row[]) => prev.filter((_r: Row, i: number) => !selected.has(i)));
-    setRawData((prev: Row[]) => prev.filter((_r: Row, i: number) => !selected.has(i)));
+    commitTable(s => removeRows(s, selected), `Delete ${selected.size} rows`);
     setSelected(new Set());
-  }, [selected]);
+    setActiveCell(null);
+    selectAnchorRef.current = null;
+  }, [selected, commitTable]);
 
   const duplicateSelectedRows = useCallback(() => {
-    const sortedIdx = Array.from(selected as Set<number>).sort((a: number, b: number) => a - b);
-    const insertAt = sortedIdx[sortedIdx.length - 1] + 1;
-    setData((prev: Row[]) => {
-      const next = [...prev];
-      next.splice(insertAt, 0, ...sortedIdx.map((i: number) => ({ ...prev[i] })));
-      return next;
-    });
-    setRawData((prev: Row[]) => {
-      const next = [...prev];
-      next.splice(insertAt, 0, ...sortedIdx.map((i: number) => ({ ...prev[i] })));
-      return next;
-    });
+    commitTable(s => duplicateRows(s, Array.from(selected)), `Duplicate ${selected.size} rows`);
     setSelected(new Set());
-  }, [selected]);
+    setActiveCell(null);
+    selectAnchorRef.current = null;
+  }, [selected, commitTable]);
 
   const deleteColumn = useCallback((col: string) => {
-    const omitCol = (r: Row): Row => Object.fromEntries(Object.entries(r).filter(([k]) => k !== col)) as Row;
-    setColumns((prev: string[]) => prev.filter((c: string) => c !== col));
-    setData((prev: Row[]) => prev.map(omitCol));
-    setRawData((prev: Row[]) => prev.map(omitCol));
-    setColWidths((prev: Record<string, number>) => Object.fromEntries(Object.entries(prev).filter(([k]) => k !== col)));
-    setFilterInputs((prev: Record<string, string>) => Object.fromEntries(Object.entries(prev).filter(([k]) => k !== col)));
+    commitTable(s => removeColumn(s, col), `Delete column "${col}"`);
+    setActiveCell(prev => (prev?.col === col ? null : prev));
     setColMenuCol(null);
-  }, []);
+  }, [commitTable]);
 
   const duplicateColumn = useCallback((col: string) => {
-    const newCol = `${col}_copy`;
-    setColumns((prev: string[]) => {
-      const idx = prev.indexOf(col);
-      const next = [...prev];
-      next.splice(idx + 1, 0, newCol);
-      return next;
-    });
-    setData((prev: Row[]) => prev.map((r: Row) => ({ ...r, [newCol]: r[col] })));
-    setRawData((prev: Row[]) => prev.map((r: Row) => ({ ...r, [newCol]: r[col] })));
+    const newCol = dedupeColumnName(columnsRef.current, `${col}_copy`);
+    commitTable(s => insertColumn(s, newCol, s.columns.indexOf(col) + 1, col), `Duplicate column "${col}"`);
+    setColOrder(prev => (prev.length ? insertNextTo(prev, newCol, col, 'right') : prev));
     setColMenuCol(null);
+  }, [commitTable]);
+
+  /** Insert an empty column beside `anchor` and open its name for editing */
+  const addColumn = useCallback((anchor: string, side: InsertSide) => {
+    const name = nextColumnName(columnsRef.current);
+    commitTable(s => {
+      const anchorIdx = s.columns.indexOf(anchor);
+      const index = anchorIdx < 0 ? s.columns.length : anchorIdx + (side === 'right' ? 1 : 0);
+      return insertColumn(s, name, index);
+    }, `Insert column "${name}"`);
+    setColOrder(prev => (prev.length ? insertNextTo(prev, name, anchor, side) : prev));
+    setColMenuCol(null);
+    setRenamingCol(name);
+  }, [commitTable]);
+
+  /** Point every column-keyed setting (width, filter, sort, freeze…) at the renamed column */
+  const remapColumnState = useCallback((from: string, to: string) => {
+    const ren = (c: string) => (c === from ? to : c);
+    const renSet = (prev: Set<string>) => (prev.has(from) ? new Set(Array.from(prev, ren)) : prev);
+    setColWidths(prev => renameRecordKey(prev, from, to));
+    setFilterInputs(prev => renameRecordKey(prev, from, to));
+    setSortKeys(prev => (prev.some(k => k.col === from) ? prev.map(k => ({ ...k, col: ren(k.col) })) : prev));
+    setColOrder(prev => (prev.includes(from) ? prev.map(ren) : prev));
+    setFrozenCols(renSet);
+    setHiddenCols(renSet);
+    setCFRules(prev => (prev.some(r => r.col === from) ? prev.map(r => ({ ...r, col: ren(r.col) })) : prev));
+    setDistinctCol(ren);
+    setBatchCol(ren);
+    setFindColumnScope(ren);
+    setActiveCell(prev => (prev?.col === from ? { ...prev, col: to } : prev));
+  }, []);
+
+  const commitRename = useCallback((from: string, value: string): boolean => {
+    const to = value.trim();
+    const error = validateColumnName(to, columnsRef.current, from);
+    if (error) {
+      notify(error, 'error');
+      return false;
+    }
+    setRenamingCol(null);
+    if (to === from) return true;
+    commitTable(s => renameColumn(s, from, to), `Rename column "${from}" → "${to}"`);
+    remapColumnState(from, to);
+    return true;
+  }, [commitTable, remapColumnState, notify]);
+
+  // Header name: click sorts, double-click renames — the sort waits briefly so a double-click doesn't also sort
+  const handleHeaderClick = useCallback((col: string, additive: boolean) => {
+    if (sortClickTimerRef.current) clearTimeout(sortClickTimerRef.current);
+    sortClickTimerRef.current = window.setTimeout(() => {
+      sortClickTimerRef.current = null;
+      handleSort(col, additive);
+    }, 220);
+  }, [handleSort]);
+
+  const handleHeaderDoubleClick = useCallback((col: string) => {
+    if (sortClickTimerRef.current) clearTimeout(sortClickTimerRef.current);
+    sortClickTimerRef.current = null;
+    setRenamingCol(col);
   }, []);
 
   useEffect(() => {
@@ -549,6 +1138,7 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
 
   const hideColumn = useCallback((col: string) => {
     setHiddenCols((prev: Set<string>) => new Set([...Array.from(prev as Set<string>), col]));
+    setActiveCell(prev => (prev?.col === col ? null : prev));
     setColMenuCol(null);
   }, []);
 
@@ -578,25 +1168,159 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
     setCFRules((prev: CFRule[]) => prev.filter((_: CFRule, i: number) => i !== idx));
   }, []);
 
+  // Find & Replace actions
+  const handleReplaceAll = useCallback(() => {
+    if (!findQuery) return;
+    setDataWithHistory(
+      prev => replaceAll(prev, columns, findQuery, replaceValue, findOpts),
+      `Replace all "${findQuery}" → "${replaceValue}"`,
+    );
+  }, [columns, findQuery, replaceValue, findOpts, setDataWithHistory]);
+
+  // Undo/Redo
+  const handleUndo = useCallback(() => {
+    setLastFill(null);
+    const prev = history.undo();
+    if (prev) applySnapshot(prev);
+  }, [history, applySnapshot]);
+
+  const handleRedo = useCallback(() => {
+    setLastFill(null);
+    const next = history.redo();
+    if (next) applySnapshot(next);
+  }, [history, applySnapshot]);
+
+  // ── Paste (Ctrl+V on a cell, or the Paste values dialog) ───────
+  const pasteText = useCallback((text: string, opts: { startPos: number; startCol: string; addRows: boolean; newColumn?: string }) => {
+    const grid = parseClipboardGrid(text);
+    if (grid.length === 0) return;
+    let base = currentSnapshot();
+    let targetCols = visibleColumns;
+    if (opts.newColumn) {
+      base = insertColumn(base, opts.newColumn, base.columns.length);
+      targetCols = [opts.newColumn];
+    }
+    const startColIdx = opts.newColumn ? 0 : targetCols.indexOf(opts.startCol);
+    const plan = planPaste(grid, sortedRows.map(r => r.idx), opts.startPos, targetCols, startColIdx, base.rows.length, opts.addRows);
+    const next = applyPaste(base, grid, plan);
+    const cells = (plan.rowTargets.length * plan.colTargets.length).toLocaleString();
+    commitTable(() => next, `Paste ${cells} cells${opts.newColumn ? ` into new column "${opts.newColumn}"` : ''}`);
+    const extra = [
+      plan.newRows > 0 && `added ${plan.newRows.toLocaleString()} rows`,
+      plan.skippedRows > 0 && `${plan.skippedRows.toLocaleString()} lines didn't fit — use Paste values… in the column menu to add rows`,
+      plan.skippedCols > 0 && `${plan.skippedCols} column${plan.skippedCols > 1 ? 's' : ''} didn't fit`,
+    ].filter(Boolean).join(' · ');
+    notify(`Pasted ${grid.length.toLocaleString()} line${grid.length > 1 ? 's' : ''}${extra ? ` · ${extra}` : ''}`);
+  }, [currentSnapshot, visibleColumns, sortedRows, commitTable, notify]);
+
+  const applyPasteDialog = useCallback((result: PasteDialogResult) => {
+    const startPos = result.start === 'selected' && activePos >= 0 ? activePos : 0;
+    pasteText(result.text, {
+      startPos,
+      startCol: result.column ?? '',
+      addRows: result.addRows,
+      newColumn: result.column === null ? result.newColumnName : undefined,
+    });
+    setPasteDialogCol(null);
+  }, [activePos, pasteText]);
+
+  // Ctrl+V pastes from the selected cell down/right; Ctrl+C copies the selected cell
+  useEffect(() => {
+    if (!activeCell || editCell) return;
+    const onPaste = (e: ClipboardEvent) => {
+      if (!isGridKeyTarget(e.target, rootRef.current) || activePos < 0) return;
+      const text = e.clipboardData?.getData('text/plain');
+      if (!text) return;
+      e.preventDefault();
+      pasteText(text, { startPos: activePos, startCol: activeCell.col, addRows: false });
+    };
+    const onCopy = (e: ClipboardEvent) => {
+      if (!isGridKeyTarget(e.target, rootRef.current) || !window.getSelection()?.isCollapsed) return;
+      e.clipboardData?.setData('text/plain', toClipboardCell(dataRef.current[activeCell.row]?.[activeCell.col] ?? ''));
+      e.preventDefault();
+    };
+    window.addEventListener('paste', onPaste);
+    window.addEventListener('copy', onCopy);
+    return () => {
+      window.removeEventListener('paste', onPaste);
+      window.removeEventListener('copy', onCopy);
+    };
+  }, [activeCell, editCell, activePos, pasteText]);
+
+  // ── Save ───────────────────────────────────────────────────────
+  // NovaPad: the host stores the text (the editor buffer, or a Save dialog for plugin data) and
+  // confirms writer.saveWarning() first — the editor's own Save reaches the table without this button
+  const saveTable = useCallback(async (saveAs: boolean) => {
+    if (saving || !hasData || !onSave) return;
+    setSaving(true);
+    try {
+      await onSave(saveAs, writer);
+    } catch (e) {
+      notify(`Couldn't save: ${(e as Error).message}`, 'error');
+    } finally {
+      setSaving(false);
+    }
+  }, [saving, hasData, onSave, writer, notify]);
+
+  const clearTable = useCallback(async () => {
+    if (isDirty && !(await confirmDialog('Discard unsaved table changes?', 'Edits not yet saved to the file will be lost.', 'Discard'))) return;
+    applySnapshot({ rows: [], raw: [], columns: [] });
+    setSavedSnapshot(null);
+    setFileName('');
+    setFilterInputs({});
+    setSelected(new Set());
+    setActiveCell(null);
+  }, [isDirty, applySnapshot]);
+
+  // Keyboard shortcuts: Ctrl+Z, Ctrl+Y, Ctrl+F, Ctrl+S (Save), Ctrl+Shift+S (Save as) —
+  // NovaPad: only while focus is in the table (or its cell editor), never the editor beside it
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const target = e.target as HTMLElement | null;
+      if (!rootRef.current?.contains(target) && !target?.closest?.('[data-cell-editor]')) return;
+      const key = e.key.toLowerCase();
+      if (key === 's') { e.preventDefault(); saveTable(e.shiftKey); return; }
+      if (key === 'f') { e.preventDefault(); setGlobalSearchFocused(true); return; }
+      // Text fields keep their own undo
+      if (isEditableTarget(e.target)) return;
+      if (key === 'z' && !e.shiftKey) { e.preventDefault(); handleUndo(); }
+      if (key === 'y' || (key === 'z' && e.shiftKey)) { e.preventDefault(); handleRedo(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleUndo, handleRedo, saveTable]);
+
+  const [globalSearchFocused, setGlobalSearchFocused] = useState(false);
+  const globalSearchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (globalSearchFocused && globalSearchRef.current) {
+      globalSearchRef.current.focus();
+      setGlobalSearchFocused(false);
+    }
+  }, [globalSearchFocused]);
+
   const baseName = fileName.replace(/\.[^.]+$/, '') || 'export';
   const activeFilters = columns.filter(c => filterInputs[c]);
 
-  // ── Drop zone ────────────────────────────────────────────────────
+  // ── Drop zone (no data loaded yet) ────────────────────────────
   if (!hasData) {
     return (
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
           <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Table Lens</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Import a CSV — filter, edit cells, batch edit, and export your data. Fully local, nothing uploaded.
+            Import a CSV or TSV — filter, edit cells, batch edit, and export your data. Fully local, nothing uploaded.
           </p>
         </div>
 
         <div
-          onDrop={e => { e.preventDefault(); setDragging(false); e.dataTransfer.files[0] && loadFile(e.dataTransfer.files[0]); }}
+          onDrop={handleDrop}
           onDragOver={e => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
-          onClick={() => !loading && fileRef.current?.click()}
+          onClick={openFile}
           className={`border-2 border-dashed rounded-2xl p-16 flex flex-col items-center gap-4 transition-all ${
             loading
               ? 'border-blue-300 bg-blue-50 dark:bg-blue-500/10 cursor-default'
@@ -616,40 +1340,55 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
                 <Upload size={28} className="text-blue-500" />
               </div>
               <div className="text-center">
-                <p className="text-base font-bold text-slate-700 dark:text-slate-200">Drop a CSV file here</p>
+                <p className="text-base font-bold text-slate-700 dark:text-slate-200">Drop a CSV or TSV file here</p>
                 <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">or click to browse</p>
               </div>
               <div className="flex gap-2 mt-2">
-                {['CSV'].map(f => (
+                {['CSV', 'TSV'].map(f => (
                   <span key={f} className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-bold text-slate-500 dark:text-slate-400">{f}</span>
                 ))}
               </div>
             </>
           )}
         </div>
-        <input ref={fileRef} type="file" accept=".csv" className="hidden"
+        <input ref={fileRef} type="file" accept=".csv,.tsv,.tab" className="hidden"
           onChange={e => { e.target.files?.[0] && loadFile(e.target.files[0]); e.target.value = ''; }}
         />
+        {notice && (
+          <p role={notice.tone === 'error' ? 'alert' : 'status'} className={`mt-3 text-xs font-semibold text-center ${notice.tone === 'error' ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+            {notice.text}
+          </p>
+        )}
       </div>
     );
   }
 
   const allFilteredSelected = filteredRows.length > 0 && filteredRows.every(r => selected.has(r.idx));
 
-  // ── Main table view ─────────────────────────────────────────────
-  // Use h-full so we inherit whatever height our parent gives us — the table
-  // is hosted both in the full-window CsvViewerOverlay (which provides a
-  // flex-1 container) and in the right-side preview pane (which is much
-  // shorter). The previous calc(100vh - 160px) overflowed the preview pane
-  // and clipped the data rows / filter inputs below the visible area.
+  // Sort key helper for header badges
+  const getSortKeyIndex = (col: string) => sortKeys.findIndex(k => k.col === col);
+
+  // ── Main table view ────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-3 h-full min-h-0 p-3">
+    // NovaPad: h-full so the table fits both the full-window overlay and the (shorter) preview pane;
+    // focusable root so clicking a cell scopes keyboard + clipboard to the table
+    <div
+      ref={rootRef}
+      tabIndex={-1}
+      data-own-shortcuts={OWN_SHORTCUTS}
+      className="flex flex-col gap-3 h-full min-h-0 p-3 outline-none"
+    >
 
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 flex-wrap shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight shrink-0">Table Lens</h2>
           <span className="text-xs font-medium text-slate-400 dark:text-slate-500 truncate">{fileName}</span>
+          {isDirty && (
+            <span title="Unsaved changes — Ctrl+S to save" className="text-[10px] font-bold text-amber-600 dark:text-amber-400 shrink-0">
+              ● Unsaved
+            </span>
+          )}
           {activeFilters.length > 0 && (
             <>
               <span className="text-[10px] font-bold bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full shrink-0">
@@ -686,8 +1425,83 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
               </button>
             </>
           )}
+          {sortKeys.length > 0 && (
+            <button
+              onClick={() => setSortKeys([])}
+              className="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer shrink-0"
+            >
+              <X size={11} /> Clear {sortKeys.length} sort{sortKeys.length > 1 ? 's' : ''}
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Global search */}
+          <div className="relative">
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              ref={globalSearchRef}
+              type="text"
+              value={globalSearch}
+              onChange={e => setGlobalSearch(e.target.value)}
+              onKeyDown={e => e.key === 'Escape' && setGlobalSearch('')}
+              placeholder="Search all..."
+              className="pl-7 pr-7 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 w-40 focus:outline-none focus:border-blue-400 focus:w-56 transition-all"
+            />
+            {globalSearch && (
+              <button onClick={() => setGlobalSearch('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+                <X size={10} />
+              </button>
+            )}
+          </div>
+          {/* Undo / Redo */}
+          <button
+            onClick={handleUndo}
+            disabled={!history.canUndo}
+            title={history.canUndo ? `Undo: ${history.undoLabel}` : 'Nothing to undo'}
+            aria-label={history.canUndo ? `Undo: ${history.undoLabel}` : 'Nothing to undo'}
+            className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+              history.canUndo
+                ? 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                : 'border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-700 cursor-not-allowed'
+            }`}
+          >
+            <Undo2 size={14} />
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={!history.canRedo}
+            title={history.canRedo ? `Redo: ${history.redoLabel}` : 'Nothing to redo'}
+            aria-label={history.canRedo ? `Redo: ${history.redoLabel}` : 'Nothing to redo'}
+            className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+              history.canRedo
+                ? 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                : 'border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-700 cursor-not-allowed'
+            }`}
+          >
+            <Redo2 size={14} />
+          </button>
+          {/* Find & Replace toggle */}
+          <button
+            onClick={() => setShowFindReplace(p => !p)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border rounded-lg transition-all cursor-pointer ${
+              showFindReplace
+                ? 'border-orange-300 dark:border-orange-600 text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10'
+                : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Replace size={12} /> Find
+          </button>
+          {/* Summary toggle */}
+          <button
+            onClick={() => setShowSummary(p => !p)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border rounded-lg transition-all cursor-pointer ${
+              showSummary
+                ? 'border-emerald-300 dark:border-emerald-600 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10'
+                : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Sigma size={12} /> Summary
+          </button>
           <button
             onClick={() => setWrapText((w: boolean) => !w)}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border rounded-lg transition-all cursor-pointer ${
@@ -709,25 +1523,57 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
             <Paintbrush size={12} /> Format{cfRules.length > 0 ? ` (${cfRules.length})` : ''}
           </button>
           <button
-            onClick={() => { setData([]); setColumns([]); setRawData([]); setFileName(''); setFilterInputs({}); setSelected(new Set()); }}
+            onClick={clearTable}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
           >
             <Trash2 size={12} /> Clear
           </button>
+          {/* Save / Save as */}
+          <div className="flex items-center">
+            <button
+              onClick={() => saveTable(false)}
+              disabled={saving}
+              title={`Save ${fileName} (Ctrl+S)`}
+              className={`flex items-center gap-1.5 pl-3 pr-2.5 py-1.5 text-xs font-bold border rounded-l-lg transition-all cursor-pointer ${
+                isDirty
+                  ? 'border-emerald-500 bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
+            >
+              {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />} Save
+            </button>
+            <button
+              onClick={() => saveTable(true)}
+              disabled={saving}
+              title="Save as… (Ctrl+Shift+S)"
+              className="px-2 py-1.5 text-xs font-bold border border-l-0 border-slate-200 dark:border-slate-700 rounded-r-lg text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            >
+              as…
+            </button>
+          </div>
+          <select
+            value={exportFormat}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setExportFormat(e.target.value as ExportFormat)}
+            className="text-xs border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold cursor-pointer"
+          >
+            <option value="csv">CSV</option>
+            <option value="tsv">TSV</option>
+            <option value="json">JSON</option>
+          </select>
           <button
-            onClick={() => downloadCSV(`${baseName}_all.csv`, toCSV(columns, data))}
+            onClick={() => exportData(orderedColumns, data, baseName, '_all', exportFormat)}
             className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all cursor-pointer"
           >
             <Download size={12} /> Export All
           </button>
           <button
-            onClick={() => downloadCSV(`${baseName}_filtered.csv`, toCSV(columns, filteredRows.map(r => r.row)))}
+            onClick={() => exportData(orderedColumns, filteredRows.map((r: { row: Row }) => r.row), baseName, '_filtered', exportFormat)}
             className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all cursor-pointer"
           >
             <Download size={12} /> Export Filtered
           </button>
           <button
-            onClick={() => downloadCSV(`${baseName}_changes.csv`, toCSV(columns, data.filter((_, i) => modifiedSet.has(i))))}
+            onClick={() => exportData(orderedColumns, data.filter((_: Row, i: number) => modifiedSet.has(i)), baseName, '_changes', exportFormat)}
             disabled={modifiedSet.size === 0}
             className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
               modifiedSet.size > 0
@@ -739,6 +1585,69 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
           </button>
         </div>
       </div>
+
+      {/* Find & Replace Panel */}
+      {showFindReplace && (
+        <div className="shrink-0 flex items-center gap-3 bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 rounded-xl px-4 py-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+            <input
+              value={findQuery}
+              onChange={e => setFindQuery(e.target.value)}
+              placeholder="Find..."
+              className="text-xs border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 w-40 focus:outline-none focus:border-orange-400"
+            />
+            <input
+              value={replaceValue}
+              onChange={e => setReplaceValue(e.target.value)}
+              placeholder="Replace with..."
+              className="text-xs border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 w-40 focus:outline-none focus:border-orange-400"
+            />
+            <select
+              value={findColumnScope}
+              onChange={e => setFindColumnScope(e.target.value)}
+              className="text-xs border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 cursor-pointer"
+            >
+              <option value="">All columns</option>
+              {columns.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <button
+              onClick={() => setFindIsRegex(p => !p)}
+              className={`px-2 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${
+                findIsRegex ? 'border-orange-400 text-orange-600 bg-orange-100 dark:bg-orange-500/20 dark:text-orange-400' : 'border-slate-200 dark:border-slate-700 text-slate-400'
+              }`}
+            >
+              .*
+            </button>
+            <button
+              onClick={() => setFindCaseSensitive(p => !p)}
+              className={`px-2 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${
+                findCaseSensitive ? 'border-orange-400 text-orange-600 bg-orange-100 dark:bg-orange-500/20 dark:text-orange-400' : 'border-slate-200 dark:border-slate-700 text-slate-400'
+              }`}
+            >
+              Aa
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-orange-600 dark:text-orange-400">
+              {findMatchSet.size} match{findMatchSet.size !== 1 ? 'es' : ''}
+            </span>
+            <button
+              onClick={handleReplaceAll}
+              disabled={findMatchSet.size === 0}
+              className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
+                findMatchSet.size > 0
+                  ? 'bg-orange-500 hover:bg-orange-600 text-white cursor-pointer'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              Replace All
+            </button>
+            <button onClick={() => setShowFindReplace(false)} aria-label="Close find and replace" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Batch edit bar */}
       {selected.size > 0 && (
@@ -810,12 +1719,12 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
                   )}
                   <div className="flex items-center gap-1">
                     {CF_COLORS.map(c => (
-                      <button key={c.label} title={c.label} onClick={() => updateCFRule(i, 'color', c.cell)}
+                      <button key={c.label} title={c.label} aria-label={c.label} onClick={() => updateCFRule(i, 'color', c.cell)}
                         style={{ backgroundColor: c.swatch, outline: rule.color === c.cell ? `2px solid ${c.swatch}` : undefined, outlineOffset: '2px' }}
                         className="w-4 h-4 rounded-full cursor-pointer transition-transform hover:scale-110" />
                     ))}
                   </div>
-                  <button onClick={() => removeCFRule(i)} className="text-slate-300 dark:text-slate-600 hover:text-red-400 cursor-pointer transition-colors ml-1">
+                  <button onClick={() => removeCFRule(i)} aria-label="Remove rule" className="text-slate-300 dark:text-slate-600 hover:text-red-400 cursor-pointer transition-colors ml-1">
                     <X size={12} />
                   </button>
                 </div>
@@ -902,11 +1811,16 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
         {/* Table */}
         <div className="flex-1 min-w-0 flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
 
-          {/* Single scroll container — thead sticky inside, no split tables */}
+          {/* Single scroll container */}
           <div
             ref={scrollRef}
             className="flex-1 overflow-auto"
-            onScroll={e => setScrollTop((e.target as HTMLDivElement).scrollTop)}
+            onScroll={e => {
+              setScrollTop((e.target as HTMLDivElement).scrollTop);
+              // The floating editor is pinned to the viewport — save it rather than let it drift off its cell
+              if (editCell) commitEdit();
+              if (lastFill) setLastFill(null);
+            }}
           >
             <table className="text-xs border-collapse" style={{ minWidth: 'max-content', width: '100%' }}>
               <thead className="sticky top-0 z-20">
@@ -918,22 +1832,61 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
                   {visibleColumns.map((col: string) => {
                     const w = colWidths[col] ?? 140;
                     const isFrozen = frozenCols.has(col);
+                    const sortIdx = getSortKeyIndex(col);
+                    const sortKey = sortIdx >= 0 ? sortKeys[sortIdx] : null;
                     return (
-                      <th key={col} style={{ width: w, minWidth: w, maxWidth: w, ...(isFrozen ? { position: 'sticky' as const, left: frozenLeftOffsets[col], zIndex: 21 } : {}) }} className={`relative px-3 py-2 text-left border-r border-b border-slate-200 dark:border-slate-700 last:border-r-0 ${isFrozen ? 'bg-slate-100 dark:bg-slate-700 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]' : 'bg-slate-50 dark:bg-slate-800'}`}>
+                      <th
+                        key={col}
+                        draggable={renamingCol !== col}
+                        onDragStart={(e: React.DragEvent) => { dragColRef.current = col; e.dataTransfer.effectAllowed = 'move'; }}
+                        onDragOver={(e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (dragOverCol !== col) setDragOverCol(col); }}
+                        onDragLeave={() => { if (dragOverCol === col) setDragOverCol(null); }}
+                        onDrop={(e: React.DragEvent) => {
+                          e.preventDefault();
+                          setDragOverCol(null);
+                          const from = dragColRef.current;
+                          if (!from || from === col) return;
+                          setColOrder(prev => {
+                            const base = orderColumns(columns, prev);
+                            const next = base.filter((c: string) => c !== from);
+                            const toIdx = next.indexOf(col);
+                            next.splice(toIdx, 0, from);
+                            return next;
+                          });
+                          dragColRef.current = null;
+                        }}
+                        onDragEnd={() => { dragColRef.current = null; setDragOverCol(null); }}
+                        style={{ width: w, minWidth: w, maxWidth: w, ...(isFrozen ? { position: 'sticky' as const, left: frozenLeftOffsets[col], zIndex: 21 } : {}) }}
+                        className={`relative px-3 py-2 text-left border-r border-b border-slate-200 dark:border-slate-700 last:border-r-0 ${isFrozen ? 'bg-slate-100 dark:bg-slate-700 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]' : 'bg-slate-50 dark:bg-slate-800'} ${dragOverCol === col ? 'ring-2 ring-inset ring-blue-400' : ''}`}
+                      >
                         <div className="flex items-center gap-0.5 mb-1.5">
+                          {renamingCol === col ? (
+                            <HeaderNameInput
+                              initial={col}
+                              onCommit={(value: string) => commitRename(col, value)}
+                              onCancel={() => setRenamingCol(null)}
+                            />
+                          ) : (
                           <button
-                            onClick={() => handleSort(col)}
+                            onClick={e => handleHeaderClick(col, e.shiftKey)}
+                            onDoubleClick={() => handleHeaderDoubleClick(col)}
+                            title={`${col} — click to sort, double-click to rename`}
                             className="flex items-center gap-1 group flex-1 min-w-0 text-left cursor-pointer"
                           >
-                            <span title={col} className={`font-black text-[11px] uppercase tracking-wide truncate ${sortCol === col ? 'text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300 group-hover:text-slate-800 dark:group-hover:text-slate-100'}`}>{col}</span>
-                            <span className={`shrink-0 ${sortCol === col ? 'text-blue-500' : 'text-slate-300 dark:text-slate-600 group-hover:text-slate-400'}`}>
-                              {sortCol === col
-                                ? sortDir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />
+                            <span className={`font-black text-[11px] uppercase tracking-wide truncate ${sortKey ? 'text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300 group-hover:text-slate-800 dark:group-hover:text-slate-100'}`}>{col}</span>
+                            <span className={`shrink-0 flex items-center gap-0.5 ${sortKey ? 'text-blue-500' : 'text-slate-300 dark:text-slate-600 group-hover:text-slate-400'}`}>
+                              {sortKey
+                                ? <>
+                                    {sortKey.dir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />}
+                                    {sortKeys.length > 1 && <span className="text-[9px] font-black">{sortIdx + 1}</span>}
+                                  </>
                                 : <ArrowUpDown size={11} />}
                             </span>
                           </button>
+                          )}
                           <button
                             onClick={(e: React.MouseEvent) => { e.stopPropagation(); setColMenuCol(col); setColMenuRect(e.currentTarget.getBoundingClientRect()); }}
+                            aria-label="Column options"
                             className="shrink-0 p-0.5 rounded text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                           >
                             <MoreHorizontal size={11} />
@@ -952,15 +1905,24 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
                       </th>
                     );
                   })}
+                  <th className="w-10 px-1 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 align-top pt-2">
+                    <button
+                      onClick={() => addColumn(visibleColumns[visibleColumns.length - 1] ?? '', 'right')}
+                      aria-label="Add column"
+                      title="Add column"
+                      className="p-1 rounded-md text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                    >
+                      <Plus size={13} />
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {/* top padding */}
-                {padTop > 0 && <tr style={{ height: padTop }}><td colSpan={columns.length + 2} /></tr>}
+                {padTop > 0 && <tr style={{ height: padTop }}><td colSpan={columns.length + 3} /></tr>}
 
                 {filteredRows.length === 0 ? (
                   <tr>
-                    <td colSpan={columns.length + 2} className="text-center py-12 text-sm text-slate-400 dark:text-slate-500">
+                    <td colSpan={columns.length + 3} className="text-center py-12 text-sm text-slate-400 dark:text-slate-500">
                       No rows match the current filters.
                     </td>
                   </tr>
@@ -971,6 +1933,7 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
                   return (
                     <tr
                       key={idx}
+                      data-pos={displayIdx}
                       style={wrapText ? undefined : { height: ROW_H }}
                       className={`border-b border-slate-100 dark:border-slate-800 transition-colors ${
                         isSelected
@@ -983,54 +1946,100 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
                       } hover:bg-blue-50/40 dark:hover:bg-blue-500/[0.04]`}
                     >
                       <td className={`w-9 px-3 border-r border-slate-100 dark:border-slate-800 sticky left-0 z-10 ${isSelected ? 'bg-blue-50 dark:bg-slate-800' : isModified ? 'bg-amber-50 dark:bg-slate-900' : displayIdx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-900'}`}>
-                        <input type="checkbox" checked={isSelected} onChange={() => toggleRow(idx)} className="cursor-pointer accent-blue-600" />
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          // React fires onChange from the click event, so Shift is readable here
+                          onChange={e => handleRowCheck(idx, (e.nativeEvent as MouseEvent).shiftKey)}
+                          onMouseDown={e => { if (e.shiftKey) e.preventDefault(); }}
+                          aria-label={`Select row ${displayIdx + 1}`}
+                          className="cursor-pointer accent-blue-600"
+                        />
                       </td>
-                      <td className={`w-10 px-3 text-right border-r border-slate-100 dark:border-slate-800 font-medium sticky left-9 z-10 ${isSelected ? 'bg-blue-50 dark:bg-slate-800' : isModified ? 'bg-amber-50 dark:bg-slate-900' : displayIdx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-900'}`}>
+                      <td
+                        onClick={e => handleRowCheck(idx, e.shiftKey)}
+                        onMouseDown={e => { if (e.shiftKey) e.preventDefault(); }}
+                        title="Click to select · Shift+click to select a range"
+                        className={`w-10 px-3 text-right border-r border-slate-100 dark:border-slate-800 font-medium sticky left-9 z-10 cursor-pointer select-none ${isSelected ? 'bg-blue-50 dark:bg-slate-800' : isModified ? 'bg-amber-50 dark:bg-slate-900' : displayIdx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-900'}`}>
                         {isModified
                           ? <span className="text-amber-500 font-bold">{displayIdx + 1}</span>
                           : <span className="text-slate-400 dark:text-slate-500">{displayIdx + 1}</span>
                         }
                       </td>
                       {visibleColumns.map((col: string) => {
-                        const isEditing = editCell?.row === idx && editCell?.col === col;
+                        const isActive = activeCell?.row === idx && activeCell?.col === col;
+                        const isInFill = !!fillBounds && activeCell?.col === col && displayIdx >= fillBounds[0] && displayIdx <= fillBounds[1];
                         const cellModified = isModified && row[col] !== rawData[idx]?.[col];
                         const cfColor = !isSelected && cfRules.length > 0
                           ? cfRules.find((r: CFRule) => r.col === col && matchCFRule(String(row[col] ?? ''), r.op, r.value))?.color
                           : undefined;
                         const isFrozen = frozenCols.has(col);
                         const frozenBg = isFrozen ? (isSelected ? 'bg-blue-50 dark:bg-slate-800' : isModified ? 'bg-amber-50 dark:bg-slate-800' : displayIdx % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800' : 'bg-slate-100 dark:bg-slate-800') : '';
+                        const isFindMatch = findMatchSet.has(`${idx}:${col}`);
                         return (
                           <td
                             key={col}
-                            onClick={() => { setEditCell({ row: idx, col }); setEditVal(row[col] ?? ''); }}
-                            style={{ width: colWidths[col] ?? 140, minWidth: colWidths[col] ?? 140, maxWidth: colWidths[col] ?? 140, backgroundColor: cfColor, ...(isFrozen ? { position: 'sticky' as const, left: frozenLeftOffsets[col] } : {}) }}
-                            className={`px-3 border-r border-slate-100 dark:border-slate-800 last:border-r-0 cursor-pointer ${wrapText ? '' : 'overflow-hidden'} ${isFrozen ? `z-10 ${frozenBg} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]` : ''} ${
+                            data-col={col}
+                            onMouseDown={e => { if (e.detail > 1) e.preventDefault(); }}
+                            onClick={() => setActiveCell({ row: idx, col })}
+                            onDoubleClick={e => startEdit({ row: idx, col }, e.currentTarget)}
+                            style={{
+                              width: colWidths[col] ?? 140, minWidth: colWidths[col] ?? 140, maxWidth: colWidths[col] ?? 140,
+                              backgroundColor: isFindMatch ? 'rgba(251,191,36,0.25)' : cfColor,
+                              ...(isFrozen ? { position: 'sticky' as const, left: frozenLeftOffsets[col] } : {}),
+                            }}
+                            className={`relative px-3 border-r border-slate-100 dark:border-slate-800 last:border-r-0 cursor-cell ${wrapText ? '' : 'overflow-hidden'} ${isFrozen ? `z-10 ${frozenBg} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]` : ''} ${
                               cellModified ? 'text-amber-600 dark:text-amber-400' : 'text-slate-700 dark:text-slate-300'
-                            }`}
+                            } ${isActive ? 'ring-2 ring-inset ring-blue-500' : ''} ${isInFill && !isActive ? 'bg-blue-100/70 dark:bg-blue-500/20' : ''}`}
                           >
-                            {isEditing ? (
-                              <input
-                                autoFocus
-                                value={editVal}
-                                onChange={e => setEditVal(e.target.value)}
-                                onBlur={commitEdit}
-                                onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditCell(null); }}
-                                onClick={e => e.stopPropagation()}
-                                className="w-full bg-white dark:bg-slate-800 border border-blue-400 rounded px-1.5 py-0.5 text-xs outline-none text-slate-700 dark:text-slate-200 min-w-[80px]"
+                            <span title={wrapText ? undefined : String(row[col] ?? '')} className={wrapText ? 'block whitespace-pre-wrap break-words' : 'truncate block'}>{String(row[col] ?? '')}</span>
+                            {isActive && !editCell && (
+                              <div
+                                onMouseDown={e => startFill(e, displayIdx)}
+                                title="Drag to fill"
+                                aria-hidden="true"
+                                className="absolute right-0 bottom-0 w-2 h-2 bg-blue-500 border border-white dark:border-slate-900 cursor-crosshair"
                               />
-                            ) : (
-                              <span title={wrapText ? undefined : String(row[col] ?? '')} className={wrapText ? 'block whitespace-pre-wrap break-words' : 'truncate block'}>{String(row[col] ?? '')}</span>
                             )}
                           </td>
                         );
                       })}
+                      <td className="w-10" />
                     </tr>
                   );
                 })}
 
-                {/* bottom padding */}
-                {padBot > 0 && <tr style={{ height: padBot }}><td colSpan={columns.length + 2} /></tr>}
+                {padBot > 0 && <tr style={{ height: padBot }}><td colSpan={columns.length + 3} /></tr>}
               </tbody>
+              {/* Summary footer — inside same table so it scrolls horizontally together */}
+              {showSummary && Object.keys(summaryData).length > 0 && (
+                <tfoot className="sticky bottom-0 z-10">
+                  <tr className="bg-emerald-50 dark:bg-emerald-500/10 border-t-2 border-emerald-300 dark:border-emerald-500/30 text-[10px]">
+                    <td className="w-9 px-3 py-1.5 border-r border-emerald-200/50 dark:border-emerald-500/20 sticky left-0 z-10 bg-emerald-50 dark:bg-emerald-500/10" />
+                    <td className="w-10 px-3 py-1.5 text-right border-r border-emerald-200/50 dark:border-emerald-500/20 font-black text-emerald-500 dark:text-emerald-400 sticky left-9 z-10 bg-emerald-50 dark:bg-emerald-500/10">
+                      <Sigma size={10} />
+                    </td>
+                    {visibleColumns.map((col: string) => {
+                      const s = summaryData[col];
+                      const w = colWidths[col] ?? 140;
+                      if (!s) return <td key={col} className="px-3 py-1.5 border-r border-emerald-200/50 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10" style={{ width: w, minWidth: w, maxWidth: w }} />;
+                      return (
+                        <td key={col} className="px-3 py-1.5 border-r border-emerald-200/50 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10" style={{ width: w, minWidth: w, maxWidth: w }}>
+                          {s.isNumeric ? (
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              <span title="Count" className="font-bold text-slate-500 dark:text-slate-400">{s.count}</span>
+                              {s.sum !== null && <span title="Sum" className="ml-1">Σ{s.sum.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>}
+                              {s.avg !== null && <span title="Average" className="ml-1">μ{s.avg.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>}
+                            </span>
+                          ) : (
+                            <span className="font-bold text-slate-400 dark:text-slate-500">{s.count}</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
 
@@ -1039,7 +2048,17 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
             <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
               Showing {filteredRows.length.toLocaleString()} of {data.length.toLocaleString()} rows
               {selected.size > 0 && <span className="ml-2 text-blue-500">· {selected.size.toLocaleString()} selected</span>}
+              <span className="ml-2 hidden xl:inline">· Double-click to edit · drag the corner square to fill · Ctrl+V to paste</span>
             </span>
+            {notice && (
+              <span
+                role={notice.tone === 'error' ? 'alert' : 'status'}
+                className={`min-w-0 truncate text-[11px] font-semibold ${notice.tone === 'error' ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}
+                title={notice.text}
+              >
+                {notice.text}
+              </span>
+            )}
             {modifiedSet.size > 0 && (
               <span className="text-[11px] font-bold text-amber-500">
                 ● {modifiedSet.size.toLocaleString()} modified row{modifiedSet.size > 1 ? 's' : ''}
@@ -1049,13 +2068,79 @@ const TableLens: React.FC<TableLensProps> = ({ initialCsvText, initialFileName }
         </div>
       </div>
 
+      {editCell && editAnchor && (
+        <TableLensCellEditor
+          anchor={editAnchor}
+          value={editVal}
+          onChange={setEditVal}
+          onCommit={commitEdit}
+          onCancel={cancelEdit}
+        />
+      )}
+
+      {lastFill && (
+        <TableLensFillOptions
+          anchor={lastFill.anchor}
+          mode={lastFill.mode}
+          onChange={switchFillMode}
+          onClose={closeFillOptions}
+        />
+      )}
+
+      {fillDrag && fillPreview !== null && createPortal(
+        <div
+          style={{ position: 'fixed', left: fillDrag.x + 14, top: fillDrag.y + 14, zIndex: 9999 }}
+          className="pointer-events-none max-w-[240px] truncate px-2 py-1 rounded-md bg-slate-900 text-white text-[11px] font-medium shadow-lg"
+        >
+          {fillPreview || <span className="italic opacity-70">(empty)</span>}
+        </div>,
+        document.body
+      )}
+
+      {pasteDialogCol !== null && (
+        <TableLensPasteDialog
+          columns={visibleColumns}
+          allColumns={columns}
+          initialColumn={pasteDialogCol}
+          selectedRowNumber={activePos >= 0 ? activePos + 1 : null}
+          rowCount={sortedRows.length}
+          onApply={applyPasteDialog}
+          onClose={() => setPasteDialogCol(null)}
+        />
+      )}
+
       {/* Column context menu portal */}
       {colMenuCol && colMenuRect && createPortal(
         <div
           ref={colMenuRef}
           style={{ position: 'fixed', top: colMenuRect.bottom + 4, left: colMenuRect.left, zIndex: 9999 }}
-          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1 min-w-[160px]"
+          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1 min-w-[180px]"
         >
+          <button
+            onMouseDown={(e: React.MouseEvent) => { e.preventDefault(); setRenamingCol(colMenuCol); setColMenuCol(null); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+          >
+            <Pencil size={12} /> Rename column
+          </button>
+          <button
+            onMouseDown={(e: React.MouseEvent) => { e.preventDefault(); addColumn(colMenuCol, 'left'); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+          >
+            <ArrowLeftToLine size={12} /> Insert column left
+          </button>
+          <button
+            onMouseDown={(e: React.MouseEvent) => { e.preventDefault(); addColumn(colMenuCol, 'right'); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+          >
+            <ArrowRightToLine size={12} /> Insert column right
+          </button>
+          <button
+            onMouseDown={(e: React.MouseEvent) => { e.preventDefault(); setPasteDialogCol(colMenuCol); setColMenuCol(null); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+          >
+            <ClipboardPaste size={12} /> Paste values…
+          </button>
+          <div className="mx-3 my-1 border-t border-slate-100 dark:border-slate-700" />
           <button
             onMouseDown={(e: React.MouseEvent) => { e.preventDefault(); toggleFreezeColumn(colMenuCol as string); }}
             className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors"

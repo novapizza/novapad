@@ -20,6 +20,7 @@
     "release:win": "[ -f .env ] && set -a && . ./.env && set +a; pnpm run release:preflight -- win && pnpm run build && GH_TOKEN=$(gh auth token) electron-builder --win --publish always --config electron-builder.cjs",
     "release:verify": "[ -f .env ] && set -a && . ./.env && set +a; node scripts/verify-release.mjs",
     "release:all": "[ -f .env ] && set -a && . ./.env && set +a; pnpm run release:preflight -- all && pnpm run release:mac && pnpm run release:win && pnpm run release:verify",
+    "test:unit": "vitest run",
     "test:e2e": "pnpm run build && playwright test",
     "test:e2e:headed": "pnpm run build && playwright test --headed",
     "test:e2e:report": "playwright show-report",
@@ -111,7 +112,8 @@
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.7.3",
-    "vite": "^6.4.2"
+    "vite": "^6.4.2",
+    "vitest": "^3.2.4"
   },
   "optionalDependencies": {
     "@esbuild/win32-x64": "^0.25.0",

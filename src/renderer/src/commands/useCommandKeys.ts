@@ -43,6 +43,17 @@ function isTypingTarget(e: KeyboardEvent): boolean {
   return true
 }
 
+/**
+ * Whether a widget with its own keyboard model claims this combo. Such widgets (Table Lens: its
+ * own undo, save, find and F2-to-edit) list the combos they handle, space-separated, in
+ * `data-own-shortcuts`; while focus is inside one, those combos skip the registry. Other
+ * combos — Ctrl+P, Ctrl+Tab, … — still reach their commands.
+ */
+function isOwnedByWidget(e: KeyboardEvent, combo: string): boolean {
+  const owner = (e.target as HTMLElement | null)?.closest?.('[data-own-shortcuts]')
+  return !!owner && (owner.getAttribute('data-own-shortcuts') ?? '').split(' ').includes(combo)
+}
+
 export function useCommandKeys(): void {
   const overrides = useConfigStore((s) => s.shortcuts)
 
@@ -63,7 +74,7 @@ export function useCommandKeys(): void {
     const onKeyDown = (e: KeyboardEvent): void => {
       if (isTypingTarget(e)) return
       const combo = captureBinding(e)
-      if (!combo || NEVER_DISPATCH.has(combo)) return
+      if (!combo || NEVER_DISPATCH.has(combo) || isOwnedByWidget(e, combo)) return
       const id = bindingMap.get(combo)
       // Leave unmatched keys completely alone — no preventDefault.
       if (!id) return

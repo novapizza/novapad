@@ -17,7 +17,8 @@ export function usePreviewFullscreen() {
   useEffect(() => {
     if (!fullscreen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      // Inside a widget with its own keys (Table Lens), Escape is the widget's — cancel / deselect
+      if (e.key === 'Escape' && !(e.target as HTMLElement | null)?.closest?.('[data-own-shortcuts]')) {
         e.preventDefault()
         setFullscreen(false)
       }

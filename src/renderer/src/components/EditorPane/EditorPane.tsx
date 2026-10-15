@@ -13,6 +13,7 @@ import { registerNppThemes } from '../../utils/monacoThemes'
 import { monacoThemeFor } from '../../utils/themes'
 import { registerLogLanguage } from '../../utils/logLanguage'
 import { EditorContextMenu } from './EditorContextMenu'
+import { hasPendingTableEdits } from '../CsvViewer/tableLensBridge'
 
 registerLogLanguage()
 registerNppThemes()
@@ -632,7 +633,8 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
       if (!buf) return
       const model = editor.getModel()
       if (!model) return
-      const nextDirty = model.getAlternativeVersionId() !== buf.savedVersionId
+      // Unsaved Table Lens edits keep the tab dirty even when the text is back at its saved state
+      const nextDirty = model.getAlternativeVersionId() !== buf.savedVersionId || hasPendingTableEdits(id)
       if (nextDirty !== buf.isDirty) {
         updateBuffer(id, { isDirty: nextDirty })
       }

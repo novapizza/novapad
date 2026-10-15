@@ -69,6 +69,7 @@ import { backupApi } from './utils/backupApi'
 import { editorRegistry } from './utils/editorRegistry'
 import { fileOpsRegistry } from './commands/fileOpsRegistry'
 import { useCommandKeys } from './commands/useCommandKeys'
+import { flushAllTableEdits } from './components/CsvViewer/tableLensBridge'
 
 export default function App() {
   const { activeId, buffers } = useEditorStore()
@@ -545,6 +546,8 @@ export default function App() {
       // session.json referencing a stale backup if the user typed in the gap
       // since the last snapshot tick.
       if (remember) {
+        // Table Lens edits are only in the table — put them in the text the backups are cut from.
+        await flushAllTableEdits()
         for (const buf of useEditorStore.getState().buffers) {
           if (buf.kind !== 'file' || !buf.isDirty) continue
           const content = buf.model?.getValue() ?? buf.content
