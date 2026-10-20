@@ -76,9 +76,117 @@ const DARK_RULES: monaco.editor.ITokenThemeRule[] = [
   ...LOG_DARK_RULES
 ]
 
+// ---------- NovaPad (dark, default) / NovaPad Light ----------
+// Nova Suite syntax palette from the NovaPad redesign: fuchsia keywords, green
+// strings, cyan types, blue functions, amber numbers, muted punctuation. The
+// editor background matches --background in tailwind.css so tabs, gutter and
+// editor read as one surface. SQL / Markdown / log tokens keep the Notepad++
+// rules from DARK_RULES / LIGHT_RULES.
+function novaRules(c: { ink: string; k: string; s: string; t: string; f: string; n: string; com: string; p: string; bg: string }): monaco.editor.ITokenThemeRule[] {
+  return [
+    { token: '', foreground: c.ink, background: c.bg },
+    { token: 'comment', foreground: c.com, fontStyle: 'italic' },
+    { token: 'string', foreground: c.s },
+    { token: 'string.key.json', foreground: c.k },
+    { token: 'string.value.json', foreground: c.s },
+    { token: 'number', foreground: c.n },
+    { token: 'constant', foreground: c.n },
+    { token: 'constant.language', foreground: c.t },
+    { token: 'regexp', foreground: c.t },
+    { token: 'keyword', foreground: c.k },
+    { token: 'storage', foreground: c.k },
+    { token: 'operator', foreground: c.p },
+    { token: 'type', foreground: c.t },
+    { token: 'type.identifier', foreground: c.t },
+    { token: 'namespace', foreground: c.t },
+    { token: 'function', foreground: c.f },
+    { token: 'identifier', foreground: c.ink },
+    { token: 'variable', foreground: c.ink },
+    { token: 'variable.parameter', foreground: c.ink, fontStyle: 'italic' },
+    { token: 'delimiter', foreground: c.p },
+    { token: 'delimiter.bracket', foreground: c.p },
+    { token: 'tag', foreground: c.k },
+    { token: 'metatag', foreground: c.k },
+    { token: 'attribute.name', foreground: c.f },
+    { token: 'attribute.value', foreground: c.s }
+  ]
+}
+
+const NOVAPAD_DARK_RULES: monaco.editor.ITokenThemeRule[] = [
+  ...novaRules({ ink: 'edeaf7', k: 'f0abfc', s: '9be3b4', t: '67e8f9', f: '93c5fd', n: 'fcd34d', com: '6b6585', p: 'a9a3bf', bg: '0b0a10' }),
+  ...DARK_RULES
+]
+
+const NOVAPAD_DARK_COLORS: monaco.editor.IColors = {
+  'editor.background': '#0b0a10',
+  'editor.foreground': '#edeaf7',
+  'editor.lineHighlightBackground': '#ffffff09',
+  'editor.lineHighlightBorder': '#00000000',
+  'editor.selectionBackground': '#f0abfc33',
+  'editor.inactiveSelectionBackground': '#f0abfc1a',
+  'editor.selectionHighlightBackground': '#f0abfc1f',
+  'editor.wordHighlightBackground': '#67e8f922',
+  'editor.findMatchBackground': '#fcd34d66',
+  'editor.findMatchHighlightBackground': '#fcd34d33',
+  'editorCursor.foreground': '#f0abfc',
+  'editorWhitespace.foreground': '#2a2635',
+  'editorLineNumber.foreground': '#6b6585',
+  'editorLineNumber.activeForeground': '#edeaf7',
+  'editorIndentGuide.background': '#1f1c29',
+  'editorIndentGuide.activeBackground': '#3a3549',
+  'editorBracketMatch.background': '#f0abfc1f',
+  'editorBracketMatch.border': '#f0abfc80',
+  'editorWidget.background': '#16131f',
+  'editorWidget.border': '#2b2836',
+  'editorSuggestWidget.background': '#16131f',
+  'editorSuggestWidget.border': '#2b2836',
+  'editorSuggestWidget.selectedBackground': '#35283e',
+  'editorHoverWidget.background': '#16131f',
+  'editorHoverWidget.border': '#2b2836',
+  'scrollbarSlider.background': '#ffffff14',
+  'scrollbarSlider.hoverBackground': '#ffffff24',
+  'scrollbarSlider.activeBackground': '#f0abfc40'
+}
+
+const NOVAPAD_LIGHT_RULES: monaco.editor.ITokenThemeRule[] = [
+  ...novaRules({ ink: '1c1830', k: 'a21caf', s: '237a46', t: '0e7490', f: '1d4ed8', n: 'b45309', com: '8a85a0', p: '5b5672', bg: 'ffffff' }),
+  ...LIGHT_RULES
+]
+
+const NOVAPAD_LIGHT_COLORS: monaco.editor.IColors = {
+  'editor.background': '#ffffff',
+  'editor.foreground': '#1c1830',
+  'editor.lineHighlightBackground': '#1c183009',
+  'editor.lineHighlightBorder': '#00000000',
+  'editor.selectionBackground': '#a21caf26',
+  'editor.inactiveSelectionBackground': '#a21caf14',
+  'editor.selectionHighlightBackground': '#a21caf14',
+  'editor.wordHighlightBackground': '#0e749018',
+  'editor.findMatchBackground': '#f59e0b55',
+  'editor.findMatchHighlightBackground': '#f59e0b2e',
+  'editorCursor.foreground': '#a21caf',
+  'editorWhitespace.foreground': '#d9d6e3',
+  'editorLineNumber.foreground': '#8a85a0',
+  'editorLineNumber.activeForeground': '#1c1830',
+  'editorIndentGuide.background': '#ecebf1',
+  'editorIndentGuide.activeBackground': '#c9c5d6',
+  'editorBracketMatch.background': '#a21caf14',
+  'editorBracketMatch.border': '#a21caf66',
+  'editorWidget.background': '#ffffff',
+  'editorWidget.border': '#dedce6',
+  'editorSuggestWidget.background': '#ffffff',
+  'editorSuggestWidget.border': '#dedce6',
+  'editorSuggestWidget.selectedBackground': '#f6e8f7',
+  'editorHoverWidget.background': '#ffffff',
+  'editorHoverWidget.border': '#dedce6',
+  'scrollbarSlider.background': '#1c183014',
+  'scrollbarSlider.hoverBackground': '#1c183024',
+  'scrollbarSlider.activeBackground': '#a21caf40'
+}
+
 // ---------- Dracula (dark) ----------
-// Official Dracula palette (https://draculatheme.com, MIT). Applied in dark
-// mode to match the new logo's magenta/violet identity. Editor background
+// Official Dracula palette (https://draculatheme.com, MIT). An optional theme
+// since the NovaPad redesign (it was the dark default before). Editor background
 // (#282a36) is kept in sync with the app chrome in tailwind.css so the editor
 // and its surrounding panels read as one surface.
 const DRACULA_RULES: monaco.editor.ITokenThemeRule[] = [
@@ -195,6 +303,20 @@ export function registerNppThemes(): void {
     colors: {}
   })
 
+  monaco.editor.defineTheme('novapad-dark', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: NOVAPAD_DARK_RULES,
+    colors: NOVAPAD_DARK_COLORS
+  })
+
+  monaco.editor.defineTheme('novapad-light', {
+    base: 'vs',
+    inherit: true,
+    rules: NOVAPAD_LIGHT_RULES,
+    colors: NOVAPAD_LIGHT_COLORS
+  })
+
   monaco.editor.defineTheme('dracula', {
     base: 'vs-dark',
     inherit: true,
@@ -211,5 +333,5 @@ export function registerNppThemes(): void {
 }
 
 export function nppThemeName(theme: 'light' | 'dark'): string {
-  return theme === 'dark' ? 'dracula' : 'npp-light'
+  return theme === 'dark' ? 'novapad-dark' : 'novapad-light'
 }

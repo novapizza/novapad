@@ -39,7 +39,7 @@ export function NavButtons() {
         disabled={!canBack}
         title={backTitle}
         data-testid="nav-back"
-        className="p-2 text-toolbar-foreground rounded-sm transition-colors hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+        className="p-2 text-toolbar-foreground rounded-lg transition-colors hover:text-foreground hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
       >
         <ArrowLeft size={18} />
       </button>
@@ -49,7 +49,7 @@ export function NavButtons() {
         disabled={!canForward}
         title={forwardTitle}
         data-testid="nav-forward"
-        className="p-2 text-toolbar-foreground rounded-sm transition-colors hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+        className="p-2 text-toolbar-foreground rounded-lg transition-colors hover:text-foreground hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
       >
         <ArrowRight size={18} />
       </button>

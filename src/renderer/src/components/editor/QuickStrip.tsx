@@ -2,6 +2,7 @@ import { PanelLeftClose, PanelLeft } from 'lucide-react'
 import { useUIStore } from '../../store/uiStore'
 import { SettingsMenu } from './SettingsMenu'
 import { NavButtons } from './NavButtons'
+import { CommandBar } from './CommandBar'
 import logoUrl from '../../assets/logo-mark.svg'
 
 interface QuickStripProps {
@@ -13,7 +14,7 @@ export function QuickStrip({ onToggleSidebar }: QuickStripProps) {
 
   return (
     <div
-      className="h-12 bg-toolbar border-b border-toolbar-border flex items-center px-1 select-none shrink-0"
+      className="h-11 bg-toolbar border-b border-toolbar-border flex items-center px-1 select-none shrink-0"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       data-testid="quickstrip"
     >
@@ -23,17 +24,19 @@ export function QuickStrip({ onToggleSidebar }: QuickStripProps) {
       {/* App icon */}
       <div className="flex items-center gap-2 px-2" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <img src={logoUrl} alt="NovaPad" className="w-5 h-5 shrink-0" draggable={false} />
-        <span className="text-sm font-semibold text-toolbar-foreground tracking-tight">NovaPad</span>
+        <span className="text-[14px] font-semibold text-foreground tracking-tight">NovaPad</span>
       </div>
 
-      <div className="flex-1" />
+      <div className="flex-1 flex justify-center px-4 min-w-0">
+        <CommandBar />
+      </div>
 
       {/* Quick action icons */}
       <div className="flex items-center gap-0.5 mr-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <NavButtons />
         <button
           onClick={onToggleSidebar}
-          className="p-2 text-toolbar-foreground hover:bg-secondary rounded-sm transition-colors"
+          className="p-2 text-toolbar-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
           title={showSidebar ? 'Hide Explorer' : 'Show Explorer'}
           data-testid="quickstrip-sidebar"
         >

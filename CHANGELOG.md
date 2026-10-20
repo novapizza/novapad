@@ -10,6 +10,20 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+### Changed
+- **Nova Suite redesign.** New default **NovaPad** theme (night surfaces, fuchsia accent, matching
+  Monaco `novapad-dark` palette) and **NovaPad Light** (replaces the blue Light theme under the same
+  `light` id). The previous dark theme is now the optional **Dracula** theme; Solarized Light is
+  unchanged. Saved `dark` configs move to NovaPad.
+- Toolbar icons are monochrome, in 32 px buttons, with **Ask AI** at the right end. The title strip
+  (macOS) and menu bar (Windows/Linux) gain a centered search field that opens Go to File
+  (`Ctrl+E`, `>` for commands). Status bar is a neutral strip; tabs and the side rail use a thin
+  accent rule. The Welcome screen is redrawn in two columns with a "New in" card.
+- New installs default the editor font to JetBrains Mono (bundled).
+- **New app icon.** NovaPad uses the Nova Suite icon (dark tile, fuchsia glow, braces, gradient N
+  with a white star) for the macOS, Windows and Linux app icons and in-app on the Welcome screen,
+  About dialog, What's New tab and tab strip.
+
 ## [1.6.7]
 
 ### Added

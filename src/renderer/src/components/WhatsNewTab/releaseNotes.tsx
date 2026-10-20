@@ -74,6 +74,21 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             first and then switches to the file you opened, in its existing tab.
           </>
         )
+      },
+      {
+        title: 'A new look: NovaPad theme and icon',
+        body: (
+          <>
+            NovaPad joins the <strong>Nova Suite</strong> design. The new <strong>NovaPad</strong> theme is the
+            default: deep night surfaces, one fuchsia accent and a matching editor palette, with{' '}
+            <strong>NovaPad Light</strong> as its light twin. <strong>Solarized Light</strong> stays, and the previous
+            dark look lives on as the optional <strong>Dracula</strong> theme in <em>Settings ▸ Appearance</em>. The
+            toolbar is now a quiet monochrome row with <strong>Ask AI</strong> on the right, the title bar gains a
+            search field (<span className="font-mono text-sm">Ctrl+E</span>), the status bar is neutral, the Welcome
+            screen is redrawn, new installs use <span className="font-mono text-sm">JetBrains Mono</span> in the
+            editor, and the app icon is the new Nova Suite icon.
+          </>
+        )
       }
     ]
   },

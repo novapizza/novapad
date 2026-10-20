@@ -80,7 +80,7 @@ export function SideNav() {
 
   return (
     <nav className="flex flex-col w-12 h-full bg-sidebar border-r border-sidebar-border shrink-0 select-none overflow-hidden" data-testid="sidenav">
-      <div className="flex flex-col flex-1 gap-0.5 py-1 min-h-0">
+      <div className="flex flex-col flex-1 gap-0.5 pt-1.5 min-h-0">
         <TooltipProvider delayDuration={300}>
           {NAV_ITEMS.map((item) => (
             <Tooltip key={item.id}>
@@ -88,11 +88,10 @@ export function SideNav() {
                 <button
                   type="button"
                   className={cn(
-                    'flex flex-col items-center justify-center w-full min-h-[44px] py-2',
-                    'border-l-2 border-transparent',
-                    'text-muted-foreground transition-colors',
-                    'hover:text-foreground hover:bg-sidebar-accent',
-                    isActive(item.id) && 'text-primary bg-sidebar-accent border-l-primary'
+                    'relative flex flex-col items-center justify-center w-full min-h-[44px] py-2',
+                    'text-muted-foreground/70 transition-colors hover:text-foreground',
+                    // Active: full-strength icon with a short accent rule on the left edge.
+                    isActive(item.id) && 'text-foreground before:absolute before:left-0 before:top-2.5 before:bottom-2.5 before:w-0.5 before:rounded-full before:bg-primary'
                   )}
                   onClick={() => handleNav(item.id)}
                 >
@@ -111,7 +110,7 @@ export function SideNav() {
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className="flex flex-col items-center justify-center w-full min-h-[44px] py-2 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
+                className="flex flex-col items-center justify-center w-full min-h-[44px] py-2 text-muted-foreground/70 hover:text-foreground transition-colors"
                 onClick={() => handleNav('preferences')}
               >
                 <Settings size={18} />

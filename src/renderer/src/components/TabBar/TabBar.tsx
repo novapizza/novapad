@@ -207,8 +207,8 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) 
                 className={cn(
                   'group relative flex items-center gap-1.5 pl-3 pr-2 cursor-pointer text-base min-w-0 shrink-0 transition-colors border-r border-border',
                   buf.id === activeId
-                    ? 'bg-tab-active text-tab-foreground font-semibold shadow-[inset_0_-1px_0_0_hsl(var(--tab-active))]'
-                    : 'bg-tab-inactive text-tab-muted hover:bg-tab-hover',
+                    ? 'bg-tab-active text-tab-foreground font-medium shadow-[inset_0_-1px_0_0_hsl(var(--tab-active))]'
+                    : 'bg-tab-inactive text-tab-muted font-medium hover:bg-tab-hover hover:text-tab-foreground',
                   !buf.loaded && 'opacity-55',
                 )}
                 onClick={() => setActive(buf.id)}
@@ -219,9 +219,9 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) 
                 onDrop={handleDrop}
                 title={isVirtual ? buf.title : (buf.sourceUrl ?? buf.filePath ?? buf.title)}
               >
-                {/* Active indicator — blue top line */}
+                {/* Active indicator — accent top rule */}
                 {buf.id === activeId && (
-                  <div className="absolute top-0 left-0 right-0 h-[3px] bg-primary" />
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary" />
                 )}
 
                 {/* Kind icon for virtual tabs */}

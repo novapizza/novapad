@@ -110,6 +110,12 @@ session noise.
 
 ## E2E Testing (Playwright + Test Agents)
 
+> **Temporarily disabled (2026-10-20).** The E2E suite is paused during the Nova Suite redesign
+> (`feat/nova-logo`): many specs assert the pre-redesign chrome, and several (e.g. `seed.spec.ts`
+> expecting `menubar`) assume Windows and fail on macOS. Do not run it as a gate or block commits
+> on it; verify with `npm run build` and manual / screenshot checks instead. Re-enable once the
+> specs are updated for the new UI.
+
 ### Test Agents workflow (run once to initialize)
 ```bash
 npx playwright init-agents --loop=claude
