@@ -10,6 +10,14 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+## [1.6.10]
+
+### Fixed
+- **Windows app icon looked small.** The Windows icon (`icon.ico`) kept the macOS icon margin, so the
+  tile filled only ~81% of its frame and looked smaller than other apps on the taskbar, Start menu
+  and in Explorer. It now fills ~94%, as the pre-redesign icon did. macOS and Linux icons are
+  unchanged.
+
 ## [1.6.9]
 
 ### Changed
@@ -262,7 +270,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 - **Settings page reset its selected category** when you switched to another tab and back — the
   active category is now preserved.
 
-[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.9...HEAD
+[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.10...HEAD
+[1.6.10]: https://github.com/novapizza/novapad/compare/v1.6.9...v1.6.10
 [1.6.9]: https://github.com/novapizza/novapad/compare/v1.6.8...v1.6.9
 [1.6.8]: https://github.com/novapizza/novapad/compare/v1.6.7...v1.6.8
 [1.6.7]: https://github.com/novapizza/novapad/compare/v1.6.6...v1.6.7

@@ -304,6 +304,10 @@ mac:
   darkModeSupport: true
   hardenedRuntime: true
   gatekeeperAssess: false
+  # Notarization runs only in build/notarize.cjs (afterSign). Left on, electron-builder
+  # would notarize a second time itself, and its staple step fails the whole job
+  # when the runner briefly can't reach Apple's ticket service.
+  notarize: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   # Generic UTI handler entries: appear in macOS "Open With" submenu for any

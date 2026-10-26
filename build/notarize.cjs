@@ -56,13 +56,43 @@ exports.default = async function notarizing(context) {
 
   console.log(`[notarize] Submitting ${appPath} to Apple notary service…`)
 
-  await notarize({
-    tool: 'notarytool',
-    appPath,
-    appleId: APPLE_ID,
-    appleIdPassword: APPLE_APP_SPECIFIC_PASSWORD,
-    teamId: APPLE_TEAM_ID,
-  })
+  try {
+    await notarize({
+      tool: 'notarytool',
+      appPath,
+      appleId: APPLE_ID,
+      appleIdPassword: APPLE_APP_SPECIFIC_PASSWORD,
+      teamId: APPLE_TEAM_ID,
+    })
+  } catch (err) {
+    // notarize() staples right after Apple accepts the submission, retrying only a
+    // few seconds apart. A staple failure means the app IS notarized but the runner
+    // couldn't fetch the ticket (e.g. "network connection was lost", code 68), so
+    // retry with longer waits instead of failing the release.
+    if (!/^Failed to staple/.test(String(err && err.message))) throw err
+    console.warn(`[notarize] Notarized, but stapling failed: ${err.message.split('\n')[0]}`)
+    if (!(await stapleWithRetry(appPath))) {
+      console.warn(
+        '[notarize] Shipping without a stapled ticket. Gatekeeper fetches it online on\n' +
+        '           first launch, so only offline first launches are affected.',
+      )
+    }
+  }
 
   console.log('[notarize] Notarization complete.')
+}
+
+async function stapleWithRetry(appPath, attempts = 5, waitMs = 30_000) {
+  for (let i = 1; i <= attempts; i++) {
+    await new Promise((resolve) => setTimeout(resolve, waitMs))
+    try {
+      execFileSync('xcrun', ['stapler', 'staple', appPath], { stdio: 'pipe' })
+      console.log(`[notarize] Stapled on retry ${i}/${attempts}.`)
+      return true
+    } catch (err) {
+      const out = String(err.stdout || err.message).trim().split('\n').pop()
+      console.warn(`[notarize] Staple retry ${i}/${attempts} failed: ${out}`)
+    }
+  }
+  return false
 }

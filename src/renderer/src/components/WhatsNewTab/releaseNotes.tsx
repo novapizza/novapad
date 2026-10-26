@@ -32,6 +32,26 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.10',
+    summary: (
+      <>
+        A fix for the new app icon on Windows: it now fills the taskbar and Start menu like other apps.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'Full-size icon on Windows',
+        body: (
+          <>
+            The Nova Suite icon kept the wide margin macOS icons need, so on Windows it looked smaller than its
+            neighbours on the taskbar, in the Start menu and in Explorer. The Windows icon now fills its frame. If
+            the taskbar still shows the old size after updating, unpin and re-pin NovaPad.
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.6.9',
     summary: (
       <>
