@@ -75,11 +75,11 @@ export const StatusBar: React.FC = () => {
   const closePicker = useCallback(() => setActivePicker(null), [])
 
   const itemClass =
-    'cursor-pointer hover:bg-[var(--color-statusbar-foreground)]/10 px-1.5 py-0.5 rounded transition-colors'
+    'cursor-pointer hover:bg-statusbar-foreground/10 hover:text-foreground px-1.5 py-0.5 rounded transition-colors'
 
   return (
     <div
-      className="h-7 bg-statusbar text-statusbar-foreground flex items-center px-2 text-base select-none shrink-0"
+      className="h-[26px] bg-statusbar text-statusbar-foreground border-t border-border flex items-center px-2 text-[12px] select-none shrink-0"
       data-testid="statusbar"
     >
       {/* Left section: full file path (or the remote source URL for deeplink tabs) */}
@@ -126,6 +126,7 @@ export const StatusBar: React.FC = () => {
           title="Select Language Mode"
           data-testid="statusbar-language"
         >
+          <span aria-hidden="true" className="inline-block w-1.5 h-1.5 rounded-full bg-primary mr-1.5 align-middle -translate-y-px" />
           {getLanguageLabel(buf?.language ?? 'plaintext')}
         </span>
 

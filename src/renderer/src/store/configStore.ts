@@ -79,7 +79,7 @@ export const CONFIG_DEFAULTS: AppConfig = {
   maxRecentFiles: 10,
   theme: 'dark',
   fontSize: 14,
-  fontFamily: "'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace",
+  fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace",
   tabSize: 4,
   insertSpaces: true,
   wordWrap: false,

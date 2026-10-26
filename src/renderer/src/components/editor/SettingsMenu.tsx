@@ -48,7 +48,7 @@ export function SettingsMenu() {
     <div ref={rootRef} className="relative" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="p-2 text-toolbar-foreground hover:bg-secondary rounded-sm transition-colors"
+        className="p-2 text-toolbar-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
         title="Settings"
         data-testid="settings-menu-trigger"
         aria-haspopup="menu"
@@ -59,7 +59,7 @@ export function SettingsMenu() {
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-1 min-w-[220px] bg-popover border border-border rounded-md shadow-lg py-1 z-50"
+          className="absolute right-0 top-full mt-1 min-w-[220px] bg-popover border border-border rounded-lg shadow-lg py-1 z-50"
           role="menu"
           data-testid="settings-menu-dropdown"
         >

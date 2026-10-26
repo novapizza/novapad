@@ -18,6 +18,7 @@ import { useAltHeld } from '../../hooks/useAltHeld'
 import { useAltMnemonics } from '../../hooks/useAltMnemonics'
 import { SettingsMenu } from './SettingsMenu'
 import { NavButtons } from './NavButtons'
+import { CommandBar } from './CommandBar'
 import { HASH_ALGOS, openHashGenerator, hashFromFiles, hashSelectionToClipboard } from '../../lib/tools/hashActions'
 import { ENCODINGS, EOLS } from '../../constants/registries'
 import { runCommand } from '../../commands/registry'
@@ -509,7 +510,7 @@ export function MenuBar({
               <ChevronRight size={18} className="text-muted-foreground shrink-0" />
             </div>
             {open && (
-              <div className="absolute left-full top-0 ml-0.5 min-w-[220px] bg-popover border border-border rounded-md shadow-lg py-1 z-50">
+              <div className="absolute left-full top-0 ml-0.5 min-w-[220px] bg-popover border border-border rounded-lg shadow-lg py-1 z-50">
                 {renderMenuItems(item.submenu, subKey)}
               </div>
             )}
@@ -555,7 +556,7 @@ export function MenuBar({
   return (
     <div
       ref={menuRef}
-      className="h-9 bg-toolbar border-b border-toolbar-border flex items-center px-1 select-none shrink-0"
+      className="h-11 bg-toolbar border-b border-toolbar-border flex items-center px-1.5 select-none shrink-0"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       data-testid="menubar"
     >
@@ -564,8 +565,8 @@ export function MenuBar({
         {topMenus.map(({ key, label }) => (
           <div key={key} className="relative">
             <button
-              className={`px-3 py-1.5 text-base text-toolbar-foreground hover:bg-secondary rounded-sm transition-colors ${
-                activeMenu === key ? 'bg-secondary' : ''
+              className={`h-7 px-2.5 text-base text-toolbar-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors ${
+                activeMenu === key ? 'bg-secondary text-foreground' : ''
               }`}
               onMouseEnter={() => activeMenu && setActiveMenu(key)}
               onClick={() => {
@@ -578,7 +579,7 @@ export function MenuBar({
 
             {/* Dropdown */}
             {activeMenu === key && menuItems[key] && (
-              <div className="absolute top-full left-0 mt-0.5 min-w-[260px] bg-popover border border-border rounded-md shadow-lg py-1 z-50">
+              <div className="absolute top-full left-0 mt-0.5 min-w-[260px] bg-popover border border-border rounded-lg shadow-lg py-1 z-50">
                 {renderMenuItems(menuItems[key], key)}
               </div>
             )}
@@ -586,14 +587,16 @@ export function MenuBar({
         ))}
       </div>
 
-      <div className="flex-1" />
+      <div className="flex-1 flex justify-center px-4 min-w-0">
+        <CommandBar />
+      </div>
 
       {/* Right-side quick icons */}
       <div className="flex items-center gap-0.5 mr-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <NavButtons />
         <button
           onClick={() => setShowSidebar(!showSidebar)}
-          className="p-2 text-toolbar-foreground hover:bg-secondary rounded-sm transition-colors"
+          className="p-2 text-toolbar-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
           title={showSidebar ? 'Hide Explorer' : 'Show Explorer'}
         >
           {showSidebar ? <PanelLeftClose size={18} /> : <PanelLeft size={18} />}

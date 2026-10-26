@@ -28,8 +28,6 @@ interface ToolbarItem {
   icon: React.ReactNode
   title: string
   action?: () => void
-  /** Per-icon accent color (Tailwind text class). Falls back to toolbar-foreground. */
-  color?: string
 }
 
 /** Open the sidebar to a specific panel, or close it if that panel is already showing. */
@@ -62,85 +60,75 @@ function editorCommand(command: string) {
   }
 }
 
-// Tailwind classes per accent (kept as full strings so Tailwind's JIT picks them up).
-const C_BLUE = 'text-blue-600 dark:text-blue-400'
-const C_GREEN = 'text-emerald-600 dark:text-emerald-400'
-const C_RED = 'text-red-500 dark:text-red-400'
-const C_PURPLE = 'text-violet-600 dark:text-violet-400'
-const C_ORANGE = 'text-amber-600 dark:text-amber-400'
-const C_GRAY = 'text-slate-500 dark:text-slate-400'
-
 export function Toolbar({ onNew, onOpen, onSave, onSaveAll, onFind, onReplace, onClose }: ToolbarProps) {
   const mod = shortcutMod()
-  const sz = 20
+  const sz = 18
   const groups: ToolbarItem[][] = [
     // File
     [
-      { icon: <FilePlus size={sz} />, title: `New (${mod}+N)`, action: onNew, color: C_BLUE },
-      { icon: <FolderOpen size={sz} />, title: `Open (${mod}+O)`, action: onOpen, color: C_BLUE },
-      { icon: <Save size={sz} />, title: `Save (${mod}+S)`, action: onSave, color: C_GREEN },
-      { icon: <SaveAll size={sz} />, title: 'Save All', action: onSaveAll, color: C_GREEN },
-      { icon: <FileX size={sz} />, title: `Close (${mod}+W)`, action: onClose, color: C_RED },
+      { icon: <FilePlus size={sz} />, title: `New (${mod}+N)`, action: onNew },
+      { icon: <FolderOpen size={sz} />, title: `Open (${mod}+O)`, action: onOpen },
+      { icon: <Save size={sz} />, title: `Save (${mod}+S)`, action: onSave },
+      { icon: <SaveAll size={sz} />, title: 'Save All', action: onSaveAll },
+      { icon: <FileX size={sz} />, title: `Close (${mod}+W)`, action: onClose },
     ],
     // Edit
     [
-      { icon: <Undo2 size={sz} />, title: `Undo (${mod}+Z)`, action: () => window.dispatchEvent(new CustomEvent('editor:command', { detail: 'undo' })), color: C_PURPLE },
-      { icon: <Redo2 size={sz} />, title: `Redo (${mod}+Y)`, action: () => window.dispatchEvent(new CustomEvent('editor:command', { detail: 'redo' })), color: C_PURPLE },
+      { icon: <Undo2 size={sz} />, title: `Undo (${mod}+Z)`, action: () => window.dispatchEvent(new CustomEvent('editor:command', { detail: 'undo' })) },
+      { icon: <Redo2 size={sz} />, title: `Redo (${mod}+Y)`, action: () => window.dispatchEvent(new CustomEvent('editor:command', { detail: 'redo' })) },
     ],
     // Clipboard
     [
-      { icon: <Scissors size={sz} />, title: `Cut (${mod}+X)`, action: () => document.execCommand('cut'), color: C_RED },
-      { icon: <Copy size={sz} />, title: `Copy (${mod}+C)`, action: () => document.execCommand('copy'), color: C_RED },
-      { icon: <Clipboard size={sz} />, title: `Paste (${mod}+V)`, action: () => document.execCommand('paste'), color: C_PURPLE },
+      { icon: <Scissors size={sz} />, title: `Cut (${mod}+X)`, action: () => document.execCommand('cut') },
+      { icon: <Copy size={sz} />, title: `Copy (${mod}+C)`, action: () => document.execCommand('copy') },
+      { icon: <Clipboard size={sz} />, title: `Paste (${mod}+V)`, action: () => document.execCommand('paste') },
     ],
     // Search
     [
-      { icon: <Search size={sz} />, title: `Find (${mod}+F)`, action: onFind, color: C_BLUE },
-      { icon: <Replace size={sz} />, title: `Replace (${mod}+H)`, action: onReplace, color: C_BLUE },
+      { icon: <Search size={sz} />, title: `Find (${mod}+F)`, action: onFind },
+      { icon: <Replace size={sz} />, title: `Replace (${mod}+H)`, action: onReplace },
     ],
     // Zoom
     [
-      { icon: <ZoomIn size={sz} />, title: 'Zoom In', action: () => editorCommand('zoomIn'), color: C_GREEN },
-      { icon: <ZoomOut size={sz} />, title: 'Zoom Out', action: () => editorCommand('zoomOut'), color: C_GREEN },
-      { icon: <RotateCcw size={sz} />, title: 'Reset Zoom', action: () => editorCommand('zoomReset'), color: C_BLUE },
+      { icon: <ZoomIn size={sz} />, title: 'Zoom In', action: () => editorCommand('zoomIn') },
+      { icon: <ZoomOut size={sz} />, title: 'Zoom Out', action: () => editorCommand('zoomOut') },
+      { icon: <RotateCcw size={sz} />, title: 'Reset Zoom', action: () => editorCommand('zoomReset') },
     ],
     // Formatting
     [
-      { icon: <IndentIncrease size={sz} />, title: 'Indent', action: () => editorCommand('indentLines'), color: C_ORANGE },
-      { icon: <IndentDecrease size={sz} />, title: 'Outdent', action: () => editorCommand('outdentLines'), color: C_ORANGE },
-      { icon: <MessageSquare size={sz} />, title: 'Toggle Comment', action: () => editorCommand('toggleComment'), color: C_ORANGE },
+      { icon: <IndentIncrease size={sz} />, title: 'Indent', action: () => editorCommand('indentLines') },
+      { icon: <IndentDecrease size={sz} />, title: 'Outdent', action: () => editorCommand('outdentLines') },
+      { icon: <MessageSquare size={sz} />, title: 'Toggle Comment', action: () => editorCommand('toggleComment') },
     ],
     // Actions
     [
-      { icon: <ArrowUpDown size={sz} />, title: 'Sort Lines', action: () => editorCommand('sortLinesAsc'), color: C_RED },
-      { icon: <Eraser size={sz} />, title: 'Trim Whitespace', action: () => editorCommand('trimTrailingWhitespace'), color: C_GRAY },
+      { icon: <ArrowUpDown size={sz} />, title: 'Sort Lines', action: () => editorCommand('sortLinesAsc') },
+      { icon: <Eraser size={sz} />, title: 'Trim Whitespace', action: () => editorCommand('trimTrailingWhitespace') },
     ],
     // Panels — open the sidebar to a specific view
     [
-      { icon: <Files size={sz} />, title: `Explorer (${mod}+B)`, action: () => toggleSidebarPanel('files'), color: C_BLUE },
-      { icon: <ListTree size={sz} />, title: 'Function / Symbol List', action: () => toggleSidebarPanel('functions'), color: C_PURPLE },
-      { icon: <MapIcon size={sz} />, title: 'Document Map', action: () => toggleSidebarPanel('docmap'), color: C_GREEN },
+      { icon: <Files size={sz} />, title: `Explorer (${mod}+B)`, action: () => toggleSidebarPanel('files') },
+      { icon: <ListTree size={sz} />, title: 'Function / Symbol List', action: () => toggleSidebarPanel('functions') },
+      { icon: <MapIcon size={sz} />, title: 'Document Map', action: () => toggleSidebarPanel('docmap') },
       // Notes stacks below the active panel rather than replacing it, so it goes
       // through toggleNotesPanel instead of toggleSidebarPanel.
-      { icon: <StickyNote size={sz} />, title: `Notes (${mod}+Shift+N)`, action: () => useUIStore.getState().toggleNotesPanel(), color: C_ORANGE },
-      // Always shown, even with AI off: the command sends the user to
-      // Settings ▸ AI Assistant until a key is set up, so this is how they find it.
-      { icon: <Sparkles size={sz} />, title: `AI Assistant (${mod}+Shift+A)`, action: () => runCommand('view.aiAssistant'), color: C_PURPLE },
+      { icon: <StickyNote size={sz} />, title: `Notes (${mod}+Shift+N)`, action: () => useUIStore.getState().toggleNotesPanel() },
     ],
   ]
 
   return (
-    <div className="h-11 bg-toolbar border-b border-toolbar-border flex items-center px-3 gap-1 select-none shrink-0 overflow-x-auto" data-testid="toolbar">
+    <div className="h-10 bg-toolbar border-b border-toolbar-border flex items-center px-2.5 gap-0.5 select-none shrink-0 overflow-x-auto" data-testid="toolbar">
       <TooltipProvider delayDuration={300}>
         {groups.map((group, gi) => (
-          <div key={gi} className="flex items-center gap-1">
-            {gi > 0 && <div className="w-px h-6 bg-toolbar-border mx-2 shrink-0" />}
+          <div key={gi} className="flex items-center gap-0.5">
+            {gi > 0 && <div className="w-px h-5 bg-toolbar-border mx-1.5 shrink-0" />}
             {group.map((item, ii) => (
               <Tooltip key={ii}>
                 <TooltipTrigger asChild>
                   <button
-                    className={`w-9 h-9 flex items-center justify-center ${item.color ?? 'text-toolbar-foreground'} hover:bg-secondary active:bg-muted rounded-md transition-colors shrink-0`}
+                    className="w-8 h-8 flex items-center justify-center text-toolbar-foreground hover:text-foreground hover:bg-secondary active:bg-muted rounded-lg transition-colors shrink-0"
                     onClick={item.action}
+                    aria-label={item.title}
                   >
                     {item.icon}
                   </button>
@@ -152,6 +140,24 @@ export function Toolbar({ onNew, onOpen, onSave, onSaveAll, onFind, onReplace, o
             ))}
           </div>
         ))}
+        <div className="flex-1 min-w-2" />
+        {/* Always shown, even with AI off: the command sends the user to
+            Settings ▸ AI Assistant until a key is set up, so this is how they find it. */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              className="h-8 px-2.5 flex items-center gap-1.5 text-primary font-medium hover:bg-primary/10 rounded-lg transition-colors shrink-0"
+              onClick={() => runCommand('view.aiAssistant')}
+              data-testid="toolbar-ai"
+            >
+              <Sparkles size={16} />
+              Ask AI
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-base">
+            {`AI Assistant (${mod}+Shift+A)`}
+          </TooltipContent>
+        </Tooltip>
       </TooltipProvider>
     </div>
   )

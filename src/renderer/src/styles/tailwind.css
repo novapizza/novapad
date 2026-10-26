@@ -37,73 +37,75 @@
   }
 
   :root {
-    --background: 220 14% 96%;
-    --foreground: 220 20% 15%;
+    /* NovaPad Light (Nova Suite tokens). Named themes in utils/themes.ts
+     * override these; NovaPad (dark) lives in .dark below. */
+    --background: 0 0% 100%;
+    --foreground: 250 33% 14.1%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 15%;
+    --card-foreground: 250 33% 14.1%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 15%;
+    --popover-foreground: 250 33% 14.1%;
 
-    --primary: 215 80% 50%;
+    --primary: 295 72% 39.8%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 90%;
-    --secondary-foreground: 220 20% 15%;
+    --secondary: 253 33% 94.7%;
+    --secondary-foreground: 250 33% 14.1%;
 
-    --muted: 220 14% 92%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 253 33% 94.7%;
+    --muted-foreground: 251 14% 39.2%;
 
-    --accent: 215 80% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 296 48% 93.9%;
+    --accent-foreground: 250 33% 14.1%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 72% 50.6%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 87%;
-    --input: 220 13% 87%;
-    --ring: 215 80% 50%;
+    --border: 249 13% 89.6%;
+    --input: 248 10% 83.9%;
+    --ring: 295 72% 39.8%;
 
     --radius: 0.25rem;
 
     /* Editor-specific tokens */
-    --toolbar: 220 14% 94%;
-    --toolbar-foreground: 220 20% 25%;
-    --toolbar-border: 220 13% 85%;
+    --toolbar: 252 33% 97.1%;
+    --toolbar-foreground: 251 14% 39.2%;
+    --toolbar-border: 249 13% 89.6%;
     --tab-active: 0 0% 100%;
-    --tab-inactive: 220 14% 92%;
-    --tab-hover: 220 14% 96%;
-    --tab-foreground: 220 20% 15%;
-    --tab-muted: 220 10% 50%;
-    --statusbar: 215 80% 50%;
-    --statusbar-foreground: 0 0% 100%;
-    --explorer: 220 14% 97%;
-    --explorer-foreground: 220 20% 25%;
-    --explorer-hover: 215 60% 90%;
-    --explorer-active: 215 80% 95%;
-    --gutter: 220 14% 94%;
-    --gutter-foreground: 220 10% 60%;
-    --line-highlight: 215 60% 95%;
+    --tab-inactive: 252 33% 97.1%;
+    --tab-hover: 250 17% 92.9%;
+    --tab-foreground: 250 33% 14.1%;
+    --tab-muted: 251 14% 39.2%;
+    --statusbar: 252 33% 97.1%;
+    --statusbar-foreground: 251 14% 39.2%;
+    --explorer: 252 33% 97.1%;
+    --explorer-foreground: 251 14% 39.2%;
+    --explorer-hover: 250 17% 92.9%;
+    --explorer-active: 281 42% 92.5%;
+    --gutter: 0 0% 100%;
+    --gutter-foreground: 251 12% 57.5%;
+    --line-highlight: 240 7% 97.1%;
 
-    --sidebar-background: 220 14% 97%;
-    --sidebar-foreground: 220 20% 25%;
-    --sidebar-primary: 215 80% 50%;
+    --sidebar-background: 252 33% 97.1%;
+    --sidebar-foreground: 251 14% 39.2%;
+    --sidebar-primary: 295 72% 39.8%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 60% 90%;
-    --sidebar-accent-foreground: 220 20% 15%;
-    --sidebar-border: 220 13% 87%;
-    --sidebar-ring: 215 80% 50%;
+    --sidebar-accent: 281 42% 92.5%;
+    --sidebar-accent-foreground: 250 33% 14.1%;
+    --sidebar-border: 249 13% 89.6%;
+    --sidebar-ring: 295 72% 39.8%;
 
-    /* JSON syntax tokens (Notepad++ palette). Light theme uses saturated mid
-     * shades so contrast is strong on the near-white preview background.
-     * The .dark block below switches to pastel-300 equivalents. */
-    --tok-key:    215 80% 40%;
-    --tok-string: 145 65% 32%;
-    --tok-bool:   262 65% 50%;
-    --tok-null:   215 10% 45%;
-    --tok-num:     24 85% 45%;
-    --tok-brace:  215 15% 35%;
+    /* JSON syntax tokens, from the NovaPad Light syntax palette (keyword
+     * fuchsia, green strings, cyan literals, amber numbers). The .dark block
+     * below uses the NovaPad (dark) pastels. */
+    --tok-key: 295 72% 39.8%;
+    --tok-string: 144 55% 30.8%;
+    --tok-bool: 193 82% 31%;
+    --tok-null: 251 12% 57.5%;
+    --tok-num: 26 90% 37.1%;
+    --tok-brace: 251 14% 39.2%;
 
     /* Sticky-note tints. Low-saturation backgrounds only — note text keeps
      * text-foreground, so these must stay light enough for dark body text.
@@ -116,75 +118,75 @@
   }
 
   .dark {
-    /* Dracula-family dark chrome (hue ~231/232) kept in sync with the Monaco
-     * 'dracula' editor theme (editor.background #282a36) so the editor and its
-     * surrounding panels read as one surface. Accent stays violet — it already
-     * matches Dracula's purple. */
-    --background: 231 15% 18%;         /* #282a36 — matches editor.background */
-    --foreground: 60 30% 96%;          /* #f8f8f2 */
+    /* NovaPad (dark, the default theme): Nova Suite Night surfaces with the
+     * NovaPad fuchsia accent, kept in sync with the Monaco 'novapad-dark'
+     * theme (editor.background #0b0a10). Dracula is an optional named theme
+     * in utils/themes.ts. */
+    --background: 250 23% 5.1%;
+    --foreground: 254 45% 94.3%;
 
-    --card: 232 14% 21%;
-    --card-foreground: 60 30% 96%;
+    --card: 255 24% 9.8%;
+    --card-foreground: 254 45% 94.3%;
 
-    --popover: 232 14% 21%;
-    --popover-foreground: 60 30% 96%;
+    --popover: 255 24% 9.8%;
+    --popover-foreground: 254 45% 94.3%;
 
-    --primary: 262 80% 70%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 291 93% 82.9%;
+    --primary-foreground: 255 24% 9.8%;
 
-    --secondary: 232 14% 26%;
-    --secondary-foreground: 60 30% 96%;
+    --secondary: 250 33% 14.1%;
+    --secondary-foreground: 254 45% 94.3%;
 
-    --muted: 232 14% 24%;
-    --muted-foreground: 225 20% 62%;   /* Dracula comment, lightened for contrast */
+    --muted: 250 33% 14.1%;
+    --muted-foreground: 253 18% 69.4%;
 
-    --accent: 262 80% 70%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 275 22% 20%;
+    --accent-foreground: 254 45% 94.3%;
 
-    --destructive: 0 62% 55%;          /* Dracula red #ff5555 */
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 91% 70.8%;
+    --destructive-foreground: 255 24% 9.8%;
 
-    --border: 232 14% 27%;
-    --input: 232 14% 27%;
-    --ring: 262 80% 70%;
+    --border: 253 12% 14.7%;
+    --input: 249 7% 20.2%;
+    --ring: 291 93% 82.9%;
 
-    --toolbar: 231 15% 16%;
-    --toolbar-foreground: 60 20% 88%;
-    --toolbar-border: 232 14% 25%;
-    --tab-active: 231 15% 18%;         /* == editor bg, tab merges into editor */
-    --tab-inactive: 231 15% 14%;
-    --tab-hover: 231 15% 20%;
-    --tab-foreground: 60 30% 96%;
-    --tab-muted: 225 15% 58%;
-    --statusbar: 262 55% 45%;
-    --statusbar-foreground: 0 0% 100%;
-    --explorer: 231 15% 15%;
-    --explorer-foreground: 60 20% 86%;
-    --explorer-hover: 232 14% 24%;
-    --explorer-active: 232 14% 31%;    /* Dracula current-line #44475a */
-    --gutter: 231 15% 16%;
-    --gutter-foreground: 225 15% 45%;
-    --line-highlight: 232 14% 26%;
+    --toolbar: 253 24% 7.3%;
+    --toolbar-foreground: 253 18% 69.4%;
+    --toolbar-border: 253 12% 14.7%;
+    --tab-active: 250 23% 5.1%;
+    --tab-inactive: 253 24% 7.3%;
+    --tab-hover: 253 14% 12.7%;
+    --tab-foreground: 254 45% 94.3%;
+    --tab-muted: 253 18% 69.4%;
+    --statusbar: 253 24% 7.3%;
+    --statusbar-foreground: 253 18% 69.4%;
+    --explorer: 253 24% 7.3%;
+    --explorer-foreground: 253 18% 69.4%;
+    --explorer-hover: 253 14% 12.7%;
+    --explorer-active: 270 21% 14.9%;
+    --gutter: 250 23% 5.1%;
+    --gutter-foreground: 251 14% 45.9%;
+    --line-highlight: 252 12% 8.4%;
 
-    --sidebar-background: 231 15% 15%;
-    --sidebar-foreground: 60 20% 86%;
-    --sidebar-primary: 262 80% 70%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 232 14% 24%;
-    --sidebar-accent-foreground: 60 30% 96%;
-    --sidebar-border: 232 14% 25%;
-    --sidebar-ring: 262 80% 70%;
+    --sidebar-background: 253 24% 7.3%;
+    --sidebar-foreground: 253 18% 69.4%;
+    --sidebar-primary: 291 93% 82.9%;
+    --sidebar-primary-foreground: 255 24% 9.8%;
+    --sidebar-accent: 270 21% 14.9%;
+    --sidebar-accent-foreground: 254 45% 94.3%;
+    --sidebar-border: 253 12% 14.7%;
+    --sidebar-ring: 291 93% 82.9%;
 
-    /* JSON preview tokens — Dracula palette */
-    --tok-key:    191 97% 77%;         /* cyan  #8be9fd */
-    --tok-string:  65 92% 76%;         /* yellow #f1fa8c */
-    --tok-bool:   326 100% 74%;        /* pink  #ff79c6 */
-    --tok-null:   225 27% 65%;         /* comment */
-    --tok-num:    265 89% 78%;         /* purple #bd93f9 */
-    --tok-brace:   60 30% 90%;
+    /* JSON preview tokens — NovaPad (dark) syntax palette */
+    --tok-key: 291 93% 82.9%;
+    --tok-string: 141 56% 74.9%;
+    --tok-bool: 187 92% 69%;
+    --tok-null: 251 14% 45.9%;
+    --tok-num: 46 97% 64.5%;
+    --tok-brace: 253 18% 69.4%;
 
     /* Sticky-note tints, dark variant. Desaturated and darkened to sit just
-     * above --card (232 14% 21%) so light body text stays readable. */
+     * above --card so light body text stays readable. */
     --note-yellow:  48 25% 28%;
     --note-green:  142 22% 26%;
     --note-blue:   210 30% 29%;

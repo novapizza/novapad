@@ -4,9 +4,11 @@
  * on top of that base, the Monaco theme name, and a few colors for the gallery
  * card preview.
  *
- * `light` and `dark` carry no token overrides — they rely on the static
- * `:root` / `.dark` blocks in tailwind.css (unchanged). Named themes like
- * `solarized-light` override the tokens. Adding a theme = one entry here.
+ * `dark` (NovaPad, the default) and `light` (NovaPad Light) carry no token
+ * overrides — they rely on the static `.dark` / `:root` blocks in tailwind.css.
+ * Named themes like `solarized-light` and `dracula` override the tokens. The
+ * ids `dark` / `light` predate the NovaPad themes and are kept so saved configs
+ * and the View ▸ Toggle Theme action keep working. Adding a theme = one entry here.
  */
 
 export type ThemeBase = 'light' | 'dark'
@@ -99,22 +101,82 @@ const SOLARIZED_LIGHT_TOKENS: Record<string, string> = {
   '--note-purple': '237 35% 88%'
 }
 
+// Dracula — the pre-1.6.8 dark chrome, now an optional theme. Hue ~231 chrome
+// kept in sync with the Monaco 'dracula' editor theme (editor.background #282a36).
+const DRACULA_TOKENS: Record<string, string> = {
+  '--background': '231 15% 18%',
+  '--foreground': '60 30% 96%',
+  '--card': '232 14% 21%',
+  '--card-foreground': '60 30% 96%',
+  '--popover': '232 14% 21%',
+  '--popover-foreground': '60 30% 96%',
+  '--primary': '262 80% 70%',
+  '--primary-foreground': '0 0% 100%',
+  '--secondary': '232 14% 26%',
+  '--secondary-foreground': '60 30% 96%',
+  '--muted': '232 14% 24%',
+  '--muted-foreground': '225 20% 62%',
+  '--accent': '262 80% 70%',
+  '--accent-foreground': '0 0% 100%',
+  '--destructive': '0 62% 55%',
+  '--destructive-foreground': '0 0% 100%',
+  '--border': '232 14% 27%',
+  '--input': '232 14% 27%',
+  '--ring': '262 80% 70%',
+  '--toolbar': '231 15% 16%',
+  '--toolbar-foreground': '60 20% 88%',
+  '--toolbar-border': '232 14% 25%',
+  '--tab-active': '231 15% 18%',
+  '--tab-inactive': '231 15% 14%',
+  '--tab-hover': '231 15% 20%',
+  '--tab-foreground': '60 30% 96%',
+  '--tab-muted': '225 15% 58%',
+  '--statusbar': '262 55% 45%',
+  '--statusbar-foreground': '0 0% 100%',
+  '--explorer': '231 15% 15%',
+  '--explorer-foreground': '60 20% 86%',
+  '--explorer-hover': '232 14% 24%',
+  '--explorer-active': '232 14% 31%',
+  '--gutter': '231 15% 16%',
+  '--gutter-foreground': '225 15% 45%',
+  '--line-highlight': '232 14% 26%',
+  '--sidebar-background': '231 15% 15%',
+  '--sidebar-foreground': '60 20% 86%',
+  '--sidebar-primary': '262 80% 70%',
+  '--sidebar-primary-foreground': '0 0% 100%',
+  '--sidebar-accent': '232 14% 24%',
+  '--sidebar-accent-foreground': '60 30% 96%',
+  '--sidebar-border': '232 14% 25%',
+  '--sidebar-ring': '262 80% 70%',
+  '--tok-key': '191 97% 77%',
+  '--tok-string': '65 92% 76%',
+  '--tok-bool': '326 100% 74%',
+  '--tok-null': '225 27% 65%',
+  '--tok-num': '265 89% 78%',
+  '--tok-brace': '60 30% 90%',
+  '--note-yellow': '48 25% 28%',
+  '--note-green': '142 22% 26%',
+  '--note-blue': '210 30% 29%',
+  '--note-pink': '335 25% 30%',
+  '--note-purple': '265 28% 31%'
+}
+
 export const THEMES: ThemeDef[] = [
   {
     id: 'dark',
-    name: 'Dark',
-    sub: 'Dracula',
+    name: 'NovaPad',
+    sub: 'Default',
     base: 'dark',
-    monaco: 'dracula',
-    preview: { chrome: '#21222c', bg: '#282a36', text: '#f8f8f2', accent: '#bd93f9', kw: '#ff79c6', str: '#f1fa8c', com: '#6272a4', num: '#bd93f9' }
+    monaco: 'novapad-dark',
+    preview: { chrome: '#100e17', bg: '#0b0a10', text: '#edeaf7', accent: '#f0abfc', kw: '#f0abfc', str: '#9be3b4', com: '#6b6585', num: '#fcd34d' }
   },
   {
     id: 'light',
-    name: 'Light',
-    sub: 'Blue',
+    name: 'NovaPad Light',
+    sub: 'Light',
     base: 'light',
-    monaco: 'npp-light',
-    preview: { chrome: '#eeeef3', bg: '#ffffff', text: '#1a1a1a', accent: '#1f7ae0', kw: '#0000ff', str: '#008000', com: '#808080', num: '#d24000' }
+    monaco: 'novapad-light',
+    preview: { chrome: '#f6f5fa', bg: '#ffffff', text: '#1c1830', accent: '#a21caf', kw: '#a21caf', str: '#237a46', com: '#8a85a0', num: '#b45309' }
   },
   {
     id: 'solarized-light',
@@ -124,11 +186,20 @@ export const THEMES: ThemeDef[] = [
     monaco: 'solarized-light',
     tokens: SOLARIZED_LIGHT_TOKENS,
     preview: { chrome: '#eee8d5', bg: '#fdf6e3', text: '#657b83', accent: '#268bd2', kw: '#859900', str: '#2aa198', com: '#93a1a1', num: '#cb4b16' }
+  },
+  {
+    id: 'dracula',
+    name: 'Dracula',
+    sub: 'Optional',
+    base: 'dark',
+    monaco: 'dracula',
+    tokens: DRACULA_TOKENS,
+    preview: { chrome: '#21222c', bg: '#282a36', text: '#f8f8f2', accent: '#bd93f9', kw: '#ff79c6', str: '#f1fa8c', com: '#6272a4', num: '#bd93f9' }
   }
 ]
 
 /** Every token any theme may override — used to fully reset before applying. */
-const ALL_TOKEN_KEYS: string[] = Object.keys(SOLARIZED_LIGHT_TOKENS)
+const ALL_TOKEN_KEYS: string[] = [...new Set([...Object.keys(SOLARIZED_LIGHT_TOKENS), ...Object.keys(DRACULA_TOKENS)])]
 
 export function getTheme(id: string): ThemeDef {
   return THEMES.find((t) => t.id === id) ?? THEMES[0]
