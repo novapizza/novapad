@@ -309,6 +309,13 @@
   .dark .markdown-body .hljs-title { color: #82aaff; }
   .dark .markdown-body .hljs-variable,
   .dark .markdown-body .hljs-attr { color: #f07178; }
+  /* Edit-in-preview: outline the block a double-click would edit — the
+     innermost one, except inside a quote, where the whole quote is edited. */
+  .markdown-body.md-editable [data-md-src]:not(blockquote [data-md-src]):hover:not(:has([data-md-src]:hover)),
+  .markdown-body.md-editable blockquote[data-md-src]:hover:not(:has(blockquote:hover)) {
+    outline: 1px dashed hsl(var(--primary) / 0.45);
+    outline-offset: 2px;
+  }
 
   /* In-preview search matches (CSS Custom Highlight API — no DOM mutation).
      Only color/background/text-decoration are valid inside ::highlight. */

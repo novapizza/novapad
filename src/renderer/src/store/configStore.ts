@@ -22,6 +22,9 @@ export interface AppConfig {
   highlightCurrentLine: boolean
   bracketPairColorization: boolean
   showMinimap: boolean
+  /** Double-click a block in the Markdown preview to edit its source. Off = no
+   *  source-range stamping and no handler, so the preview renders as before. */
+  mdPreviewEdit: boolean
 
   // Auto-Completion
   autoCompleteEnabled: boolean
@@ -90,6 +93,7 @@ export const CONFIG_DEFAULTS: AppConfig = {
   highlightCurrentLine: true,
   bracketPairColorization: true,
   showMinimap: false,
+  mdPreviewEdit: true,
   autoCompleteEnabled: true,
   autoCloseBrackets: true,
   autoCloseQuotes: true,

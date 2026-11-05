@@ -141,6 +141,18 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             they&apos;re never lost.
           </>
         )
+      },
+      {
+        title: 'Edit Markdown right in the preview',
+        body: (
+          <>
+            Double-click a heading, paragraph, list item, table row or code block in the Markdown preview to
+            edit its source in place — <span className="font-mono text-sm">Enter</span> saves,{' '}
+            <span className="font-mono text-sm">Esc</span> cancels, and each edit is a single undo step. The
+            preview also waits for a pause in typing before re-rendering, so long documents stay responsive.
+            Switch it off under <strong>Settings → Editor → Enable MD edit in preview mode</strong>.
+          </>
+        )
       }
     ]
   },
