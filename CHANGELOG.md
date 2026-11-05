@@ -10,6 +10,11 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+## [1.6.12]
+
+### Changed
+- Maintenance release to confirm Windows auto-update works from 1.6.11. No functional changes.
+
 ## [1.6.11]
 
 ### Fixed
@@ -278,7 +283,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 - **Settings page reset its selected category** when you switched to another tab and back — the
   active category is now preserved.
 
-[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.11...HEAD
+[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.12...HEAD
+[1.6.12]: https://github.com/novapizza/novapad/compare/v1.6.11...v1.6.12
 [1.6.11]: https://github.com/novapizza/novapad/compare/v1.6.10...v1.6.11
 [1.6.10]: https://github.com/novapizza/novapad/compare/v1.6.9...v1.6.10
 [1.6.9]: https://github.com/novapizza/novapad/compare/v1.6.8...v1.6.9

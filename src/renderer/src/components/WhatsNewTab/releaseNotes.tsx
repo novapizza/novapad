@@ -32,6 +32,25 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.12',
+    summary: (
+      <>
+        A maintenance release that confirms automatic updates work on Windows. No new features.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'Automatic updates on Windows',
+        body: (
+          <>
+            If you were on 1.6.11, this version arrived through automatic update, so the Windows update fix in
+            1.6.11 works. Nothing else changed.
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.6.11',
     summary: (
       <>
