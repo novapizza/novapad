@@ -10,6 +10,14 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+## [1.6.11]
+
+### Fixed
+- **Windows auto-update rejected new versions.** Builds 1.6.7 to 1.6.10 set the wrong publisher name
+  in `app-update.yml`, so the updater refused correctly signed updates. The publisher name now matches
+  the signing certificate (`Creativeforce.io, Inc.`). Users on 1.6.7 to 1.6.10 must install 1.6.11 by
+  hand once.
+
 ## [1.6.10]
 
 ### Fixed
@@ -270,7 +278,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 - **Settings page reset its selected category** when you switched to another tab and back — the
   active category is now preserved.
 
-[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.10...HEAD
+[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.11...HEAD
+[1.6.11]: https://github.com/novapizza/novapad/compare/v1.6.10...v1.6.11
 [1.6.10]: https://github.com/novapizza/novapad/compare/v1.6.9...v1.6.10
 [1.6.9]: https://github.com/novapizza/novapad/compare/v1.6.8...v1.6.9
 [1.6.8]: https://github.com/novapizza/novapad/compare/v1.6.7...v1.6.8

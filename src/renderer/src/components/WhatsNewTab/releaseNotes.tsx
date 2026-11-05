@@ -32,6 +32,27 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.11',
+    summary: (
+      <>
+        A fix for automatic updates on Windows.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'Windows updates install again',
+        body: (
+          <>
+            Windows builds 1.6.7 to 1.6.10 had the wrong publisher name in their update settings, so they rejected
+            new signed updates. From 1.6.11 on, the publisher name matches the signing certificate and updates
+            install automatically again. If you are on 1.6.7, 1.6.8, 1.6.9 or 1.6.10, download and install 1.6.11
+            by hand once.
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.6.10',
     summary: (
       <>
