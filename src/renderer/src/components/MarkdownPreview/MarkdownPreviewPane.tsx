@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import * as monaco from 'monaco-editor'
-import ReactMarkdown from 'react-markdown'
+import ReactMarkdown, { type Options as MarkdownOptions } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { ChevronDown, ChevronUp, Eye, Search, X, FileCode, FileDown } from 'lucide-react'
@@ -13,9 +13,19 @@ import {
 import { editorRegistry } from '../../utils/editorRegistry'
 import { useUIStore } from '../../store/uiStore'
 import { useEditorStore } from '../../store/editorStore'
+import { useConfigStore } from '../../store/configStore'
+import { runCommand } from '../../commands/registry'
 import { usePreviewFullscreen } from '../preview/previewFullscreen'
 import { downloadText, buildStandaloneHtml } from '../../utils/exportDoc'
 import { cn } from '../../lib/utils'
+import { MarkdownBlockEditor } from './MarkdownBlockEditor'
+import {
+  SOURCE_ATTR,
+  findEditableBlock,
+  parseSourceRange,
+  rehypeSourceRange,
+  stripSourceRanges,
+} from './sourceRange'
 
 // Highlight.js stylesheet — dynamically swapped between light/dark via the
 // effect below so code blocks match the rest of the editor theme.
@@ -93,9 +103,39 @@ function collectMatchRanges(root: HTMLElement, needle: string): Range[] {
   }
   return ranges
 }
-const REHYPE_PLUGINS: [typeof rehypeHighlight, { detect: boolean; ignoreMissing: boolean }][] = [
-  [rehypeHighlight, { detect: true, ignoreMissing: true }],
-]
+type RehypePlugins = NonNullable<MarkdownOptions['rehypePlugins']>
+const REHYPE_PLUGINS: RehypePlugins = [[rehypeHighlight, { detect: true, ignoreMissing: true }]]
+// Edit-in-preview adds source-range stamping; off = the plain pipeline above.
+const REHYPE_PLUGINS_EDIT: RehypePlugins = [...REHYPE_PLUGINS, rehypeSourceRange as RehypePlugins[number]]
+
+/** Wait for a pause in typing before re-rendering: every render re-parses and
+ *  re-highlights the whole document (~600 ms at 5k lines). */
+const RENDER_DEBOUNCE_MS = 150
+
+/** Memoized so search typing and edit-box state don't re-render the document. */
+const MarkdownBody = React.memo(function MarkdownBody({ content, editable }: { content: string; editable: boolean }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={REMARK_PLUGINS}
+      rehypePlugins={editable ? REHYPE_PLUGINS_EDIT : REHYPE_PLUGINS}
+      components={MARKDOWN_COMPONENTS}
+    >
+      {content}
+    </ReactMarkdown>
+  )
+})
+
+interface BlockEdit {
+  start: number
+  end: number
+  /** Source slice as rendered — re-checked against the model before applying. */
+  original: string
+  top: number
+  height: number
+  multiline: boolean
+}
+
+const toLf = (s: string): string => s.replace(/\r\n?/g, '\n')
 
 /**
  * Live Markdown preview pane. Subscribes to Monaco's active model so the
@@ -106,10 +146,29 @@ export const MarkdownPreviewPane: React.FC = () => {
   const setMarkdownPreview = useUIStore((s) => s.setMarkdownPreview)
   const { sectionClass, Toggle: FullscreenToggle } = usePreviewFullscreen()
   const bodyRef = useRef<HTMLDivElement>(null)
+  // The rendered document only — search and export must not see the edit box.
+  const mdRef = useRef<HTMLDivElement>(null)
   const title = useEditorStore((s) => {
     const buf = s.buffers.find((b) => b.id === s.activeId)
     return buf?.title ?? 'document.md'
   })
+  const readOnly = useEditorStore((s) => s.buffers.find((b) => b.id === s.activeId)?.isReadOnly ?? false)
+  const editEnabled = useConfigStore((s) => s.mdPreviewEdit)
+  const [edit, setEdit] = useState<BlockEdit | null>(null)
+  const modelRef = useRef<monaco.editor.ITextModel | null>(null)
+  const renderTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Render the model's current text now, dropping any pending debounced render.
+  const renderNow = useCallback(() => {
+    if (renderTimer.current) clearTimeout(renderTimer.current)
+    renderTimer.current = null
+    const model = modelRef.current
+    setContent(model && !model.isDisposed() ? model.getValue() : '')
+  }, [])
+
+  useEffect(() => {
+    if (!editEnabled) setEdit(null)
+  }, [editEnabled])
 
   useEffect(() => {
     bootstrapDiagramRenderers()
@@ -149,13 +208,13 @@ export const MarkdownPreviewPane: React.FC = () => {
       registry?.delete(SEARCH_HL)
       registry?.delete(SEARCH_HL_ACTIVE)
     }
-    if (!searchOpen || !query || !bodyRef.current) {
+    if (!searchOpen || !query || !mdRef.current) {
       rangesRef.current = []
       setMatchCount(0)
       clear()
       return
     }
-    const ranges = collectMatchRanges(bodyRef.current, query)
+    const ranges = collectMatchRanges(mdRef.current, query)
     rangesRef.current = ranges
     setMatchCount(ranges.length)
     setActiveIdx((i) => Math.min(i, Math.max(0, ranges.length - 1)))
@@ -200,7 +259,7 @@ export const MarkdownPreviewPane: React.FC = () => {
   // Export the rendered preview. innerHTML is markup produced by our own
   // ReactMarkdown render, wrapped in a self-contained, styled document.
   const baseName = title.replace(/\.[^.]+$/, '') || 'document'
-  const renderedHtml = () => buildStandaloneHtml(title, bodyRef.current?.innerHTML ?? '')
+  const renderedHtml = () => buildStandaloneHtml(title, stripSourceRanges(mdRef.current?.innerHTML ?? ''))
   const exportHtml = () =>
     downloadText(`${baseName}.html`, renderedHtml(), 'text/html;charset=utf-8')
   const exportPdf = async () => {
@@ -221,9 +280,14 @@ export const MarkdownPreviewPane: React.FC = () => {
     const attach = (model: monaco.editor.ITextModel | null) => {
       modelDisposer?.dispose()
       modelDisposer = null
-      if (!model) { setContent(''); return }
-      setContent(model.getValue())
-      modelDisposer = model.onDidChangeContent(() => setContent(model.getValue()))
+      modelRef.current = model
+      setEdit(null)
+      renderNow()
+      if (!model) return
+      modelDisposer = model.onDidChangeContent(() => {
+        if (renderTimer.current) clearTimeout(renderTimer.current)
+        renderTimer.current = setTimeout(renderNow, RENDER_DEBOUNCE_MS)
+      })
     }
 
     attach(editor.getModel())
@@ -232,8 +296,69 @@ export const MarkdownPreviewPane: React.FC = () => {
     return () => {
       modelChange.dispose()
       modelDisposer?.dispose()
+      if (renderTimer.current) clearTimeout(renderTimer.current)
     }
-  }, [])
+  }, [renderNow])
+
+  // ── Edit in preview ──
+  // Double-click a block → edit its raw Markdown → write the slice back into
+  // the Monaco model (one undo step; dirty/save/AutoSave follow the model).
+  const onBodyMouseDown = (e: React.MouseEvent<HTMLDivElement>): void => {
+    // Second click of a double-click: skip the word selection it would paint.
+    if (e.detail > 1 && mdRef.current?.contains(e.target as Node)) e.preventDefault()
+  }
+
+  const onBodyDoubleClick = (e: React.MouseEvent<HTMLDivElement>): void => {
+    const md = mdRef.current
+    if (!md) return
+    const block = findEditableBlock(e.target as Element, md)
+    const range = parseSourceRange(block?.getAttribute(SOURCE_ATTR))
+    if (!block || !range) return
+    if (readOnly) {
+      useUIStore.getState().addToast('This file is read-only.', 'info')
+      return
+    }
+    window.getSelection()?.removeAllRanges()
+    setEdit({
+      ...range,
+      original: content.slice(range.start, range.end),
+      top: block.getBoundingClientRect().top - md.getBoundingClientRect().top,
+      height: block.offsetHeight,
+      multiline: block.tagName === 'PRE',
+    })
+  }
+
+  /** Apply the edit; false when the source moved underneath it. */
+  const applyEdit = (text: string): boolean => {
+    const cur = edit
+    setEdit(null)
+    const model = modelRef.current
+    if (!cur || !model || model.isDisposed() || toLf(text) === toLf(cur.original)) return true
+    const range = monaco.Range.fromPositions(model.getPositionAt(cur.start), model.getPositionAt(cur.end))
+    if (model.getValueInRange(range) !== cur.original) {
+      useUIStore.getState().addToast('The document changed while you were editing — edit not applied.', 'error')
+      return false
+    }
+    model.pushStackElement()
+    model.pushEditOperations([], [{ range, text: toLf(text).replace(/\n/g, model.getEOL()) }], () => null)
+    model.pushStackElement()
+    renderNow()
+    return true
+  }
+
+  const commitEdit = (text: string, fromKey: boolean): void => {
+    applyEdit(text)
+    if (fromKey) bodyRef.current?.focus()
+  }
+  const cancelEdit = (): void => {
+    setEdit(null)
+    bodyRef.current?.focus()
+  }
+  const saveEdit = (text: string, saveAs: boolean): void => {
+    const ok = applyEdit(text)
+    bodyRef.current?.focus()
+    if (ok) runCommand(saveAs ? 'file.saveAs' : 'file.save')
+  }
 
   return (
     <section className={sectionClass} data-md-preview>
@@ -331,14 +456,31 @@ export const MarkdownPreviewPane: React.FC = () => {
         </div>
       )}
       {/* tabIndex — clicking the body must focus it so Ctrl+F routes here. */}
-      <div ref={bodyRef} tabIndex={-1} className="flex-1 overflow-auto p-4 markdown-body outline-none">
-        <ReactMarkdown
-          remarkPlugins={REMARK_PLUGINS}
-          rehypePlugins={REHYPE_PLUGINS}
-          components={MARKDOWN_COMPONENTS}
-        >
-          {content}
-        </ReactMarkdown>
+      <div
+        ref={bodyRef}
+        tabIndex={-1}
+        className={cn('flex-1 overflow-auto p-4 markdown-body outline-none', editEnabled && 'md-editable')}
+        onMouseDown={editEnabled ? onBodyMouseDown : undefined}
+        onDoubleClick={editEnabled ? onBodyDoubleClick : undefined}
+      >
+        {/* relative — the edit box is positioned over its block and scrolls with it. */}
+        <div className="relative">
+          <div ref={mdRef}>
+            <MarkdownBody content={content} editable={editEnabled} />
+          </div>
+          {edit && (
+            <MarkdownBlockEditor
+              key={`${edit.start}-${edit.end}`}
+              initial={toLf(edit.original)}
+              top={edit.top}
+              minHeight={edit.height}
+              multiline={edit.multiline}
+              onCommit={commitEdit}
+              onCancel={cancelEdit}
+              onSave={saveEdit}
+            />
+          )}
+        </div>
       </div>
     </section>
   )

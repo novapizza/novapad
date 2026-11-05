@@ -162,6 +162,12 @@ export function SettingsTab() {
               <CheckRow label="Render indentation guides" checked={config.renderIndentGuides} onChange={(v) => set('renderIndentGuides', v)} />
               <CheckRow label="Bracket pair colorization" checked={config.bracketPairColorization} onChange={(v) => set('bracketPairColorization', v)} />
               <CheckRow label="Show minimap" checked={config.showMinimap} onChange={(v) => set('showMinimap', v)} />
+              <div>
+                <CheckRow label="Enable MD edit in preview mode" checked={config.mdPreviewEdit} onChange={(v) => set('mdPreviewEdit', v)} />
+                <p className="text-xs text-muted-foreground mt-0.5 ml-5">
+                  Double-click a heading, paragraph, list item, table row or code block in the Markdown preview to edit its source.
+                </p>
+              </div>
             </div>
           )}
 

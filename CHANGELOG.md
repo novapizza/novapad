@@ -10,6 +10,16 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+### Added
+- **Edit Markdown in the preview.** Double-click a heading, paragraph, list item, table row, quote
+  or code block in the Markdown preview to edit its source in place: `Enter` saves (`Ctrl+Enter` in
+  code blocks), `Esc` cancels, `Ctrl+S` saves the file. Each edit is one undo step in the editor.
+  Turn it off under *Settings → Editor → Enable MD edit in preview mode*.
+
+### Changed
+- **Faster Markdown preview while typing.** The preview now re-renders after a short pause in
+  typing instead of on every keystroke, so long documents no longer slow the editor down.
+
 ## [1.6.12]
 
 ### Changed

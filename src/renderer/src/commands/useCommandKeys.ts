@@ -47,11 +47,14 @@ function isTypingTarget(e: KeyboardEvent): boolean {
  * Whether a widget with its own keyboard model claims this combo. Such widgets (Table Lens: its
  * own undo, save, find and F2-to-edit) list the combos they handle, space-separated, in
  * `data-own-shortcuts`; while focus is inside one, those combos skip the registry. Other
- * combos — Ctrl+P, Ctrl+Tab, … — still reach their commands.
+ * combos — Ctrl+P, Ctrl+Tab, … — still reach their commands. `*` claims every combo (the
+ * Markdown preview's block editor, where line commands would silently edit the hidden source).
  */
 function isOwnedByWidget(e: KeyboardEvent, combo: string): boolean {
   const owner = (e.target as HTMLElement | null)?.closest?.('[data-own-shortcuts]')
-  return !!owner && (owner.getAttribute('data-own-shortcuts') ?? '').split(' ').includes(combo)
+  if (!owner) return false
+  const owned = (owner.getAttribute('data-own-shortcuts') ?? '').split(' ')
+  return owned.includes('*') || owned.includes(combo)
 }
 
 export function useCommandKeys(): void {
