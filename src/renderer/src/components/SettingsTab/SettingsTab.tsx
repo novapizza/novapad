@@ -165,7 +165,7 @@ export function SettingsTab() {
               <div>
                 <CheckRow label="Enable MD edit in preview mode" checked={config.mdPreviewEdit} onChange={(v) => set('mdPreviewEdit', v)} />
                 <p className="text-xs text-muted-foreground mt-0.5 ml-5">
-                  Double-click a heading, paragraph, list item, table row or code block in the Markdown preview to edit its source.
+                  Double-click a heading, paragraph, list item, table row, quote or code block in the Markdown preview to edit its source.
                 </p>
               </div>
             </div>

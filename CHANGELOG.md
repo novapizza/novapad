@@ -10,6 +10,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+## [1.6.13]
+
 ### Added
 - **Edit Markdown in the preview.** Double-click a heading, paragraph, list item, table row, quote
   or code block in the Markdown preview to edit its source in place: `Enter` saves (`Ctrl+Enter` in
@@ -293,7 +295,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 - **Settings page reset its selected category** when you switched to another tab and back — the
   active category is now preserved.
 
-[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.12...HEAD
+[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.13...HEAD
+[1.6.13]: https://github.com/novapizza/novapad/compare/v1.6.12...v1.6.13
 [1.6.12]: https://github.com/novapizza/novapad/compare/v1.6.11...v1.6.12
 [1.6.11]: https://github.com/novapizza/novapad/compare/v1.6.10...v1.6.11
 [1.6.10]: https://github.com/novapizza/novapad/compare/v1.6.9...v1.6.10

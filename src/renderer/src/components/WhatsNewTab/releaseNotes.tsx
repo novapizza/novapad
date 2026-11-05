@@ -32,6 +32,39 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.13',
+    summary: (
+      <>
+        Edit Markdown <strong>right in the preview</strong>, and a smoother preview while you type in long
+        documents.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'Edit Markdown right in the preview',
+        body: (
+          <>
+            Double-click a heading, paragraph, list item, table row, quote or code block in the Markdown preview
+            to edit its source in place. <span className="font-mono text-sm">Enter</span> saves (
+            <span className="font-mono text-sm">Ctrl+Enter</span> in code blocks),{' '}
+            <span className="font-mono text-sm">Esc</span> cancels, and{' '}
+            <span className="font-mono text-sm">Ctrl+S</span> saves the file. Each edit is a single undo step.
+            Switch it off under <strong>Settings → Editor → Enable MD edit in preview mode</strong>.
+          </>
+        )
+      },
+      {
+        title: 'Faster Markdown preview while typing',
+        body: (
+          <>
+            The preview now waits for a short pause in typing before it re-renders, so long documents no longer
+            slow the editor down.
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.6.12',
     summary: (
       <>
@@ -139,18 +172,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             sum/average footer. <span className="font-mono text-sm">Ctrl+S</span> in the table writes it back to
             the file, keeping its delimiter and line endings — and unsaved table edits mark the tab as modified so
             they&apos;re never lost.
-          </>
-        )
-      },
-      {
-        title: 'Edit Markdown right in the preview',
-        body: (
-          <>
-            Double-click a heading, paragraph, list item, table row or code block in the Markdown preview to
-            edit its source in place — <span className="font-mono text-sm">Enter</span> saves,{' '}
-            <span className="font-mono text-sm">Esc</span> cancels, and each edit is a single undo step. The
-            preview also waits for a pause in typing before re-rendering, so long documents stay responsive.
-            Switch it off under <strong>Settings → Editor → Enable MD edit in preview mode</strong>.
           </>
         )
       }
