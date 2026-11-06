@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, autoUpdater as nativeAutoUpdater } from 'electron'
 import { autoUpdater, UpdateInfo, ProgressInfo } from 'electron-updater'
 
 const AUTO_INSTALL_GRACE_MS = 30_000
@@ -13,6 +13,10 @@ export class UpdateManager {
   private installTimer: ReturnType<typeof setTimeout> | null = null
   private checkInterval: ReturnType<typeof setInterval> | null = null
   private enabled = false
+  /** macOS: Squirrel.Mac has staged the update (native 'update-downloaded'). */
+  private squirrelReady = false
+  /** macOS: a manual install is already waiting on Squirrel — ignore repeat clicks. */
+  private installPending = false
 
   constructor(win: BrowserWindow) {
     this.win = win
@@ -59,6 +63,16 @@ export class UpdateManager {
 
     this.wireEvents()
     this.wireWindowEvents()
+
+    // electron-updater emits 'update-downloaded' as soon as *it* has the zip, but on
+    // macOS Squirrel.Mac then re-fetches it from a localhost proxy before it can
+    // install. Track when Squirrel is actually ready.
+    if (process.platform === 'darwin') {
+      nativeAutoUpdater.on('update-downloaded', () => {
+        this.squirrelReady = true
+        this.log('info', 'squirrel staged update')
+      })
+    }
 
     // Delay initial check so the window is fully visible before network activity.
     setTimeout(() => void this.checkForUpdates(false), 5_000)
@@ -193,7 +207,15 @@ export class UpdateManager {
   quitAndInstall(): void {
     if (!this.enabled) return
     this.cancelAutoInstall()
-    this.log('info', 'quitAndInstall called (manual)')
+    if (process.platform === 'darwin' && !this.squirrelReady) {
+      // MacUpdater adds a new native listener on every call while Squirrel is
+      // still staging; one is enough — it fires quitAndInstall when ready.
+      if (this.installPending) return
+      this.installPending = true
+      this.log('info', 'quitAndInstall requested; waiting for Squirrel to stage update')
+    } else {
+      this.log('info', 'quitAndInstall called (manual)')
+    }
     autoUpdater.quitAndInstall(false, true)
   }
 }

@@ -10,6 +10,10 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+### Fixed
+- **macOS: "Restart & update" works on the first click.** Previously the app hid its window instead
+  of quitting, so the update didn't install until you clicked several times.
+
 ## [1.6.13]
 
 ### Added

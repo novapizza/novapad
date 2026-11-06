@@ -61,6 +61,15 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             slow the editor down.
           </>
         )
+      },
+      {
+        title: 'One-click updates on macOS',
+        body: (
+          <>
+            <strong>Restart &amp; update</strong> now installs the new version on the first click. Before, the app
+            only hid its window, so you had to click several times.
+          </>
+        )
       }
     ]
   },

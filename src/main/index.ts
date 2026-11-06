@@ -1,4 +1,12 @@
-import { app, shell, BrowserWindow, ipcMain, Menu, session } from 'electron'
+import {
+  app,
+  shell,
+  BrowserWindow,
+  ipcMain,
+  Menu,
+  session,
+  autoUpdater as nativeAutoUpdater
+} from 'electron'
 import { join, resolve } from 'path'
 import * as fs from 'fs'
 import { fileURLToPath } from 'url'
@@ -346,6 +354,17 @@ app.whenReady().then(() => {
 app.on('before-quit', () => {
   isQuitting = true
 })
+
+// macOS: Squirrel's quitAndInstall closes every window *before* emitting
+// before-quit (see Electron docs for app 'before-quit'). Without this, the
+// main window's close → app:close-confirmed path sees isQuitting === false and
+// merely hides the window, which aborts the restart — the user had to click
+// "Restart & update" several times. Mark the quit as real up front.
+if (process.platform === 'darwin') {
+  nativeAutoUpdater.on('before-quit-for-update', () => {
+    isQuitting = true
+  })
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin' || process.env['E2E_TEST'] === '1') app.quit()
