@@ -10,9 +10,14 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+## [1.6.14]
+
 ### Fixed
 - **macOS: "Restart & update" works on the first click.** Previously the app hid its window instead
   of quitting, so the update didn't install until you clicked several times.
+- **Large UTF-8 files opened with garbled characters.** Encoding detection only sampled the first
+  64 KB, so files whose first non-ASCII character came later (for example large CSV exports) were
+  read as ISO-8859-1. A file that is valid UTF-8 throughout now always opens as UTF-8.
 
 ## [1.6.13]
 
@@ -299,7 +304,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 - **Settings page reset its selected category** when you switched to another tab and back — the
   active category is now preserved.
 
-[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.13...HEAD
+[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.14...HEAD
+[1.6.14]: https://github.com/novapizza/novapad/compare/v1.6.13...v1.6.14
 [1.6.13]: https://github.com/novapizza/novapad/compare/v1.6.12...v1.6.13
 [1.6.12]: https://github.com/novapizza/novapad/compare/v1.6.11...v1.6.12
 [1.6.11]: https://github.com/novapizza/novapad/compare/v1.6.10...v1.6.11

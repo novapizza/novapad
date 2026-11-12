@@ -32,6 +32,36 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.14',
+    summary: (
+      <>
+        Two fixes: <strong>Restart &amp; update</strong> works on the first click on macOS, and large UTF-8
+        files no longer open with garbled characters.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'One-click updates on macOS',
+        body: (
+          <>
+            <strong>Restart &amp; update</strong> now installs the new version on the first click. Before, the app
+            only hid its window, so you had to click several times.
+          </>
+        )
+      },
+      {
+        title: 'Large UTF-8 files open correctly',
+        body: (
+          <>
+            Files whose first accented or non-Latin character sits deep in the file, such as large CSV exports,
+            were sometimes read as Western (ISO-8859-1) and showed garbled characters in the editor and the CSV
+            preview. A file that is valid UTF-8 throughout now always opens as UTF-8.
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.6.13',
     summary: (
       <>
@@ -59,15 +89,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
           <>
             The preview now waits for a short pause in typing before it re-renders, so long documents no longer
             slow the editor down.
-          </>
-        )
-      },
-      {
-        title: 'One-click updates on macOS',
-        body: (
-          <>
-            <strong>Restart &amp; update</strong> now installs the new version on the first click. Before, the app
-            only hid its window, so you had to click several times.
           </>
         )
       }
