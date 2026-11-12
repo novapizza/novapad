@@ -14,9 +14,26 @@ export function registerFileHandlers(): void {
   ipcMain.handle('file:read', async (_event, filePath: string) => {
     try {
       const raw = await fs.promises.readFile(filePath)
-      const sample = raw.subarray(0, Math.min(raw.length, 65536))
-      const encoding = chardet.detect(sample) || 'UTF-8'
-      const content = iconv.decode(raw, encoding)
+      // Prefer UTF-8 whenever the whole file is valid UTF-8. chardet only sees the
+      // first 64KB, so a file whose first non-ASCII byte sits past that point (e.g.
+      // large CSV exports) was misdetected as ISO-8859-1 and rendered as mojibake.
+      // Skip the shortcut when NUL bytes are present: BOM-less UTF-16 text is
+      // technically valid UTF-8, so leave that case to chardet.
+      let encoding: string | null = null
+      let content: string | null = null
+      if (!raw.includes(0)) {
+        try {
+          content = new TextDecoder('utf-8', { fatal: true }).decode(raw)
+          encoding = 'UTF-8'
+        } catch {
+          // not valid UTF-8 -- fall through to chardet
+        }
+      }
+      if (content === null || encoding === null) {
+        const sample = raw.subarray(0, Math.min(raw.length, 65536))
+        encoding = chardet.detect(sample) || 'UTF-8'
+        content = iconv.decode(raw, encoding)
+      }
       const stats = await fs.promises.stat(filePath)
       const eol = content.includes('\r\n') ? 'CRLF' : content.includes('\r') ? 'CR' : 'LF'
       // BOM detection: a faithful save needs to re-emit the BOM if the original
