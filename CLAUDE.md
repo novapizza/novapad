@@ -110,11 +110,19 @@ session noise.
 
 ## E2E Testing (Playwright + Test Agents)
 
-> **Temporarily disabled (2026-10-20).** The E2E suite is paused during the Nova Suite redesign
-> (`feat/nova-logo`): many specs assert the pre-redesign chrome, and several (e.g. `seed.spec.ts`
-> expecting `menubar`) assume Windows and fail on macOS. Do not run it as a gate or block commits
-> on it; verify with `npm run build` and manual / screenshot checks instead. Re-enable once the
-> specs are updated for the new UI.
+Unit tests (`tests/unit/`, vitest, node env) cover pure logic: `pnpm test:unit`. E2E covers what
+needs the real app. Every E2E test pays an Electron launch (~3–4 s), so:
+
+- **One test per user flow, not per assertion.** Add a `test.step` to an existing test that already
+  has the setup before writing a new test. Pure logic (parsers, formatters, sorting) goes to vitest —
+  extract it into a React/electron-free module under `src/**/utils/` if needed.
+- **Always use `tests/fixtures.ts`** — never a local `base.extend` / `electron.launch`. Each test gets
+  one app with its own temp userData dir (config, notes, plugins and session never touch the real
+  profile) and a seeded Untitled buffer. Per-file options: `test.use({ app: { seedBuffer, config,
+  restoreSession, args } })`. Multi-launch tests: `makeUserDataDir()` + `launchApp()`.
+- **No real clipboard** (empty under the runner): use `clipboardEvent` / `pasteIntoEditor` /
+  `setEditorText`. Use `MOD` for Ctrl/Cmd and `IS_MAC` for platform skips.
+- A test that fails because the app is wrong is marked `test.fixme(...)` with the reason — not weakened.
 
 ### Test Agents workflow (run once to initialize)
 ```bash
@@ -128,7 +136,8 @@ Then invoke agents via Claude Code prompts:
 ### Architecture
 - Tests launch built app (`out/main/index.js`) — always build first
 - `E2E_TEST=1` env var bypasses close handler in `src/main/index.ts`
-- Session restore is disabled in E2E mode — each test starts clean
+- Session restore and argv files are skipped in E2E mode — each test starts clean
+  (`app: { restoreSession: true }` drops `E2E_TEST` when a test needs them)
 - `workers: 1` — one Electron instance at a time
 - `testDir: ./tests` — Generator agent writes tests here
 

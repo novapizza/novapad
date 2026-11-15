@@ -1,8 +1,7 @@
 import { app } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
-
-const RECENT_MAX = 15
+import { mergeRecents } from './recentList'
 
 function getRecentPath(): string {
   return path.join(app.getPath('userData'), 'config', 'recentFiles.json')
@@ -27,7 +26,7 @@ export function saveRecents(files: string[]): void {
 
 export function addRecent(filePath: string): string[] {
   const current = loadRecents()
-  const updated = [filePath, ...current.filter((f) => f !== filePath)].slice(0, RECENT_MAX)
+  const updated = mergeRecents(current, filePath)
   saveRecents(updated)
   return updated
 }

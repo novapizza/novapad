@@ -1,8 +1,8 @@
-import { test, expect, Page } from '@playwright/test'
+import { test, expect, launchApp, makeUserDataDir } from './fixtures'
+import type { Page } from 'playwright'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
-import { freshUserDataDir, launchIsolated, seedSession } from './whats-new-helpers'
 
 /**
  * Cold launch with a file on argv (Explorer double-click / "Open with NovaPad")
@@ -12,7 +12,21 @@ import { freshUserDataDir, launchIsolated, seedSession } from './whats-new-helpe
  * file the user opened, and opened a second tab for a file that was already in
  * the session. Main now sends session:restore before menu:file-open and the
  * renderer opens the file only after the restore settles.
+ *
+ * Each test needs its own argv launch, so they use launchApp() rather than the shared fixtures.
  */
+
+/** Fresh userData dir with session.json seeded (layout used by SessionManager). */
+function userDataWithSession(session: Record<string, unknown>): string {
+  const dir = makeUserDataDir()
+  fs.writeFileSync(path.join(dir, 'config', 'session.json'), JSON.stringify(session, null, 2), 'utf8')
+  return dir
+}
+
+function cleanup(userDataDir: string, files: string[]): void {
+  for (const f of files) { try { fs.unlinkSync(f) } catch { /* ignore */ } }
+  fs.rmSync(userDataDir, { recursive: true, force: true, maxRetries: 3 })
+}
 
 function makeTempTextFile(tag: string): string {
   const fp = path.join(os.tmpdir(), `novapad-coldopen-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.txt`)
@@ -44,28 +58,26 @@ test('file passed on cold launch takes focus over the restored session', async (
   const a = makeTempTextFile('a')
   const b = makeTempTextFile('b')
   const target = makeTempTextFile('target')
-  const userDataDir = freshUserDataDir()
   // Session's own active tab is A — the restore must not win over the argv file.
-  seedSession(userDataDir, sessionWith([a, b], 0))
+  const userDataDir = userDataWithSession(sessionWith([a, b], 0))
 
-  const { app, page } = await launchIsolated({ userDataDir, skipSessionRestore: false, extraArgs: [target] })
+  const { app, page } = await launchApp(userDataDir, { restoreSession: true, args: [target] })
   try {
     await expect.poll(() => fileTabTitles(page)).toEqual([path.basename(a), path.basename(b), path.basename(target)])
     await expect.poll(() => activeTitle(page)).toBe(path.basename(target))
   } finally {
     await app.close()
-    for (const f of [a, b, target]) { try { fs.unlinkSync(f) } catch { /* ignore */ } }
+    cleanup(userDataDir, [a, b, target])
   }
 })
 
 test('file already in the restored session is focused, not opened twice', async () => {
   const a = makeTempTextFile('a')
   const b = makeTempTextFile('b')
-  const userDataDir = freshUserDataDir()
   // Session's active tab is B; the user double-clicks A.
-  seedSession(userDataDir, sessionWith([a, b], 1))
+  const userDataDir = userDataWithSession(sessionWith([a, b], 1))
 
-  const { app, page } = await launchIsolated({ userDataDir, skipSessionRestore: false, extraArgs: [a] })
+  const { app, page } = await launchApp(userDataDir, { restoreSession: true, args: [a] })
   try {
     await expect.poll(() => activeTitle(page)).toBe(path.basename(a))
     // Give a duplicate the chance to appear before asserting there is none.
@@ -73,7 +85,7 @@ test('file already in the restored session is focused, not opened twice', async 
     expect(await fileTabTitles(page)).toEqual([path.basename(a), path.basename(b)])
   } finally {
     await app.close()
-    for (const f of [a, b]) { try { fs.unlinkSync(f) } catch { /* ignore */ } }
+    cleanup(userDataDir, [a, b])
   }
 })
 
@@ -81,18 +93,17 @@ test('Windows: same file with different path casing reuses the open tab', async 
   test.skip(process.platform !== 'win32', 'Windows paths are case-insensitive; POSIX paths are not')
   const a = makeTempTextFile('a')
   const b = makeTempTextFile('b')
-  const userDataDir = freshUserDataDir()
-  seedSession(userDataDir, sessionWith([a, b], 1))
+  const userDataDir = userDataWithSession(sessionWith([a, b], 1))
 
   // Same file, lower-cased and with forward slashes.
   const aVariant = a.toLowerCase().replace(/\\/g, '/')
-  const { app, page } = await launchIsolated({ userDataDir, skipSessionRestore: false, extraArgs: [aVariant] })
+  const { app, page } = await launchApp(userDataDir, { restoreSession: true, args: [aVariant] })
   try {
     await expect.poll(() => activeTitle(page)).toBe(path.basename(a))
     await page.waitForTimeout(500)
     expect(await fileTabTitles(page)).toEqual([path.basename(a), path.basename(b)])
   } finally {
     await app.close()
-    for (const f of [a, b]) { try { fs.unlinkSync(f) } catch { /* ignore */ } }
+    cleanup(userDataDir, [a, b])
   }
 })

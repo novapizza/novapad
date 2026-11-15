@@ -3,8 +3,19 @@
   "compilerOptions": {
     "composite": false,
     "outDir": "out/e2e",
-    "rootDir": "."
+    "rootDir": ".",
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ]
   },
-  "include": ["tests/**/*", "playwright.config.ts"],
-  "exclude": ["src/**/*", "node_modules"]
+  "include": [
+    "tests/**/*",
+    "playwright.config.ts"
+  ],
+  "exclude": [
+    "src/**/*",
+    "node_modules"
+  ]
 }

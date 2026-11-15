@@ -1,24 +1,17 @@
-import { test, expect } from './fixtures'
+import { test, expect, IS_MAC } from './fixtures'
 
-test('app launches and shows editor', async ({ page }) => {
-  await expect(page.locator('[data-testid="app"]')).toBeVisible()
-  await expect(page.locator('[data-testid="menubar"]')).toBeVisible()
-  await expect(page.locator('[data-testid="toolbar"]')).toBeVisible()
-  await expect(page.locator('[data-testid="tabbar"]')).toBeVisible()
-  await expect(page.locator('[data-testid="editor-pane"]')).toBeVisible()
-  await expect(page.locator('[data-testid="statusbar"]')).toBeVisible()
+// Smoke test: the app shell renders with one Untitled tab and nothing else open.
+test('app launches with the editor ready and side panels hidden', async ({ page }) => {
+  for (const id of ['app', 'toolbar', 'tabbar', 'editor-pane', 'statusbar']) {
+    await expect(page.getByTestId(id)).toBeVisible()
+  }
+  // The in-window MenuBar is Windows/Linux only; macOS uses the native menu.
+  if (IS_MAC) await expect(page.getByTestId('menubar')).toHaveCount(0)
+  else await expect(page.getByTestId('menubar')).toBeVisible()
+
   await expect(page.locator('.monaco-editor')).toBeVisible()
-})
-
-test('default tab is new 1 and editor is ready', async ({ page }) => {
   await expect(page.locator('[data-tab-title="new 1"]')).toBeVisible()
-  await expect(page.locator('[data-testid="cursor-position"]')).toContainText('Ln 1, Col 1')
-})
-
-test('sidebar is hidden on startup', async ({ page }) => {
-  await expect(page.locator('[data-testid="sidebar"]')).not.toBeVisible()
-})
-
-test('bottom panel is hidden on startup', async ({ page }) => {
-  await expect(page.locator('[data-testid="bottom-panel"]')).not.toBeVisible()
+  await expect(page.getByTestId('cursor-position')).toContainText('Ln 1, Col 1')
+  await expect(page.getByTestId('sidebar')).not.toBeVisible()
+  await expect(page.getByTestId('bottom-panel')).not.toBeVisible()
 })

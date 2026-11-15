@@ -12,6 +12,7 @@ import { useUIStore } from '../../store/uiStore'
 import { useFileOps } from '../../hooks/useFileOps'
 import { cn } from '../../lib/utils'
 import { fileManagerName } from '../../utils/platform'
+import { sortTreeEntries } from '../../utils/sortTreeEntries'
 
 interface TreeNode {
   name: string
@@ -32,11 +33,7 @@ function joinPath(dir: string, name: string): string {
 
 async function loadChildren(dirPath: string): Promise<TreeNode[]> {
   const entries = await window.api.file.listDir(dirPath)
-  return [...entries]
-    .sort((a, b) => {
-      if (a.isDir !== b.isDir) return a.isDir ? -1 : 1
-      return a.name.localeCompare(b.name)
-    })
+  return sortTreeEntries(entries)
     .map((e) => ({ name: e.name, path: e.path, isDir: e.isDir }))
 }
 

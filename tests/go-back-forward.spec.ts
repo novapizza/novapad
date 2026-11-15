@@ -1,319 +1,57 @@
-import { test, expect, Page } from '@playwright/test'
-import { _electron as electron, ElectronApplication } from 'playwright'
-import path from 'path'
 import fs from 'fs'
-import os from 'os'
+import path from 'path'
+import type { ElectronApplication, Page } from 'playwright'
+import { test, expect, sendIPC, tempDir, IS_MAC } from './fixtures'
 
-async function launchApp(): Promise<{ app: ElectronApplication; page: Page }> {
-  const app = await electron.launch({
-    args: [path.resolve(__dirname, '../out/main/index.js')],
-    env: { ...process.env, E2E_TEST: '1', NODE_ENV: 'test' },
-    timeout: 15_000,
-  })
-  const page = await app.firstWindow()
-  await page.waitForLoadState('domcontentloaded')
-  await page.waitForSelector('[data-testid="app"]', { timeout: 10_000 })
-  return { app, page }
-}
+/**
+ * Go Back / Forward navigation history (toolbar buttons, keyboard, mouse side buttons).
+ * No seeded Untitled buffer: the history must start empty with only real files involved.
+ */
+test.use({ app: { seedBuffer: false } })
 
 /** Write temp files and open them via the main-process file-open IPC. */
-async function seedFiles(app: ElectronApplication, page: Page, specs: Array<{ name: string; lines: number }>) {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gbf-'))
-  const paths = specs.map((s) => {
-    const p = path.join(tmp, s.name)
-    const content = Array.from({ length: s.lines }, (_, i) => `${s.name}-line-${i + 1}`).join('\n')
-    fs.writeFileSync(p, content)
+async function seedFiles(app: ElectronApplication, page: Page, names: string[]): Promise<string> {
+  const tmp = tempDir('gbf-')
+  const paths = names.map((name) => {
+    const p = path.join(tmp, name)
+    fs.writeFileSync(p, Array.from({ length: 50 }, (_, i) => `${name}-line-${i + 1}`).join('\n'))
     return p
   })
-  await app.evaluate(async ({ BrowserWindow }, ps) => {
-    const win = BrowserWindow.getAllWindows()[0]
-    win.webContents.send('menu:file-open', ps)
-  }, paths)
-  for (const s of specs) {
-    await page.waitForSelector(`[data-tab-title="${s.name}"]`, { timeout: 5_000 })
-  }
+  await sendIPC(app, 'menu:file-open', paths)
+  for (const name of names) await page.waitForSelector(`[data-tab-title="${name}"]`, { timeout: 5_000 })
   await page.waitForSelector('.monaco-editor textarea', { timeout: 5_000 })
   // Small settle — EditorPane's model-swap effect runs asynchronously.
   await page.waitForTimeout(200)
-  return { tmp, paths }
+  return tmp
 }
 
-/** Dispatch a Monaco cursor movement via editor.setPosition for deterministic jumps. */
-async function moveCursor(page: Page, line: number, column = 1) {
-  await page.evaluate(
-    ({ line: l, column: c }) => {
-      // `editorRegistry` is not on window; instead trigger the Monaco instance
-      // via its internal API by dispatching a custom event the editor doesn't
-      // listen for is useless. Use the goToLine action by calling Monaco's
-      // command registry if accessible. Fallback: click the editor and use
-      // keyboard to move. Simplest: dispatch a custom go-to-line event the app listens to.
-      window.dispatchEvent(new CustomEvent('editor:goto-line', { detail: { line: l, column: c } }))
-    },
-    { line, column }
-  )
-  await page.waitForTimeout(100)
+async function clickTab(page: Page, name: string): Promise<void> {
+  await page.locator(`[data-tab-title="${name}"]`).click()
+  await page.waitForTimeout(200)
 }
 
-const isMac = process.platform === 'darwin'
+const activeTab = (page: Page) => page.locator('[data-testid="active-tab"]')
 
 test.describe('Go Back / Forward', () => {
-  // ------------------------------------------------------------
-  // T1 — toolbar icons render in expected order
-  // ------------------------------------------------------------
-  test('Back/Forward icons are visible in the top strip', async () => {
-    const { app, page } = await launchApp()
-    try {
-      await expect(page.locator('[data-testid="nav-back"]')).toBeVisible()
-      await expect(page.locator('[data-testid="nav-forward"]')).toBeVisible()
+  test('initial state, tooltips, Settings adds no history', async ({ electronApp, page }) => {
+    const back = page.locator('[data-testid="nav-back"]')
+    const forward = page.locator('[data-testid="nav-forward"]')
+
+    await test.step('icons are visible in the top strip', async () => {
+      await expect(back).toBeVisible()
+      await expect(forward).toBeVisible()
       await expect(page.locator('[data-testid="settings-menu-trigger"]')).toBeVisible()
-    } finally {
-      await app.close()
-    }
-  })
+    })
 
-  // ------------------------------------------------------------
-  // T2 — disabled when stacks empty
-  // ------------------------------------------------------------
-  test('Back and Forward are disabled at launch (empty stacks)', async () => {
-    const { app, page } = await launchApp()
-    try {
-      await expect(page.locator('[data-testid="nav-back"]')).toBeDisabled()
-      await expect(page.locator('[data-testid="nav-forward"]')).toBeDisabled()
-    } finally {
-      await app.close()
-    }
-  })
+    await test.step('Back and Forward are disabled at launch (empty stacks)', async () => {
+      await expect(back).toBeDisabled()
+      await expect(forward).toBeDisabled()
+    })
 
-  // ------------------------------------------------------------
-  // T3 — tab-switch between two files enables Back
-  // ------------------------------------------------------------
-  test('Switching tabs enables Back and navigating returns to the previous file', async () => {
-    const { app, page } = await launchApp()
-    try {
-      const seeded = await seedFiles(app, page, [
-        { name: 'a.txt', lines: 50 },
-        { name: 'b.txt', lines: 50 },
-      ])
-      try {
-        // a.txt opened first, b.txt opened second and active. Click a to switch, then b again.
-        await page.locator('[data-tab-title="a.txt"]').click()
-        await page.waitForTimeout(200)
-        await page.locator('[data-tab-title="b.txt"]').click()
-        await page.waitForTimeout(200)
-
-        // Back is now enabled (tab-switch pushed an entry for a.txt).
-        await expect(page.locator('[data-testid="nav-back"]')).toBeEnabled()
-
-        // Click Back → should return to a.txt.
-        await page.locator('[data-testid="nav-back"]').click()
-        await page.waitForTimeout(300)
-
-        const active = await page.locator('[data-testid="active-tab"]').getAttribute('data-tab-title')
-        expect(active).toBe('a.txt')
-        await expect(page.locator('[data-testid="nav-forward"]')).toBeEnabled()
-      } finally {
-        fs.rmSync(seeded.tmp, { recursive: true, force: true })
-      }
-    } finally {
-      await app.close()
-    }
-  })
-
-  // ------------------------------------------------------------
-  // T4 — Forward returns after Back
-  // ------------------------------------------------------------
-  test('Forward returns to the location Back came from', async () => {
-    const { app, page } = await launchApp()
-    try {
-      const seeded = await seedFiles(app, page, [
-        { name: 'a.txt', lines: 50 },
-        { name: 'b.txt', lines: 50 },
-      ])
-      try {
-        await page.locator('[data-tab-title="a.txt"]').click()
-        await page.waitForTimeout(200)
-        await page.locator('[data-tab-title="b.txt"]').click()
-        await page.waitForTimeout(200)
-        await page.locator('[data-testid="nav-back"]').click()
-        await page.waitForTimeout(300)
-        await page.locator('[data-testid="nav-forward"]').click()
-        await page.waitForTimeout(300)
-
-        const active = await page.locator('[data-testid="active-tab"]').getAttribute('data-tab-title')
-        expect(active).toBe('b.txt')
-        await expect(page.locator('[data-testid="nav-forward"]')).toBeDisabled()
-      } finally {
-        fs.rmSync(seeded.tmp, { recursive: true, force: true })
-      }
-    } finally {
-      await app.close()
-    }
-  })
-
-  // ------------------------------------------------------------
-  // T5/T6 — keyboard shortcut (platform-appropriate)
-  // ------------------------------------------------------------
-  test('Keyboard shortcut triggers Back and Forward', async () => {
-    const { app, page } = await launchApp()
-    try {
-      const seeded = await seedFiles(app, page, [
-        { name: 'a.txt', lines: 50 },
-        { name: 'b.txt', lines: 50 },
-      ])
-      try {
-        await page.locator('[data-tab-title="a.txt"]').click()
-        await page.waitForTimeout(200)
-        await page.locator('[data-tab-title="b.txt"]').click()
-        await page.waitForTimeout(200)
-        // Focus Monaco.
-        await page.locator('.monaco-editor textarea').first().focus()
-
-        const backKey = isMac ? 'Control+-' : 'Alt+ArrowLeft'
-        const forwardKey = isMac ? 'Control+Shift+-' : 'Alt+ArrowRight'
-
-        await page.keyboard.press(backKey)
-        await page.waitForTimeout(300)
-        let active = await page.locator('[data-testid="active-tab"]').getAttribute('data-tab-title')
-        expect(active).toBe('a.txt')
-
-        await page.keyboard.press(forwardKey)
-        await page.waitForTimeout(300)
-        active = await page.locator('[data-testid="active-tab"]').getAttribute('data-tab-title')
-        expect(active).toBe('b.txt')
-      } finally {
-        fs.rmSync(seeded.tmp, { recursive: true, force: true })
-      }
-    } finally {
-      await app.close()
-    }
-  })
-
-  // ------------------------------------------------------------
-  // T7/T8 — mouse side buttons
-  // ------------------------------------------------------------
-  test('Mouse side buttons (button 3/4) trigger Back/Forward', async () => {
-    const { app, page } = await launchApp()
-    try {
-      const seeded = await seedFiles(app, page, [
-        { name: 'a.txt', lines: 50 },
-        { name: 'b.txt', lines: 50 },
-      ])
-      try {
-        await page.locator('[data-tab-title="a.txt"]').click()
-        await page.waitForTimeout(200)
-        await page.locator('[data-tab-title="b.txt"]').click()
-        await page.waitForTimeout(200)
-
-        // Dispatch a mouseup with button 3 on documentElement.
-        await page.evaluate(() => {
-          const ev = new MouseEvent('mouseup', { bubbles: true, cancelable: true, button: 3 })
-          document.documentElement.dispatchEvent(ev)
-        })
-        await page.waitForTimeout(300)
-        let active = await page.locator('[data-testid="active-tab"]').getAttribute('data-tab-title')
-        expect(active).toBe('a.txt')
-
-        await page.evaluate(() => {
-          const ev = new MouseEvent('mouseup', { bubbles: true, cancelable: true, button: 4 })
-          document.documentElement.dispatchEvent(ev)
-        })
-        await page.waitForTimeout(300)
-        active = await page.locator('[data-testid="active-tab"]').getAttribute('data-tab-title')
-        expect(active).toBe('b.txt')
-      } finally {
-        fs.rmSync(seeded.tmp, { recursive: true, force: true })
-      }
-    } finally {
-      await app.close()
-    }
-  })
-
-  // ------------------------------------------------------------
-  // T14 — Settings tab does not pollute history
-  // ------------------------------------------------------------
-  test('Opening and closing Settings does not add back entries', async () => {
-    const { app, page } = await launchApp()
-    try {
-      const seeded = await seedFiles(app, page, [{ name: 'only.txt', lines: 20 }])
-      try {
-        // Back must be disabled — only one file, never switched away from it.
-        await expect(page.locator('[data-testid="nav-back"]')).toBeDisabled()
-
-        // Open Settings.
-        await page.locator('[data-testid="settings-menu-trigger"]').click()
-        await page.locator('[data-testid="settings-menu-settings"]').click()
-        await page.waitForTimeout(200)
-        await expect(page.locator('[data-testid="settings-tab"]')).toBeVisible()
-
-        // Settings is active; nav-back should remain disabled because the
-        // tab-switch push guards on kind === 'file' for BOTH source and dest.
-        await expect(page.locator('[data-testid="nav-back"]')).toBeDisabled()
-
-        // Switch back to the file.
-        await page.locator('[data-tab-title="only.txt"]').click()
-        await page.waitForTimeout(200)
-
-        // Still disabled: switching FROM a virtual tab doesn't push either.
-        await expect(page.locator('[data-testid="nav-back"]')).toBeDisabled()
-      } finally {
-        fs.rmSync(seeded.tmp, { recursive: true, force: true })
-      }
-    } finally {
-      await app.close()
-    }
-  })
-
-  // ------------------------------------------------------------
-  // T15 — closed-buffer skip
-  // ------------------------------------------------------------
-  test('Closed-tab entries are skipped during Back', async () => {
-    const { app, page } = await launchApp()
-    try {
-      const seeded = await seedFiles(app, page, [
-        { name: 'a.txt', lines: 50 },
-        { name: 'b.txt', lines: 50 },
-        { name: 'c.txt', lines: 50 },
-      ])
-      try {
-        // Cycle through tabs to produce two back entries (b and a).
-        await page.locator('[data-tab-title="a.txt"]').click()
-        await page.waitForTimeout(150)
-        await page.locator('[data-tab-title="b.txt"]').click()
-        await page.waitForTimeout(150)
-        await page.locator('[data-tab-title="c.txt"]').click()
-        await page.waitForTimeout(150)
-
-        // Close b.txt via its close button.
-        const bTab = page.locator('[data-tab-title="b.txt"]').first()
-        await bTab.hover()
-        await bTab.locator('button').click()
-        await page.waitForTimeout(150)
-
-        // Now click Back — should skip the stale b entry and land on a.
-        await page.locator('[data-testid="nav-back"]').click()
-        await page.waitForTimeout(300)
-        const active = await page.locator('[data-testid="active-tab"]').getAttribute('data-tab-title')
-        expect(active).toBe('a.txt')
-      } finally {
-        fs.rmSync(seeded.tmp, { recursive: true, force: true })
-      }
-    } finally {
-      await app.close()
-    }
-  })
-
-  // ------------------------------------------------------------
-  // T18 — tooltip text per platform
-  // ------------------------------------------------------------
-  test('Back/Forward tooltips use the platform modifier', async () => {
-    const { app, page } = await launchApp()
-    try {
-      const back = page.locator('[data-testid="nav-back"]')
-      const forward = page.locator('[data-testid="nav-forward"]')
+    await test.step('tooltips use the platform modifier', async () => {
       const backTitle = (await back.getAttribute('title')) ?? ''
       const forwardTitle = (await forward.getAttribute('title')) ?? ''
-
-      if (isMac) {
+      if (IS_MAC) {
         expect(backTitle).toContain('⌃')
         expect(forwardTitle).toContain('⌃⇧')
         expect(backTitle).not.toContain('Alt')
@@ -322,22 +60,87 @@ test.describe('Go Back / Forward', () => {
         expect(forwardTitle).toContain('Alt+Right')
         expect(backTitle).not.toContain('⌃')
       }
+    })
+
+    await test.step('opening and closing Settings does not add back entries', async () => {
+      const tmp = await seedFiles(electronApp, page, ['only.txt'])
+      try {
+        await expect(back).toBeDisabled()
+        await page.locator('[data-testid="settings-menu-trigger"]').click()
+        await page.locator('[data-testid="settings-menu-settings"]').click()
+        await expect(page.locator('[data-testid="settings-tab"]')).toBeVisible()
+        // The tab-switch push guards on kind === 'file' for BOTH source and destination.
+        await expect(back).toBeDisabled()
+        await clickTab(page, 'only.txt')
+        // Still disabled: switching FROM a virtual tab doesn't push either.
+        await expect(back).toBeDisabled()
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true })
+      }
+    })
+  })
+
+  test('Back/Forward via button, keyboard, mouse', async ({ electronApp, page }) => {
+    const back = page.locator('[data-testid="nav-back"]')
+    const forward = page.locator('[data-testid="nav-forward"]')
+    const tmp = await seedFiles(electronApp, page, ['a.txt', 'b.txt'])
+    try {
+      await test.step('switching tabs enables Back; Back returns to the previous file', async () => {
+        await clickTab(page, 'a.txt')
+        await clickTab(page, 'b.txt')
+        await expect(back).toBeEnabled()
+        await back.click()
+        await expect(activeTab(page)).toHaveAttribute('data-tab-title', 'a.txt')
+        await expect(forward).toBeEnabled()
+      })
+
+      await test.step('Forward returns to the location Back came from', async () => {
+        await forward.click()
+        await expect(activeTab(page)).toHaveAttribute('data-tab-title', 'b.txt')
+        await expect(forward).toBeDisabled()
+      })
+
+      await test.step('keyboard shortcut triggers Back and Forward', async () => {
+        await page.locator('.monaco-editor textarea').first().focus()
+        await page.keyboard.press(IS_MAC ? 'Control+-' : 'Alt+ArrowLeft')
+        await expect(activeTab(page)).toHaveAttribute('data-tab-title', 'a.txt')
+        await page.keyboard.press(IS_MAC ? 'Control+Shift+-' : 'Alt+ArrowRight')
+        await expect(activeTab(page)).toHaveAttribute('data-tab-title', 'b.txt')
+      })
+
+      await test.step('mouse side buttons (button 3/4) trigger Back/Forward', async () => {
+        const sideButton = (button: number) =>
+          page.evaluate((b) => {
+            document.documentElement.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, button: b }))
+          }, button)
+        await sideButton(3)
+        await expect(activeTab(page)).toHaveAttribute('data-tab-title', 'a.txt')
+        await sideButton(4)
+        await expect(activeTab(page)).toHaveAttribute('data-tab-title', 'b.txt')
+      })
     } finally {
-      await app.close()
+      fs.rmSync(tmp, { recursive: true, force: true })
     }
   })
 
-  // ------------------------------------------------------------
-  // T23 — no persistence across restart (trivially true under E2E_TEST=1,
-  // but we explicitly assert the state at launch)
-  // ------------------------------------------------------------
-  test('Stacks are empty on fresh launch', async () => {
-    const { app, page } = await launchApp()
+  test('Closed-tab entries are skipped during Back', async ({ electronApp, page }) => {
+    const tmp = await seedFiles(electronApp, page, ['a.txt', 'b.txt', 'c.txt'])
     try {
-      await expect(page.locator('[data-testid="nav-back"]')).toBeDisabled()
-      await expect(page.locator('[data-testid="nav-forward"]')).toBeDisabled()
+      // Cycle through tabs to produce two back entries (b and a).
+      await clickTab(page, 'a.txt')
+      await clickTab(page, 'b.txt')
+      await clickTab(page, 'c.txt')
+
+      const bTab = page.locator('[data-tab-title="b.txt"]').first()
+      await bTab.hover()
+      await bTab.locator('button').click()
+      await page.waitForTimeout(150)
+
+      // Back should skip the stale b entry and land on a.
+      await page.locator('[data-testid="nav-back"]').click()
+      await expect(activeTab(page)).toHaveAttribute('data-tab-title', 'a.txt')
     } finally {
-      await app.close()
+      fs.rmSync(tmp, { recursive: true, force: true })
     }
   })
 })

@@ -1,61 +1,67 @@
-import { test, expect } from './fixtures'
+import { test, expect, setEditorText, MOD, IS_MAC } from './fixtures'
 
-test.describe('Alt-key mnemonics (Windows)', () => {
-  test.skip(process.platform !== 'win32', 'Mnemonics are Windows-only')
+/**
+ * Alt-key mnemonics on Windows/Linux (usesAltMnemonics() is !isMacOS). macOS has no custom
+ * MenuBar and no mnemonics, so the whole file is skipped there.
+ */
+test.skip(IS_MAC, 'Alt mnemonics are Windows/Linux only')
 
-  test('Alt opens File menu', async ({ page }) => {
+test('MenuBar Alt mnemonics', async ({ page }) => {
+  const newFileItem = page.getByRole('button', { name: /^New File/ })
+
+  await test.step('Alt+F opens the File menu; Escape closes it', async () => {
     await page.keyboard.press('Alt+F')
-    const newFileItem = page.getByRole('button', { name: /^New File/ })
-    await expect(newFileItem).toBeVisible({ timeout: 2_000 })
+    await expect(newFileItem).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(newFileItem).not.toBeVisible({ timeout: 2_000 })
+    await expect(newFileItem).not.toBeVisible()
   })
 
-  test('Alt+S opens Search menu', async ({ page }) => {
+  await test.step('Alt+S opens the Search menu', async () => {
     await page.keyboard.press('Alt+S')
-    await expect(page.getByText('Find...', { exact: true })).toBeVisible({ timeout: 2_000 })
+    await expect(page.getByText('Find...', { exact: true })).toBeVisible()
     await page.keyboard.press('Escape')
   })
 
-  test('holding Alt renders underline markers in MenuBar', async ({ page }) => {
+  await test.step('holding Alt underlines the mnemonic letters', async () => {
     await page.keyboard.down('Alt')
-    const menubar = page.locator('[data-testid="menubar"]')
-    await expect(menubar.locator('u').first()).toBeVisible({ timeout: 2_000 })
+    await expect(page.getByTestId('menubar').locator('u').first()).toBeVisible()
     await page.keyboard.up('Alt')
   })
+})
 
-  test('Find dialog: Alt+C toggles Match case', async ({ page }) => {
-    await page.keyboard.press('Control+F')
-    const dialog = page.locator('[data-testid="menubar"]').or(page.getByText('Find Next ↓'))
-    await page.getByText('Find Next ↓').waitFor({ state: 'visible', timeout: 2_000 })
+test('Find dialog Alt mnemonics', async ({ page }) => {
+  const openFind = async () => {
+    await page.locator('.monaco-editor textarea').first().focus()
+    await page.keyboard.press(`${MOD}+F`)
+    await expect(page.getByText('Find Next ↓')).toBeVisible()
+  }
 
+  await test.step('Alt+C toggles Match case', async () => {
+    await openFind()
     const matchCase = page.locator('label', { hasText: 'Match case' }).locator('input[type="checkbox"]')
     const before = await matchCase.isChecked()
     await page.keyboard.press('Alt+C')
-    const after = await matchCase.isChecked()
-    expect(after).toBe(!before)
-
+    await expect(matchCase).toBeChecked({ checked: !before })
+    await page.keyboard.press('Alt+C') // restore, options persist across opens
     await page.keyboard.press('Escape')
   })
 
-  test('Find dialog: Alt+P switches to Replace tab; Alt+A triggers Replace All', async ({ page }) => {
-    await page.keyboard.press('Control+F')
-    await page.getByText('Find Next ↓').waitFor({ state: 'visible', timeout: 2_000 })
-
-    await page.keyboard.press('Alt+P')
-    await expect(page.getByText('Replace All', { exact: true })).toBeVisible({ timeout: 2_000 })
-
-    await page.keyboard.press('Escape')
-  })
-
-  test('Find dialog suppresses MenuBar mnemonics (Alt+F does not open File menu)', async ({ page }) => {
-    await page.keyboard.press('Control+F')
-    await page.getByText('Find Next ↓').waitFor({ state: 'visible', timeout: 2_000 })
-
+  await test.step('suppresses MenuBar mnemonics (Alt+F switches to the Find tab, not the File menu)', async () => {
+    await openFind()
     await page.keyboard.press('Alt+F')
-    const newFileItem = page.getByRole('button', { name: /^New File/ })
-    await expect(newFileItem).not.toBeVisible({ timeout: 1_000 })
+    await expect(page.getByRole('button', { name: /^New File/ })).not.toBeVisible()
+    await page.keyboard.press('Escape')
+  })
 
+  await test.step('Alt+P switches to the Replace tab and Alt+A runs Replace All', async () => {
+    await setEditorText(page, 'foo bar foo')
+    await openFind()
+    await page.keyboard.press('Alt+P')
+    await expect(page.getByText('Replace All', { exact: true })).toBeVisible()
+    await page.getByPlaceholder('Search pattern…').fill('foo')
+    await page.getByPlaceholder('Replacement text…').fill('baz')
+    await page.keyboard.press('Alt+A')
+    await expect(page.locator('.monaco-editor .view-lines')).toContainText('baz bar baz')
     await page.keyboard.press('Escape')
   })
 })
