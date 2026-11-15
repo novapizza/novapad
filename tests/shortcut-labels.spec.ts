@@ -1,86 +1,39 @@
-import { test, expect } from '@playwright/test'
-import { _electron as electron } from 'playwright'
-import path from 'path'
+import { test, expect, seedBuffer, IS_MAC } from './fixtures'
 
-async function launchApp() {
-  const app = await electron.launch({
-    args: [path.resolve(__dirname, '../out/main/index.js')],
-    env: { ...process.env, E2E_TEST: '1', NODE_ENV: 'test' },
-    timeout: 15_000,
+/**
+ * Shortcut labels use the platform modifier (⌘ on macOS, Ctrl elsewhere) on the Welcome screen,
+ * toolbar tooltips and the custom MenuBar. Starts on the Welcome screen, then seeds a buffer.
+ */
+test.use({ app: { seedBuffer: false } })
+
+const expectedMod = IS_MAC ? '⌘' : 'Ctrl'
+const wrongMod = IS_MAC ? 'Ctrl' : '⌘'
+
+test('shortcut labels use the platform modifier', async ({ electronApp, page }) => {
+  await test.step('Welcome screen hints', async () => {
+    // WelcomeScreen formats as "⌘N" on macOS, "Ctrl+N" elsewhere.
+    await expect(page.getByText(IS_MAC ? '⌘N' : 'Ctrl+N', { exact: true })).toBeVisible()
+    await expect(page.getByText(IS_MAC ? 'Ctrl+N' : '⌘N', { exact: true })).toHaveCount(0)
   })
-  const page = await app.firstWindow()
-  await page.waitForLoadState('domcontentloaded')
-  await page.waitForSelector('[data-testid="app"]', { timeout: 10_000 })
-  return { app, page }
-}
 
-const isMac = process.platform === 'darwin'
-const expectedMod = isMac ? '⌘' : 'Ctrl'
-const wrongMod = isMac ? 'Ctrl' : '⌘'
+  await seedBuffer(electronApp, page)
+  const toolbar = page.getByTestId('toolbar')
 
-test('Toolbar tooltip for the Save button uses the platform modifier', async () => {
-  const { app, page } = await launchApp()
-  try {
-    const toolbar = page.locator('[data-testid="toolbar"]')
-    await expect(toolbar).toBeVisible()
-
-    // The Save button is the 3rd button in the first group (File). Hover it to
-    // trigger the Radix tooltip, then assert the rendered tooltip text.
-    const saveBtn = toolbar.locator('button').nth(2)
-    await saveBtn.hover()
-    const tip = page.getByRole('tooltip')
-    await expect(tip).toBeVisible()
-    const tipText = (await tip.textContent()) ?? ''
-    expect(tipText, `Save tooltip should use platform modifier: "${tipText}"`).toContain(expectedMod)
-    expect(tipText).not.toContain(wrongMod)
-  } finally {
-    await app.close()
+  for (const name of ['Save', 'Find']) {
+    await test.step(`toolbar ${name} tooltip`, async () => {
+      await toolbar.getByRole('button', { name: new RegExp(`^${name} \\(`) }).hover()
+      const tip = page.getByRole('tooltip').filter({ hasText: new RegExp(`^${name} \\(`) })
+      await expect(tip).toBeVisible()
+      await expect(tip).toContainText(expectedMod)
+      await expect(tip).not.toContainText(wrongMod)
+      await page.keyboard.press('Escape') // Radix keeps the tooltip open until dismissed
+      await expect(tip).toHaveCount(0)
+    })
   }
-})
 
-test('Toolbar Find button tooltip also uses the platform modifier', async () => {
-  const { app, page } = await launchApp()
-  try {
-    const toolbar = page.locator('[data-testid="toolbar"]')
-    // Find = first button of Search group (8th overall, after 5 File + 2 Edit + 3 Clipboard = 10).
-    // Simpler: pick the button whose icon is lucide-search and that sits in the toolbar.
-    const findBtn = toolbar.locator('button', { has: page.locator('.lucide-search') })
-    await findBtn.first().hover()
-    const tip = page.getByRole('tooltip')
-    await expect(tip).toBeVisible()
-    const tipText = (await tip.textContent()) ?? ''
-    expect(tipText).toContain('Find')
-    expect(tipText).toContain(expectedMod)
-    expect(tipText).not.toContain(wrongMod)
-  } finally {
-    await app.close()
-  }
-})
-
-test('WelcomeScreen shortcut hints use the platform modifier', async () => {
-  const { app, page } = await launchApp()
-  try {
-    // WelcomeScreen renders by default when no buffers exist (E2E starts clean).
-    const newFileHint = page.getByText(/^[⌘Ctrl]+\s*N$/).first()
-    await expect(newFileHint).toBeVisible()
-    const text = (await newFileHint.textContent()) ?? ''
-    expect(text.trim()).toBe(`${expectedMod} N`)
-  } finally {
-    await app.close()
-  }
-})
-
-test('MenuBar dropdown shortcuts use the platform modifier (non-macOS only)', async () => {
-  // MenuBar is hidden on macOS — the native menu owns shortcuts there.
-  test.skip(isMac, 'MenuBar is not rendered on macOS')
-  const { app, page } = await launchApp()
-  try {
-    const menubar = page.locator('[data-testid="menubar"]')
-    await expect(menubar).toBeVisible()
-    await menubar.getByRole('button', { name: 'File' }).click()
-    // File menu's "New File" row shows its shortcut label.
-    await expect(page.getByText(`${expectedMod}+N`).first()).toBeVisible()
-  } finally {
-    await app.close()
-  }
+  await test.step('MenuBar dropdown shortcuts (Win/Linux only; native menu on macOS)', async () => {
+    if (IS_MAC) return
+    await page.getByTestId('menubar').getByRole('button', { name: 'File', exact: true }).click()
+    await expect(page.getByRole('button', { name: /^New File/ })).toContainText(`${expectedMod}+N`)
+  })
 })

@@ -209,7 +209,7 @@ async function beautifySql(text: string, indent: string, language?: string | nul
 
   try {
     return prettyPrintSql(sqlSource, {
-      language: sqlDialect(language) as Parameters<typeof prettyPrintSql>[1]['language'],
+      language: sqlDialect(language) as NonNullable<Parameters<typeof prettyPrintSql>[1]>['language'],
       tabWidth: indent.length || 2,
       useTabs: indent.startsWith('\t'),
       keywordCase: 'upper',

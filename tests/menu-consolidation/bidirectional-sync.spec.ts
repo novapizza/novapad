@@ -1,219 +1,135 @@
-// spec: specs/menu-consolidation.md
-// suite: 6. Bidirectional State Sync — Native Menu → Renderer
-// seed: tests/ui-redesign.spec.ts
+import { test, expect, sendIPC } from '../fixtures'
 
-import { test as base, expect } from '@playwright/test'
-import { _electron as electron, ElectronApplication } from 'playwright'
-import path from 'path'
+/**
+ * Native menu <-> renderer state sync (specs/menu-consolidation.md suite 6, plus the Explorer
+ * toggle from the former quickstrip.spec.ts). Native menu items fire IPC; renderer toggles report
+ * back over `ui:state-changed` so the native checkbox follows.
+ */
 
-const test = base.extend<{ electronApp: ElectronApplication; page: import('@playwright/test').Page }>({
-  electronApp: async ({}, use) => {
-    const app = await electron.launch({
-      args: [path.resolve(__dirname, '../../out/main/index.js')],
-      env: { ...process.env, E2E_TEST: '1', NODE_ENV: 'test' },
-      timeout: 15_000,
-    })
-    await use(app)
-    await app.close()
-  },
-  page: async ({ electronApp }, use) => {
-    const page = await electronApp.firstWindow()
-    await page.waitForSelector('[data-testid="app"]', { timeout: 10_000 })
-    await use(page)
-  },
+test('native toggle IPCs show and hide chrome and switch theme', async ({ electronApp, page }) => {
+  const toolbar = page.getByTestId('toolbar')
+  const statusbar = page.getByTestId('statusbar')
+  const sidebar = page.getByTestId('sidebar')
+  const html = page.locator('html')
+
+  await test.step("'ui:toggle-toolbar' hides and restores the toolbar", async () => {
+    await expect(toolbar).toBeVisible()
+    await sendIPC(electronApp, 'ui:toggle-toolbar', false)
+    await expect(toolbar).not.toBeVisible()
+    await sendIPC(electronApp, 'ui:toggle-toolbar', true)
+    await expect(toolbar).toBeVisible()
+  })
+
+  await test.step("'ui:toggle-statusbar' hides and restores the status bar", async () => {
+    await expect(statusbar).toBeVisible()
+    await sendIPC(electronApp, 'ui:toggle-statusbar', false)
+    await expect(statusbar).not.toBeVisible()
+    await sendIPC(electronApp, 'ui:toggle-statusbar', true)
+    await expect(statusbar).toBeVisible()
+  })
+
+  await test.step("'ui:toggle-sidebar' shows and hides the sidebar", async () => {
+    await expect(sidebar).not.toBeVisible()
+    await sendIPC(electronApp, 'ui:toggle-sidebar', true)
+    await expect(sidebar).toBeVisible()
+    await sendIPC(electronApp, 'ui:toggle-sidebar', false)
+    await expect(sidebar).not.toBeVisible()
+  })
+
+  await test.step("app starts dark; 'ui:toggle-theme' flips to light and back", async () => {
+    await expect(html).toHaveClass(/\bdark\b/)
+    await sendIPC(electronApp, 'ui:toggle-theme')
+    await expect(html).not.toHaveClass(/\bdark\b/)
+    await sendIPC(electronApp, 'ui:toggle-theme')
+    await expect(html).toHaveClass(/\bdark\b/)
+  })
 })
 
-async function sendIPC(electronApp: ElectronApplication, channel: string, ...args: unknown[]) {
-  await electronApp.evaluate(
-    ({ BrowserWindow }, { ch, a }) =>
-      BrowserWindow.getAllWindows()[0].webContents.send(ch, ...(a as unknown[])),
-    { ch: channel, a: args }
-  )
-}
+test('Explorer toggle button syncs the native "toggle-sidebar" checkbox', async ({ electronApp, page }) => {
+  // QuickStrip on macOS, MenuBar elsewhere — both render this button with the same titles.
+  const toggle = page.getByTitle(/^(Show|Hide) Explorer$/)
+  const sidebar = page.getByTestId('sidebar')
+  const nativeChecked = () =>
+    electronApp.evaluate(({ Menu }) => Menu.getApplicationMenu()?.getMenuItemById('toggle-sidebar')?.checked)
 
-test.describe('6. Bidirectional State Sync — Native Menu → Renderer', () => {
-
-  test("6.1 'ui:toggle-toolbar' IPC with false hides the toolbar", async ({ electronApp, page }) => {
-    // 1. Assert [data-testid="toolbar"] is visible (showToolbar defaults to true)
-    await expect(page.locator('[data-testid="toolbar"]')).toBeVisible()
-
-    // 2. Send IPC 'ui:toggle-toolbar' with false
-    // setShowToolbar(false, fromMain=true) suppresses redundant syncToggleToMain to prevent infinite loops
-    await sendIPC(electronApp, 'ui:toggle-toolbar', false)
-    await page.locator('[data-testid="toolbar"]').waitFor({ state: 'hidden', timeout: 2_000 })
-
-    // expect: [data-testid="toolbar"] becomes hidden
-    await expect(page.locator('[data-testid="toolbar"]')).not.toBeVisible()
-
-    // 3. Restore by sending 'ui:toggle-toolbar' with true
-    await sendIPC(electronApp, 'ui:toggle-toolbar', true)
-    await page.locator('[data-testid="toolbar"]').waitFor({ state: 'visible', timeout: 2_000 })
-
-    // expect: [data-testid="toolbar"] becomes visible again
-    await expect(page.locator('[data-testid="toolbar"]')).toBeVisible()
+  await test.step('opens the sidebar; title flips Show -> Hide', async () => {
+    await expect(toggle).toHaveAttribute('title', 'Show Explorer')
+    await toggle.click()
+    await expect(sidebar).toBeVisible()
+    await expect(toggle).toHaveAttribute('title', 'Hide Explorer')
   })
 
-  test("6.2 'ui:toggle-statusbar' IPC hides and restores the status bar", async ({ electronApp, page }) => {
-    // 1. Send 'menu:file-new' IPC to create a buffer so the status bar renders
-    await sendIPC(electronApp, 'menu:file-new')
-    await page.waitForSelector('.monaco-editor textarea', { timeout: 10_000 })
-    await expect(page.locator('[data-testid="statusbar"]')).toBeVisible()
-
-    // 2. Send IPC 'ui:toggle-statusbar' with false
-    await sendIPC(electronApp, 'ui:toggle-statusbar', false)
-    await page.locator('[data-testid="statusbar"]').waitFor({ state: 'hidden', timeout: 2_000 })
-
-    // expect: [data-testid="statusbar"] becomes hidden
-    await expect(page.locator('[data-testid="statusbar"]')).not.toBeVisible()
-
-    // 3. Send IPC 'ui:toggle-statusbar' with true
-    await sendIPC(electronApp, 'ui:toggle-statusbar', true)
-    await page.locator('[data-testid="statusbar"]').waitFor({ state: 'visible', timeout: 2_000 })
-
-    // expect: [data-testid="statusbar"] reappears
-    await expect(page.locator('[data-testid="statusbar"]')).toBeVisible()
+  await test.step('closing it unchecks the native item', async () => {
+    await toggle.click()
+    await expect(sidebar).not.toBeVisible()
+    await expect(toggle).toHaveAttribute('title', 'Show Explorer')
+    await expect.poll(nativeChecked).toBe(false)
   })
 
-  test("6.3 'ui:toggle-sidebar' IPC with true shows the sidebar", async ({ electronApp, page }) => {
-    // 1. Confirm [data-testid="sidebar"] is not visible
-    await expect(page.locator('[data-testid="sidebar"]')).not.toBeVisible()
-
-    // 2. Send IPC 'ui:toggle-sidebar' with true
-    await sendIPC(electronApp, 'ui:toggle-sidebar', true)
-    await page.locator('[data-testid="sidebar"]').waitFor({ state: 'visible', timeout: 2_000 })
-
-    // expect: [data-testid="sidebar"] becomes visible
-    await expect(page.locator('[data-testid="sidebar"]')).toBeVisible()
+  await test.step('reopening it checks the native item', async () => {
+    await toggle.click()
+    await expect(sidebar).toBeVisible()
+    await expect.poll(nativeChecked).toBe(true)
   })
+})
 
-  test('6.4 Renderer toggle syncs to native menu checkbox via ui:state-changed IPC', async ({ electronApp, page }) => {
-    // The toggle-sidebar menu item is initialized with checked: true in menu.ts, but the
-    // renderer's showSidebar starts as false and doesn't sync to the menu on startup.
-    // We must perform at least one toggle to establish a known synced state before asserting.
+test('menu IPCs open Find & Replace on the right tab, and About', async ({ electronApp, page }) => {
+  const dialog = page.locator('.fixed.z-\\[9001\\]')
+  const title = page.getByText('Find & Replace')
+  const tab = (name: RegExp) => dialog.locator('button').filter({ hasText: name }).first()
 
-    // Step A: Make sure the sidebar is OPEN first (click if it's currently closed)
-    const isVisible = await page.locator('[data-testid="sidebar"]').isVisible()
-    if (!isVisible) {
-      await page.locator('[data-testid="quickstrip-sidebar"]').click()
-      await page.locator('[data-testid="sidebar"]').waitFor({ state: 'visible', timeout: 2_000 })
-    }
-
-    // Step B: Now close the sidebar — this sends syncToggleToMain('showSidebar', false) → menu checked=false
-    await page.locator('[data-testid="quickstrip-sidebar"]').click()
-    await page.locator('[data-testid="sidebar"]').waitFor({ state: 'hidden', timeout: 2_000 })
-
-    // 1. Read native menu item — should now be false (just synced from renderer)
-    const initialChecked = await electronApp.evaluate(
-      ({ Menu }) => Menu.getApplicationMenu()?.getMenuItemById('toggle-sidebar')?.checked
-    )
-    expect(initialChecked).toBe(false)
-
-    // 2. Click [data-testid="quickstrip-sidebar"] to toggle sidebar open
-    await page.locator('[data-testid="quickstrip-sidebar"]').click()
-    await page.locator('[data-testid="sidebar"]').waitFor({ state: 'visible', timeout: 2_000 })
-    await expect(page.locator('[data-testid="sidebar"]')).toBeVisible()
-
-    // 3. Read the native menu item checked state again
-    // setShowSidebar(true) calls syncToggleToMain('showSidebar', true) → 'ui:state-changed' → main sets item.checked
-    const checkedAfter = await electronApp.evaluate(
-      ({ Menu }) => Menu.getApplicationMenu()?.getMenuItemById('toggle-sidebar')?.checked
-    )
-    expect(checkedAfter).toBe(true)
-  })
-
-  test("6.5 'ui:toggle-theme' IPC toggles dark/light mode", async ({ electronApp, page }) => {
-    // 1. Confirm html element has 'dark' class
-    await expect(page.locator('html')).toHaveClass(/dark/)
-
-    // 2. Send IPC 'ui:toggle-theme'
-    await sendIPC(electronApp, 'ui:toggle-theme')
-
-    // expect: The 'dark' class is removed from the html element
-    await expect(page.locator('html')).not.toHaveClass(/dark/)
-
-    // 3. Send IPC 'ui:toggle-theme' again
-    await sendIPC(electronApp, 'ui:toggle-theme')
-
-    // expect: The 'dark' class is restored
-    await expect(page.locator('html')).toHaveClass(/dark/)
-  })
-
-  test("6.6 'menu:find' IPC opens Find & Replace dialog in Find mode", async ({ electronApp, page }) => {
-    // 1. Send IPC 'menu:find' via electronApp.evaluate
+  await test.step("'menu:find' opens it on the Find tab; Escape closes it", async () => {
     await sendIPC(electronApp, 'menu:find')
-
-    // expect: The Find & Replace dialog opens with the 'Find' tab active
-    await expect(page.getByText('Find & Replace')).toBeVisible()
-    // The Find tab button is the active tab (has text-primary class) within the dialog tab strip.
-    // Use exact text 'Find' scoped to the dialog's tab row to avoid matching other Find-related buttons.
-    await expect(page.locator('.fixed.z-\\[9001\\] button').filter({ hasText: /^Find$/ })).toBeVisible()
+    await expect(title).toBeVisible()
+    await expect(tab(/^Find$/)).toHaveClass(/text-primary/)
+    await page.keyboard.press('Escape')
+    await expect(title).not.toBeVisible()
   })
 
-  test("6.7 'menu:replace' IPC opens Find & Replace dialog in Replace mode", async ({ electronApp, page }) => {
-    // 1. Send IPC 'menu:replace' via electronApp.evaluate
+  await test.step("'menu:replace' opens it on the Replace tab; the close button dismisses it", async () => {
     await sendIPC(electronApp, 'menu:replace')
-
-    // expect: The Find & Replace dialog opens with the 'Replace' tab active
-    await expect(page.getByText('Find & Replace')).toBeVisible()
-    // Use exact text 'Replace' scoped to the dialog's tab row to avoid matching the 'Replace' action button
-    await expect(page.locator('.fixed.z-\\[9001\\] button').filter({ hasText: /^Replace$/ }).first()).toBeVisible()
+    await expect(title).toBeVisible()
+    await expect(tab(/^Replace$/)).toHaveClass(/text-primary/)
+    await page.getByTitle('Close (Esc)').click()
+    await expect(title).not.toBeVisible()
   })
 
-  test("6.8 'menu:find-in-files' IPC opens dialog in Find in Files mode", async ({ electronApp, page }) => {
-    // 1. Send IPC 'menu:find-in-files' via electronApp.evaluate
+  await test.step("'menu:find-in-files' opens it on the Find in Files tab", async () => {
     await sendIPC(electronApp, 'menu:find-in-files')
-
-    // expect: The Find & Replace dialog opens with the 'Find in Files' tab active
-    await expect(page.getByText('Find & Replace')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Find in Files' })).toBeVisible()
+    await expect(title).toBeVisible()
+    await expect(tab(/^Find in Files$/)).toHaveClass(/text-primary/)
+    await page.keyboard.press('Escape')
+    await expect(title).not.toBeVisible()
   })
 
-  test("6.9 'menu:about' IPC opens the About dialog", async ({ electronApp, page }) => {
-    // 1. Send IPC 'menu:about' via electronApp.evaluate
+  await test.step("'menu:about' opens the About dialog with a version", async () => {
     await sendIPC(electronApp, 'menu:about')
-
-    // expect: The About dialog becomes visible with 'NovaPad' and a version string
-    await expect(page.getByText('NovaPad').first()).toBeVisible()
     await expect(page.getByText(/Version \d+\.\d+/)).toBeVisible()
   })
+})
 
-  test("6.10 'menu:file-new' IPC creates a new buffer tab", async ({ electronApp, page }) => {
-    // 1. Count [data-tab-title] elements before sending the IPC
-    const before = await page.locator('[data-tab-title]').count()
+test("'menu:file-new', 'tab:prev' and 'tab:next' IPCs create and switch tabs", async ({ electronApp, page }) => {
+  const tabs = page.locator('[data-tab-title]')
+  const active = page.getByTestId('active-tab')
+  let firstTitle: string | null = null
+  let secondTitle: string | null = null
 
-    // 2. Send IPC 'menu:file-new' via electronApp.evaluate
+  await test.step("'menu:file-new' adds a tab and activates it", async () => {
+    await expect(tabs).toHaveCount(1)
+    firstTitle = await active.getAttribute('data-tab-title')
     await sendIPC(electronApp, 'menu:file-new')
-
-    // expect: A new tab appears and the tab count increases by 1
-    await expect(page.locator('[data-tab-title]')).toHaveCount(before + 1)
+    await expect(tabs).toHaveCount(2)
+    await expect(active).not.toHaveAttribute('data-tab-title', firstTitle!)
+    secondTitle = await active.getAttribute('data-tab-title')
   })
 
-  test("6.11 'tab:next' and 'tab:prev' IPC navigate between tabs", async ({ electronApp, page }) => {
-    // 1. Send 'menu:file-new' twice to create two tabs
-    await sendIPC(electronApp, 'menu:file-new')
-    await expect(page.locator('[data-tab-title]')).toHaveCount(1)
-    await sendIPC(electronApp, 'menu:file-new')
-    await expect(page.locator('[data-tab-title]')).toHaveCount(2)
-
-    // Get the data-tab-title of the currently active tab (second new file)
-    // The active tab uses data-testid="active-tab" (not data-active="true")
-    const secondTabTitle = await page.locator('[data-testid="active-tab"]').getAttribute('data-tab-title')
-
-    // 2. Send IPC 'tab:prev' — should move focus to the first tab
+  await test.step("'tab:prev' activates the first tab", async () => {
     await sendIPC(electronApp, 'tab:prev')
-    // Wait for a short tick for the store to update
-    await page.waitForTimeout(100)
-
-    // The active tab should now be different from the second tab
-    const activeAfterPrev = await page.locator('[data-testid="active-tab"]').getAttribute('data-tab-title')
-    expect(activeAfterPrev).not.toBe(secondTabTitle)
-
-    // 3. Send IPC 'tab:next' — should move focus back toward the second tab
-    await sendIPC(electronApp, 'tab:next')
-    await page.waitForTimeout(100)
-
-    // Verify navigation completed by checking a tab is marked active
-    await expect(page.locator('[data-testid="active-tab"]')).toHaveCount(1)
+    await expect(active).toHaveAttribute('data-tab-title', firstTitle!)
   })
 
+  await test.step("'tab:next' activates the second tab again", async () => {
+    await sendIPC(electronApp, 'tab:next')
+    await expect(active).toHaveAttribute('data-tab-title', secondTitle!)
+  })
 })

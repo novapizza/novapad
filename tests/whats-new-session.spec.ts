@@ -1,142 +1,94 @@
-import { test, expect } from '@playwright/test'
-import * as fs from 'fs'
-import * as path from 'path'
-import * as os from 'os'
-import {
-  freshUserDataDir,
-  launchIsolated,
-  readConfig,
-  seedConfig,
-  seedSession,
-  waitForAutoOpenSettle,
-} from './whats-new-helpers'
+import fs from 'fs'
+import path from 'path'
+import { test, expect, launchApp, makeUserDataDir, tempDir } from './fixtures'
 
 /**
- * Tests for the "What's New" tab interacting with session restore — Phase 4.
- *
- * These tests drop E2E_TEST=1 (skipSessionRestore: false) so that
- * SessionManager.restore() runs against a pre-seeded session.json in the
- * isolated userData dir.
- *
- * Covers Tests 6 and 10 from .docs/features/whats-new-tab/tests.md.
+ * "What's New" tab with session restore (.docs/features/whats-new-tab/tests.md Tests 6 and 10).
+ * Launches with `restoreSession: true` so SessionManager.restore() runs against the isolated
+ * userData dir. Each test overwrites the fixture's config.json so the auto-open fires.
  */
 
-/** Create a real (empty) text file the test harness can put in session.files. */
-function makeTempTextFile(): string {
-  const fp = path.join(os.tmpdir(), `novapad-whatsnew-session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.txt`)
-  fs.writeFileSync(fp, 'hello from session\n', 'utf8')
-  return fp
+function configFile(dir: string, name: 'config.json' | 'session.json'): string {
+  return path.join(dir, 'config', name)
 }
 
-// Test 6 — auto-open does not steal focus from a restored session
-test('auto-open does not steal focus from a restored session', async () => {
-  const userDataDir = freshUserDataDir()
-
-  // Stale lastSeenVersion → auto-open will fire
-  seedConfig(userDataDir, { lastSeenVersion: '0.0.0-test-stale' })
-
-  const file1 = makeTempTextFile()
-  const file2 = makeTempTextFile()
-  // Session v3: virtualTabs first then files. activeIndex is a flat index
-  // across [...virtualTabs, ...files]. With 0 virtualTabs and 2 files,
-  // activeIndex=1 means file2 should be active after restore.
-  seedSession(userDataDir, {
-    version: 3,
-    files: [
-      { filePath: file1, language: 'plaintext', encoding: 'UTF-8', eol: 'LF', viewState: null },
-      { filePath: file2, language: 'plaintext', encoding: 'UTF-8', eol: 'LF', viewState: null },
-    ],
-    virtualTabs: [],
-    activeIndex: 1,
-  })
-
-  const { app, page } = await launchIsolated({ userDataDir, skipSessionRestore: false })
+function readJson(file: string): Record<string, unknown> | null {
   try {
-    // Wait for both restored files AND the auto-opened whatsNew to appear
-    await page.waitForSelector(`[data-tab-id]`, { timeout: 5000 })
-    expect(await waitForAutoOpenSettle(page)).toBe(true)
+    return JSON.parse(fs.readFileSync(file, 'utf8'))
+  } catch {
+    return null
+  }
+}
 
-    // Tab order assertion: file1, file2, whatsNew
-    const tabKinds = await page.locator('[data-tab-id]').evaluateAll((els) =>
-      els.map((el) => (el as HTMLElement).getAttribute('data-tab-kind'))
-    )
+test('auto-open does not steal focus from a restored session', async () => {
+  const dir = makeUserDataDir()
+  const filesDir = tempDir()
+  const file1 = path.join(filesDir, 'one.txt')
+  const file2 = path.join(filesDir, 'two.txt')
+  fs.writeFileSync(file1, 'hello from session\n', 'utf8')
+  fs.writeFileSync(file2, 'hello from session\n', 'utf8')
+
+  // Stale lastSeenVersion → auto-open fires.
+  fs.writeFileSync(configFile(dir, 'config.json'), JSON.stringify({ lastSeenVersion: '0.0.0-test-stale' }), 'utf8')
+  // Session v3: activeIndex is flat across [...virtualTabs, ...files], so 1 = file2.
+  const fileEntry = (filePath: string) => ({ filePath, language: 'plaintext', encoding: 'UTF-8', eol: 'LF', viewState: null })
+  fs.writeFileSync(
+    configFile(dir, 'session.json'),
+    JSON.stringify({ version: 3, files: [fileEntry(file1), fileEntry(file2)], virtualTabs: [], activeIndex: 1 }),
+    'utf8'
+  )
+
+  const { app, page } = await launchApp(dir, { restoreSession: true })
+  try {
+    await expect(page.locator('[data-tab-kind="whatsNew"]')).toHaveCount(1)
+
+    // Tab order: the restored files, then the auto-opened What's New.
+    const tabKinds = await page
+      .locator('[data-tab-id]')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-tab-kind')))
     expect(tabKinds).toEqual(['file', 'file', 'whatsNew'])
 
-    // Active tab is the second restored file (index 1), NOT whatsNew
-    const activeKind = await page.locator('[data-testid="active-tab"]').getAttribute('data-tab-kind')
-    expect(activeKind).toBe('file')
-    const activeTitle = await page.locator('[data-testid="active-tab"]').getAttribute('data-tab-title')
-    expect(activeTitle).toBe(path.basename(file2))
+    // The restored active file keeps focus.
+    const active = page.getByTestId('active-tab')
+    await expect(active).toHaveAttribute('data-tab-kind', 'file')
+    await expect(active).toHaveAttribute('data-tab-title', 'two.txt')
   } finally {
     await app.close()
-    // Clean up the seed text files
-    try { fs.unlinkSync(file1) } catch { /* ignore */ }
-    try { fs.unlinkSync(file2) } catch { /* ignore */ }
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 3 })
+    fs.rmSync(filesDir, { recursive: true, force: true })
   }
 })
 
-// Test 10 — tab persists across restarts when left open (session round-trip)
 test('whatsNew tab persists across restarts when left open', async () => {
-  const userDataDir = freshUserDataDir()
-  // Fresh install — auto-open will fire
-  // (No session.json yet, no config.json)
+  const dir = makeUserDataDir()
+  fs.rmSync(configFile(dir, 'config.json')) // fresh install → auto-open fires
 
-  // Launch 1: session restore enabled (no session present, so it's a no-op),
-  // auto-open fires, leave the tab open, quit.
-  const first = await launchIsolated({ userDataDir, skipSessionRestore: false })
   try {
-    expect(await waitForAutoOpenSettle(first.page)).toBe(true)
-    await expect(first.page.locator('[data-tab-kind="whatsNew"]')).toHaveCount(1)
-    // Trigger session save manually: in normal usage this happens on the
-    // window 'close' handler via app:before-close → renderer responds
-    // session:save. In E2E we drive the renderer to send 'session:save'
-    // directly, bypassing the close handshake which would tear down
-    // before save lands.
-    await first.page.evaluate(() => {
-      // Replicates the payload App.tsx builds — but we ask the renderer
-      // to do it via the same code path by dispatching app:before-close.
-      // The renderer responds to that with both 'session:save' and
-      // 'app:close-confirmed'; we want the save without the close.
-      // Easiest: emit a custom event the test layer handles → but the
-      // production code does not expose this. Use the IPC channel
-      // directly here by manually constructing the payload.
-      const buffers = (window as unknown as { __novapad_buffers?: unknown[] }).__novapad_buffers
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(window as any).api.send('session:save', {
-        version: 3,
-        files: [],
-        virtualTabs: [{ kind: 'whatsNew' }],
-        activeIndex: 0,
+    // Launch 1: auto-open fires; leave the tab open and save the session.
+    const first = await launchApp(dir, { restoreSession: true })
+    try {
+      await expect(first.page.locator('[data-tab-kind="whatsNew"]')).toHaveCount(1)
+      // The real save runs in the window-close handshake (app:before-close → session:save), which
+      // tears down before the write lands under Playwright, so send the same payload directly.
+      await first.page.evaluate(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(window as any).api.send('session:save', { version: 3, files: [], virtualTabs: [{ kind: 'whatsNew' }], activeIndex: 0 })
       })
-      // Touch buffers so the linter does not complain about unused
-      void buffers
-    })
-    // Give the main-process write a moment to land on disk
-    await first.page.waitForTimeout(200)
+      await expect.poll(() => readJson(configFile(dir, 'session.json'))?.virtualTabs).toEqual([{ kind: 'whatsNew' }])
+    } finally {
+      await first.app.close()
+    }
+
+    // Launch 2: restore brings the tab back; lastSeenVersion written on launch 1 stays.
+    const second = await launchApp(dir, { restoreSession: true })
+    try {
+      await expect(second.page.locator('[data-tab-kind="whatsNew"]')).toHaveCount(1)
+      const version = await second.app.evaluate(({ app }) => app.getVersion())
+      expect(readJson(configFile(dir, 'config.json'))?.lastSeenVersion).toBe(version)
+    } finally {
+      await second.app.close()
+    }
   } finally {
-    await first.app.close()
-  }
-
-  // Confirm the seed landed on disk
-  const sessionPath = path.join(userDataDir, 'config', 'session.json')
-  expect(fs.existsSync(sessionPath)).toBe(true)
-  const persisted = JSON.parse(fs.readFileSync(sessionPath, 'utf8'))
-  expect(persisted.virtualTabs).toEqual([{ kind: 'whatsNew' }])
-
-  // Launch 2: session restore should bring the whatsNew tab back. Auto-open
-  // should NOT fire again (versions match — first launch wrote lastSeenVersion).
-  const second = await launchIsolated({ userDataDir, skipSessionRestore: false })
-  try {
-    // Tab is restored
-    await expect(second.page.locator('[data-tab-kind="whatsNew"]')).toHaveCount(1)
-
-    // lastSeenVersion was written on launch 1 and is unchanged on launch 2
-    const cfg = readConfig(userDataDir)
-    expect(cfg).not.toBeNull()
-    const versionFromCfg = cfg!.lastSeenVersion
-    expect(typeof versionFromCfg).toBe('string')
-    expect((versionFromCfg as string).length).toBeGreaterThan(0)
-  } finally {
-    await second.app.close()
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 3 })
   }
 })
