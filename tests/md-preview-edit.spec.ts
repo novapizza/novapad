@@ -6,7 +6,9 @@ import { test, expect, sendIPC } from './fixtures'
 
 test.use({ app: { seedBuffer: false } })
 
-const DOC = '# Heading\n\nsome text\n\n| Name | Qty |\n|---|---|\n| apple | 3 |\n'
+const DOC =
+  '# Heading\n\nsome text\n\n| Name | Qty |\n|---|---|\n| apple | 3 |\n\n' +
+  'Energy $E=mc^2$ inline.\n\n$$\nx+1\n$$\n'
 
 async function openPreview(electronApp: ElectronApplication, page: Page): Promise<void> {
   await sendIPC(electronApp, 'deeplink:new', { title: 'notes.md', content: DOC, language: 'markdown' })
@@ -40,6 +42,19 @@ test.describe('Edit Markdown in preview', () => {
       await blockEditor(page).press('Enter')
       await expect(preview(page).locator('td').first()).toHaveText('pear')
       await expect(source(page)).toContainText('| pear | 5 |')
+    })
+
+    await test.step('LaTeX renders; double-click a formula edits its $$ block', async () => {
+      await expect(preview(page).locator('p .katex')).toHaveCount(1)
+      const block = preview(page).locator('.math-block')
+      await expect(block.locator('.katex-display')).toBeVisible()
+      await block.dblclick()
+      await expect(blockEditor(page)).toHaveValue('$$\nx+1\n$$')
+      await blockEditor(page).fill('$$\nx+2\n$$')
+      await blockEditor(page).press('Control+Enter')
+      await expect(blockEditor(page)).toHaveCount(0)
+      await expect(source(page)).toContainText('x+2')
+      await expect(preview(page).locator('.math-block .katex-display')).toBeVisible()
     })
 
     await test.step('Escape cancels without touching the source', async () => {

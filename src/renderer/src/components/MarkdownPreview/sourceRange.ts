@@ -5,6 +5,17 @@
  *  to their enclosing block; table cells resolve to their row. */
 const EDITABLE_TAGS = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'tr', 'pre', 'blockquote', 'hr'])
 
+/** Display-math wrapper — a `div`, so matched by class. Mirrors MATH_BLOCK_CLASS
+ *  in lib/markdown/math.ts (not imported: that module pulls in KaTeX + its CSS). */
+const EDITABLE_CLASS = 'math-block'
+
+const isEditable = (node: HastNode): boolean => {
+  if (node.type !== 'element' || !node.tagName) return false
+  if (EDITABLE_TAGS.has(node.tagName)) return true
+  const cls = node.properties?.className
+  return Array.isArray(cls) && cls.includes(EDITABLE_CLASS)
+}
+
 /** Rendered as `data-md-src="start-end"` (offsets into the source string). */
 export const SOURCE_ATTR = 'data-md-src'
 
@@ -20,7 +31,7 @@ interface HastNode {
 export function rehypeSourceRange() {
   return (tree: HastNode): void => {
     const walk = (node: HastNode): void => {
-      if (node.type === 'element' && node.tagName && EDITABLE_TAGS.has(node.tagName)) {
+      if (isEditable(node)) {
         const start = node.position?.start.offset
         const end = node.position?.end.offset
         if (start !== undefined && end !== undefined) {

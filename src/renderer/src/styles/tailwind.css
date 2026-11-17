@@ -309,6 +309,11 @@
   .dark .markdown-body .hljs-title { color: #82aaff; }
   .dark .markdown-body .hljs-variable,
   .dark .markdown-body .hljs-attr { color: #f07178; }
+  /* LaTeX (KaTeX): wide display formulas scroll instead of overflowing the pane. */
+  .markdown-body .katex-display,
+  .ai-markdown .katex-display { overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+  .markdown-body .katex-error,
+  .ai-markdown .katex-error { font-family: ui-monospace, Consolas, monospace; font-size: 0.85em; }
   /* Edit-in-preview: outline the block a double-click would edit — the
      innermost one, except inside a quote, where the whole quote is edited. */
   .markdown-body.md-editable [data-md-src]:not(blockquote [data-md-src]):hover:not(:has([data-md-src]:hover)),

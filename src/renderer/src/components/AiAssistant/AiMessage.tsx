@@ -6,6 +6,13 @@ import { cn } from '../../lib/utils'
 import { GeminiMark } from './GeminiMark'
 import { AiDiffCard } from './AiDiffCard'
 import type { ChatMessage } from '../../store/aiStore'
+import { useConfigStore } from '../../store/configStore'
+import { remarkMathPlugin, REHYPE_MATH_PLUGINS } from '../../lib/markdown/math'
+
+// Stable plugin arrays so ReactMarkdown props don't change identity per render.
+// KaTeX (trust off) is built for untrusted input, so model output is safe here.
+const AI_REMARK_MATH_1 = [remarkGfm, remarkMathPlugin(true)]
+const AI_REMARK_MATH_2 = [remarkGfm, remarkMathPlugin(false)]
 
 /**
  * One transcript bubble.
@@ -17,6 +24,7 @@ import type { ChatMessage } from '../../store/aiStore'
  */
 export function AiMessage({ message }: { message: ChatMessage }): React.ReactElement {
   const isUser = message.role === 'user'
+  const singleDollarMath = useConfigStore((s) => s.mdMathSingleDollar)
 
   return (
     <div className="flex flex-col gap-1" data-testid={`ai-message-${message.role}`}>
@@ -34,7 +42,12 @@ export function AiMessage({ message }: { message: ChatMessage }): React.ReactEle
             <p className="whitespace-pre-wrap break-words text-sm text-foreground">{message.text}</p>
           ) : (
             <div className="ai-markdown min-w-0 text-sm text-foreground">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
+              <ReactMarkdown
+                remarkPlugins={singleDollarMath ? AI_REMARK_MATH_1 : AI_REMARK_MATH_2}
+                rehypePlugins={REHYPE_MATH_PLUGINS}
+              >
+                {message.text}
+              </ReactMarkdown>
               {message.streaming && (
                 <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse bg-primary align-middle" />
               )}

@@ -165,7 +165,13 @@ export function SettingsTab() {
               <div>
                 <CheckRow label="Enable MD edit in preview mode" checked={config.mdPreviewEdit} onChange={(v) => set('mdPreviewEdit', v)} />
                 <p className="text-xs text-muted-foreground mt-0.5 ml-5">
-                  Double-click a heading, paragraph, list item, table row, quote or code block in the Markdown preview to edit its source.
+                  Double-click a heading, paragraph, list item, table row, quote, code block or formula in the Markdown preview to edit its source.
+                </p>
+              </div>
+              <div>
+                <CheckRow label="Treat $…$ as inline math" checked={config.mdMathSingleDollar} onChange={(v) => set('mdMathSingleDollar', v)} />
+                <p className="text-xs text-muted-foreground mt-0.5 ml-5">
+                  Renders LaTeX between single dollars in the Markdown preview and AI chat. Write \$ for a literal dollar sign. When off, only $$…$$ and ```math blocks are formulas.
                 </p>
               </div>
             </div>

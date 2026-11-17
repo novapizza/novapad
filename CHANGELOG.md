@@ -10,6 +10,19 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+### Added
+- **LaTeX formulas in the Markdown preview.** `$…$` inline, `$$…$$` and ```` ```math ```` blocks
+  render as typeset math (KaTeX). Double-click a formula block to edit its source; HTML and PDF
+  exports keep the formulas. AI Assistant replies render formulas too. Settings → Editor →
+  "Treat $…$ as inline math" turns off single-dollar math for documents full of prices (`\$`
+  always gives a literal dollar).
+
+### Changed
+- **Tools menu is shorter.** MD5, SHA-1, SHA-256 and SHA-512 now sit under one **Tools → Hash**
+  submenu instead of four separate top-level entries.
+- **Settings menu has an icon on every entry**, so General, Editor, Appearance, New Document,
+  Backup, Auto-Completion and AI Assistant line up with the rest of the menu.
+
 ## [1.6.14]
 
 ### Fixed

@@ -19,6 +19,7 @@ import { usePreviewFullscreen } from '../preview/previewFullscreen'
 import { downloadText, buildStandaloneHtml } from '../../utils/exportDoc'
 import { cn } from '../../lib/utils'
 import { MarkdownBlockEditor } from './MarkdownBlockEditor'
+import { remarkMathPlugin, REHYPE_MATH_PLUGINS, MATH_HIDDEN_SELECTOR, MATH_BLOCK_CLASS } from '../../lib/markdown/math'
 import {
   SOURCE_ATTR,
   findEditableBlock,
@@ -67,7 +68,10 @@ const MARKDOWN_COMPONENTS = {
     return <code className={className}>{children}</code>
   },
 }
-const REMARK_PLUGINS = [remarkGfm]
+type RemarkPlugins = NonNullable<MarkdownOptions['remarkPlugins']>
+// Two stable arrays (not built per render) so ReactMarkdown's props stay equal.
+const REMARK_PLUGINS_MATH_1: RemarkPlugins = [remarkGfm, remarkMathPlugin(true)]
+const REMARK_PLUGINS_MATH_2: RemarkPlugins = [remarkGfm, remarkMathPlugin(false)]
 
 // ── In-preview search ────────────────────────────────────────────────────────
 // Highlighting uses the CSS Custom Highlight API (Chromium 105+, so always
@@ -91,6 +95,8 @@ function collectMatchRanges(root: HTMLElement, needle: string): Range[] {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
   let node: Node | null
   while ((node = walker.nextNode())) {
+    // KaTeX keeps a visually hidden MathML copy of each formula; skip it.
+    if (node.parentElement?.closest(MATH_HIDDEN_SELECTOR)) continue
     const hay = (node.textContent ?? '').toLowerCase()
     let idx = hay.indexOf(lower)
     while (idx !== -1) {
@@ -104,7 +110,9 @@ function collectMatchRanges(root: HTMLElement, needle: string): Range[] {
   return ranges
 }
 type RehypePlugins = NonNullable<MarkdownOptions['rehypePlugins']>
-const REHYPE_PLUGINS: RehypePlugins = [[rehypeHighlight, { detect: true, ignoreMissing: true }]]
+// Math first: it consumes ```math blocks before highlight sees them, and wraps
+// display math so source-range stamping (last) can still find the block.
+const REHYPE_PLUGINS: RehypePlugins = [...REHYPE_MATH_PLUGINS, [rehypeHighlight, { detect: true, ignoreMissing: true }]]
 // Edit-in-preview adds source-range stamping; off = the plain pipeline above.
 const REHYPE_PLUGINS_EDIT: RehypePlugins = [...REHYPE_PLUGINS, rehypeSourceRange as RehypePlugins[number]]
 
@@ -113,10 +121,18 @@ const REHYPE_PLUGINS_EDIT: RehypePlugins = [...REHYPE_PLUGINS, rehypeSourceRange
 const RENDER_DEBOUNCE_MS = 150
 
 /** Memoized so search typing and edit-box state don't re-render the document. */
-const MarkdownBody = React.memo(function MarkdownBody({ content, editable }: { content: string; editable: boolean }) {
+const MarkdownBody = React.memo(function MarkdownBody({
+  content,
+  editable,
+  singleDollarMath,
+}: {
+  content: string
+  editable: boolean
+  singleDollarMath: boolean
+}) {
   return (
     <ReactMarkdown
-      remarkPlugins={REMARK_PLUGINS}
+      remarkPlugins={singleDollarMath ? REMARK_PLUGINS_MATH_1 : REMARK_PLUGINS_MATH_2}
       rehypePlugins={editable ? REHYPE_PLUGINS_EDIT : REHYPE_PLUGINS}
       components={MARKDOWN_COMPONENTS}
     >
@@ -154,6 +170,7 @@ export const MarkdownPreviewPane: React.FC = () => {
   })
   const readOnly = useEditorStore((s) => s.buffers.find((b) => b.id === s.activeId)?.isReadOnly ?? false)
   const editEnabled = useConfigStore((s) => s.mdPreviewEdit)
+  const singleDollarMath = useConfigStore((s) => s.mdMathSingleDollar)
   const [edit, setEdit] = useState<BlockEdit | null>(null)
   const modelRef = useRef<monaco.editor.ITextModel | null>(null)
   const renderTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -324,7 +341,8 @@ export const MarkdownPreviewPane: React.FC = () => {
       original: content.slice(range.start, range.end),
       top: block.getBoundingClientRect().top - md.getBoundingClientRect().top,
       height: block.offsetHeight,
-      multiline: block.tagName === 'PRE',
+      // Code and display-math blocks are multi-line source: Enter = newline.
+      multiline: block.tagName === 'PRE' || block.classList.contains(MATH_BLOCK_CLASS),
     })
   }
 
@@ -466,7 +484,7 @@ export const MarkdownPreviewPane: React.FC = () => {
         {/* relative — the edit box is positioned over its block and scrolls with it. */}
         <div className="relative">
           <div ref={mdRef}>
-            <MarkdownBody content={content} editable={editEnabled} />
+            <MarkdownBody content={content} editable={editEnabled} singleDollarMath={singleDollarMath} />
           </div>
           {edit && (
             <MarkdownBlockEditor

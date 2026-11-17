@@ -9,6 +9,16 @@
  *    via a Blob download — the same mechanism TableLens already uses for CSV.
  */
 
+/**
+ * Math in exported HTML/PDF, where KaTeX's stylesheet and fonts are absent:
+ * hide KaTeX's HTML rendering and let Chromium draw its MathML copy natively.
+ */
+const MATH_EXPORT_CSS = `
+  .katex-html { display: none; }
+  .katex-display { display: block; text-align: center; margin: 1em 0; }
+  .katex-display math { display: block math; }
+  .katex-error { color: #cc0000; font-family: ui-monospace, Consolas, monospace; }`
+
 /** Escape a string for safe interpolation into HTML text/attribute context. */
 export function escapeHtml(s: string): string {
   return s
@@ -127,6 +137,7 @@ ${PRINT_PAGE_CSS}
   blockquote { margin: 0; padding-left: 1em; border-left: 3px solid #ddd; color: #555; }
   img { max-width: 100%; }
   a { color: #0366d6; }
+${MATH_EXPORT_CSS}
 </style></head>
 <body>${bodyHtml}</body></html>`
 }
