@@ -32,6 +32,38 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.15',
+    summary: (
+      <>
+        <strong>LaTeX formulas</strong> in the Markdown preview and AI Assistant, plus a tidier Tools menu.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'LaTeX formulas in Markdown',
+        body: (
+          <>
+            Write <span className="font-mono">$E=mc^2$</span> inline or a{' '}
+            <span className="font-mono">$$…$$</span> block and the Markdown preview shows the typeset formula.
+            Double-click a formula to edit it; HTML and PDF exports keep it, and AI Assistant replies render math
+            too. Writing about prices? Turn off <strong>Settings → Editor → Treat $…$ as inline math</strong>, or
+            type <span className="font-mono">\$</span>.
+          </>
+        )
+      },
+      {
+        title: 'Hash tools in one submenu',
+        body: (
+          <>
+            MD5, SHA-1, SHA-256 and SHA-512 now live under <strong>Tools → Hash</strong>, so the Tools menu is
+            shorter. Each algorithm keeps the same three actions. Every entry in the <strong>Settings</strong>{' '}
+            menu now has an icon too.
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.6.14',
     summary: (
       <>
@@ -56,28 +88,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             Files whose first accented or non-Latin character sits deep in the file, such as large CSV exports,
             were sometimes read as Western (ISO-8859-1) and showed garbled characters in the editor and the CSV
             preview. A file that is valid UTF-8 throughout now always opens as UTF-8.
-          </>
-        )
-      },
-      {
-        title: 'LaTeX formulas in Markdown',
-        body: (
-          <>
-            Write <span className="font-mono">$E=mc^2$</span> inline or a{' '}
-            <span className="font-mono">$$…$$</span> block and the Markdown preview shows the typeset formula.
-            Double-click a formula to edit it; HTML and PDF exports keep it, and AI Assistant replies render math
-            too. Writing about prices? Turn off <strong>Settings → Editor → Treat $…$ as inline math</strong>, or
-            type <span className="font-mono">\$</span>.
-          </>
-        )
-      },
-      {
-        title: 'Hash tools in one submenu',
-        body: (
-          <>
-            MD5, SHA-1, SHA-256 and SHA-512 now live under <strong>Tools → Hash</strong>, so the Tools menu is
-            shorter. Each algorithm keeps the same three actions. Every entry in the <strong>Settings</strong>{' '}
-            menu now has an icon too.
           </>
         )
       }

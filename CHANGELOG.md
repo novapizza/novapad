@@ -10,6 +10,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+## [1.6.15]
+
 ### Added
 - **LaTeX formulas in the Markdown preview.** `$…$` inline, `$$…$$` and ```` ```math ```` blocks
   render as typeset math (KaTeX). Double-click a formula block to edit its source; HTML and PDF
@@ -317,7 +319,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 - **Settings page reset its selected category** when you switched to another tab and back — the
   active category is now preserved.
 
-[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.14...HEAD
+[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.15...HEAD
+[1.6.15]: https://github.com/novapizza/novapad/compare/v1.6.14...v1.6.15
 [1.6.14]: https://github.com/novapizza/novapad/compare/v1.6.13...v1.6.14
 [1.6.13]: https://github.com/novapizza/novapad/compare/v1.6.12...v1.6.13
 [1.6.12]: https://github.com/novapizza/novapad/compare/v1.6.11...v1.6.12
