@@ -514,18 +514,20 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
     {
       label: '&Tools',
       submenu: [
-        ...(['md5', 'sha1', 'sha256', 'sha512'] as const).map((algo) => ({
-          label: algo === 'sha1' ? 'SHA-1' : algo === 'sha256' ? 'SHA-256' : algo === 'sha512' ? 'SHA-512' : 'MD5',
-          submenu: [
-            { label: 'Generate…', click: () => win.webContents.send('menu:tools-hash', { algo, verb: 'generate' }) },
-            { label: 'Generate from files…', click: () => win.webContents.send('menu:tools-hash', { algo, verb: 'files' }) },
-            {
-              label: 'Generate from selection into clipboard',
-              click: () => win.webContents.send('menu:tools-hash', { algo, verb: 'selection' })
-            }
-          ]
-        })),
-        { type: 'separator' as const },
+        {
+          label: 'Hash',
+          submenu: (['md5', 'sha1', 'sha256', 'sha512'] as const).map((algo) => ({
+            label: algo === 'sha1' ? 'SHA-1' : algo === 'sha256' ? 'SHA-256' : algo === 'sha512' ? 'SHA-512' : 'MD5',
+            submenu: [
+              { label: 'Generate…', click: () => win.webContents.send('menu:tools-hash', { algo, verb: 'generate' }) },
+              { label: 'Generate from files…', click: () => win.webContents.send('menu:tools-hash', { algo, verb: 'files' }) },
+              {
+                label: 'Generate from selection into clipboard',
+                click: () => win.webContents.send('menu:tools-hash', { algo, verb: 'selection' })
+              }
+            ]
+          }))
+        },
         {
           label: 'Encoding & Web',
           submenu: [

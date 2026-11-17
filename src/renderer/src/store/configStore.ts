@@ -25,6 +25,9 @@ export interface AppConfig {
   /** Double-click a block in the Markdown preview to edit its source. Off = no
    *  source-range stamping and no handler, so the preview renders as before. */
   mdPreviewEdit: boolean
+  /** `$…$` is inline LaTeX math (Markdown preview + AI chat). Off = only
+   *  `$$…$$` / ```math, so prices like "$5 and $10" stay plain text. */
+  mdMathSingleDollar: boolean
 
   // Auto-Completion
   autoCompleteEnabled: boolean
@@ -94,6 +97,7 @@ export const CONFIG_DEFAULTS: AppConfig = {
   bracketPairColorization: true,
   showMinimap: false,
   mdPreviewEdit: true,
+  mdMathSingleDollar: true,
   autoCompleteEnabled: true,
   autoCloseBrackets: true,
   autoCloseQuotes: true,

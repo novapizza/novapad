@@ -6,6 +6,7 @@ import {
   PanelLeftClose, PanelLeft,
   RotateCcw, ChevronRight, Clock,
   Settings as SettingsIcon, Sun, Moon, Keyboard,
+  SlidersHorizontal, FileCode, Palette, FileText, Archive, TextCursorInput, Bot,
   Printer, FileDown,
   Terminal as TerminalIcon,
 } from 'lucide-react'
@@ -333,8 +334,7 @@ export function MenuBar({
         { label: 'Generate from &selection into clipboard', action: () => { void hashSelectionToClipboard(algo) } },
       ]
       return [
-        ...HASH_ALGOS.map((a) => ({ label: a.label, submenu: hashMenu(a.id) })),
-        { separator: true, label: '' },
+        { label: '&Hash', submenu: HASH_ALGOS.map((a) => ({ label: a.label, submenu: hashMenu(a.id) })) },
         {
           label: '&Encoding && Web', submenu: [
             { label: '&URL Encoder', action: () => openTool('url') },
@@ -385,15 +385,15 @@ export function MenuBar({
       return [
         { label: '&Settings...', icon: <SettingsIcon size={18} />, shortcut: `${mod}+,`, action: cmd('prefs.settings') },
         { separator: true, label: '' },
-        { label: '&General', action: cmd('settings.open.general') },
-        { label: '&Editor', action: cmd('settings.open.editor') },
-        { label: '&Appearance', action: cmd('settings.open.appearance') },
-        { label: '&New Document', action: cmd('settings.open.newDoc') },
-        { label: '&Backup', action: cmd('settings.open.backup') },
-        { label: 'Auto-Co&mpletion', action: cmd('settings.open.completion') },
+        { label: '&General', icon: <SlidersHorizontal size={18} />, action: cmd('settings.open.general') },
+        { label: '&Editor', icon: <FileCode size={18} />, action: cmd('settings.open.editor') },
+        { label: '&Appearance', icon: <Palette size={18} />, action: cmd('settings.open.appearance') },
+        { label: '&New Document', icon: <FileText size={18} />, action: cmd('settings.open.newDoc') },
+        { label: '&Backup', icon: <Archive size={18} />, action: cmd('settings.open.backup') },
+        { label: 'Auto-Co&mpletion', icon: <TextCursorInput size={18} />, action: cmd('settings.open.completion') },
         { label: '&Keyboard Shortcuts', icon: <Keyboard size={18} />, action: cmd('settings.open.shortcuts') },
         // Mnemonic I, not A — &A is taken by Appearance (matches SettingsTab).
-        { label: 'A&I Assistant', action: cmd('settings.open.ai') },
+        { label: 'A&I Assistant', icon: <Bot size={18} />, action: cmd('settings.open.ai') },
         { separator: true, label: '' },
         { label: themeLabel, icon: <ThemeIcon size={18} />, action: cmd('prefs.toggleTheme') },
       ]
