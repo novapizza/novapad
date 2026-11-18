@@ -184,6 +184,31 @@ const NOVAPAD_LIGHT_COLORS: monaco.editor.IColors = {
   'scrollbarSlider.activeBackground': '#a21caf40'
 }
 
+// ---------- NovaPad Paper (light, neutral) ----------
+// Same syntax hues as NovaPad Light; text, line numbers, guides and widget
+// chrome are pure grey to match the Paper app tokens in utils/themes.ts.
+const NOVAPAD_PAPER_RULES: monaco.editor.ITokenThemeRule[] = [
+  ...novaRules({ ink: '191919', k: 'a21caf', s: '237a46', t: '0e7490', f: '1d4ed8', n: 'b45309', com: '8c8c8c', p: '666666', bg: 'ffffff' }),
+  ...LIGHT_RULES
+]
+
+const NOVAPAD_PAPER_COLORS: monaco.editor.IColors = {
+  ...NOVAPAD_LIGHT_COLORS,
+  'editor.foreground': '#191919',
+  'editor.lineHighlightBackground': '#00000008',
+  'editorWhitespace.foreground': '#d9d9d9',
+  'editorLineNumber.foreground': '#999999',
+  'editorLineNumber.activeForeground': '#191919',
+  'editorIndentGuide.background': '#ededed',
+  'editorIndentGuide.activeBackground': '#c8c8c8',
+  'editorWidget.border': '#e5e5e5',
+  'editorSuggestWidget.border': '#e5e5e5',
+  'editorSuggestWidget.selectedBackground': '#f2f2f2',
+  'editorHoverWidget.border': '#e5e5e5',
+  'scrollbarSlider.background': '#00000014',
+  'scrollbarSlider.hoverBackground': '#00000024'
+}
+
 // ---------- Dracula (dark) ----------
 // Official Dracula palette (https://draculatheme.com, MIT). An optional theme
 // since the NovaPad redesign (it was the dark default before). Editor background
@@ -315,6 +340,13 @@ export function registerNppThemes(): void {
     inherit: true,
     rules: NOVAPAD_LIGHT_RULES,
     colors: NOVAPAD_LIGHT_COLORS
+  })
+
+  monaco.editor.defineTheme('novapad-paper', {
+    base: 'vs',
+    inherit: true,
+    rules: NOVAPAD_PAPER_RULES,
+    colors: NOVAPAD_PAPER_COLORS
   })
 
   monaco.editor.defineTheme('dracula', {

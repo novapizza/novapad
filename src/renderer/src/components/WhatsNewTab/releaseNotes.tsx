@@ -52,6 +52,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         )
       },
       {
+        title: 'New theme: NovaPad Paper',
+        body: (
+          <>
+            A calm, neutral light theme: pure-grey text and lines, a white frame around the editor, and fuchsia
+            kept only where it matters. Interface text is a little larger and corners are rounder. Pick it in{' '}
+            <strong>Settings → Appearance → Themes</strong>; NovaPad Light stays as it was.
+          </>
+        )
+      },
+      {
         title: 'Hash tools in one submenu',
         body: (
           <>

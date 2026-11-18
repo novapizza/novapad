@@ -6,7 +6,7 @@
  *
  * `dark` (NovaPad, the default) and `light` (NovaPad Light) carry no token
  * overrides — they rely on the static `.dark` / `:root` blocks in tailwind.css.
- * Named themes like `solarized-light` and `dracula` override the tokens. The
+ * Named themes like `paper`, `solarized-light` and `dracula` override the tokens. The
  * ids `dark` / `light` predate the NovaPad themes and are kept so saved configs
  * and the View ▸ Toggle Theme action keep working. Adding a theme = one entry here.
  */
@@ -161,6 +161,76 @@ const DRACULA_TOKENS: Record<string, string> = {
   '--note-purple': '265 28% 31%'
 }
 
+// NovaPad Paper — a calm, near-colourless light theme (see
+// .docs/features/rebrand/light-theme-vs-claude.md). Rules:
+//  - greys are pure grey (0% saturation), no purple tint;
+//  - the frame (toolbar, tabs, status bar, sidebar) is the same white as the
+//    content, separated by hairlines;
+//  - hover and selected states are grey; fuchsia is kept only for emphasis
+//    (primary buttons, focus ring, cursor, active-tab marker);
+//  - 14px UI base (scales rem text and spacing; the editor font is separate)
+//    and rounder corners (6 / 8 / 10px).
+const PAPER_TOKENS: Record<string, string> = {
+  '--background': '0 0% 100%',
+  '--foreground': '0 0% 9.8%',
+  '--card': '0 0% 100%',
+  '--card-foreground': '0 0% 9.8%',
+  '--popover': '0 0% 100%',
+  '--popover-foreground': '0 0% 9.8%',
+  '--primary': '295 72% 39.8%',
+  '--primary-foreground': '0 0% 100%',
+  '--secondary': '0 0% 95.3%',
+  '--secondary-foreground': '0 0% 9.8%',
+  '--muted': '0 0% 95.3%',
+  '--muted-foreground': '0 0% 40%',
+  '--accent': '0 0% 94.9%',
+  '--accent-foreground': '0 0% 9.8%',
+  '--destructive': '0 72% 50.6%',
+  '--destructive-foreground': '0 0% 100%',
+  '--border': '0 0% 89.8%',
+  '--input': '0 0% 87.8%',
+  '--ring': '295 72% 39.8%',
+  '--toolbar': '0 0% 100%',
+  '--toolbar-foreground': '0 0% 40%',
+  '--toolbar-border': '0 0% 89.8%',
+  '--tab-active': '0 0% 100%',
+  '--tab-inactive': '0 0% 100%',
+  '--tab-hover': '0 0% 94.9%',
+  '--tab-foreground': '0 0% 9.8%',
+  '--tab-muted': '0 0% 40%',
+  '--statusbar': '0 0% 100%',
+  '--statusbar-foreground': '0 0% 40%',
+  '--explorer': '0 0% 100%',
+  '--explorer-foreground': '0 0% 20%',
+  '--explorer-hover': '0 0% 94.9%',
+  '--explorer-active': '0 0% 89.8%',
+  '--gutter': '0 0% 100%',
+  '--gutter-foreground': '0 0% 60%',
+  '--line-highlight': '0 0% 97.3%',
+  '--sidebar-background': '0 0% 100%',
+  '--sidebar-foreground': '0 0% 20%',
+  '--sidebar-primary': '295 72% 39.8%',
+  '--sidebar-primary-foreground': '0 0% 100%',
+  '--sidebar-accent': '0 0% 89.8%',
+  '--sidebar-accent-foreground': '0 0% 9.8%',
+  '--sidebar-border': '0 0% 89.8%',
+  '--sidebar-ring': '295 72% 39.8%',
+  // Syntax hues stay as NovaPad Light; only the neutral ones lose their tint.
+  '--tok-key': '295 72% 39.8%',
+  '--tok-string': '144 55% 30.8%',
+  '--tok-bool': '193 82% 31%',
+  '--tok-null': '0 0% 55%',
+  '--tok-num': '26 90% 37.1%',
+  '--tok-brace': '0 0% 40%',
+  // Not 'H S% L%' values: these are used as-is (see tailwind.css).
+  '--scrollbar-track': 'transparent',
+  '--ui-font-size': '14px',
+  '--radius-default': '6px',
+  '--radius-sm': '6px',
+  '--radius-md': '8px',
+  '--radius-lg': '10px'
+}
+
 export const THEMES: ThemeDef[] = [
   {
     id: 'dark',
@@ -177,6 +247,15 @@ export const THEMES: ThemeDef[] = [
     base: 'light',
     monaco: 'novapad-light',
     preview: { chrome: '#f6f5fa', bg: '#ffffff', text: '#1c1830', accent: '#a21caf', kw: '#a21caf', str: '#237a46', com: '#8a85a0', num: '#b45309' }
+  },
+  {
+    id: 'paper',
+    name: 'NovaPad Paper',
+    sub: 'Neutral',
+    base: 'light',
+    monaco: 'novapad-paper',
+    tokens: PAPER_TOKENS,
+    preview: { chrome: '#ffffff', bg: '#ffffff', text: '#191919', accent: '#a21caf', kw: '#a21caf', str: '#237a46', com: '#8c8c8c', num: '#b45309' }
   },
   {
     id: 'solarized-light',
@@ -198,8 +277,10 @@ export const THEMES: ThemeDef[] = [
   }
 ]
 
-/** Every token any theme may override — used to fully reset before applying. */
-const ALL_TOKEN_KEYS: string[] = [...new Set([...Object.keys(SOLARIZED_LIGHT_TOKENS), ...Object.keys(DRACULA_TOKENS)])]
+/** Every token any theme may override — used to fully reset before applying.
+ * Built from every theme, so a token only one theme sets is still cleared
+ * when switching away from it. */
+const ALL_TOKEN_KEYS: string[] = [...new Set(THEMES.flatMap((t) => Object.keys(t.tokens ?? {})))]
 
 export function getTheme(id: string): ThemeDef {
   return THEMES.find((t) => t.id === id) ?? THEMES[0]

@@ -20,12 +20,26 @@ test('Settings: minimap preference and theme persisted to config.json', async ({
     await expect(page.locator('.monaco-editor .minimap')).toBeVisible()
   })
 
-  await test.step('Appearance ▸ Light theme drops html.dark and is written to config.json', async () => {
+  const htmlFontSize = (): Promise<string> => page.evaluate(() => getComputedStyle(document.documentElement).fontSize)
+
+  await test.step('Appearance ▸ Paper theme sets its own UI size and radius', async () => {
     await sendIPC(electronApp, 'menu:settings-open')
     await page.getByTestId('settings-category-appearance').click()
     await page.getByTestId('theme-current-row').click()
+    await page.getByTestId('theme-card-paper').click()
+    await expect(page.locator('html')).not.toHaveClass(/\bdark\b/)
+    await expect.poll(htmlFontSize).toBe('14px')
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--radius-md')))
+      .toBe('8px')
+  })
+
+  await test.step('Appearance ▸ Light theme drops html.dark and is written to config.json', async () => {
     await page.getByTestId('theme-card-light').click()
     await expect(page.locator('html')).not.toHaveClass(/\bdark\b/)
+    // Paper-only tokens must not leak into the next theme.
+    await expect.poll(htmlFontSize).toBe('13px')
+    expect(await page.evaluate(() => document.documentElement.style.getPropertyValue('--radius-md'))).toBe('')
 
     const configPath = path.join(userDataDir, 'config', 'config.json')
     await expect

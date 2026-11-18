@@ -9,7 +9,9 @@
     width: 100%;
     overflow: hidden;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    font-size: 13px;
+    /* --ui-font-size sets 1rem, so it scales rem-based text AND spacing.
+     * Text sized in px (text-[12px] etc.) is not affected. */
+    font-size: var(--ui-font-size);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -26,7 +28,7 @@
     height: 8px;
   }
   ::-webkit-scrollbar-track {
-    background: hsl(var(--muted));
+    background: var(--scrollbar-track, hsl(var(--muted)));
   }
   ::-webkit-scrollbar-thumb {
     background: hsl(var(--muted-foreground) / 0.3);
@@ -68,6 +70,15 @@
     --ring: 295 72% 39.8%;
 
     --radius: 0.25rem;
+    /* Per-size radii behind rounded-sm/md/lg. The defaults reproduce the old
+     * calc() scale exactly (rounded-sm still clamps to 0), so existing themes
+     * are unchanged; a named theme can override each one. --radius-default
+     * backs plain `rounded` (Tailwind's own 0.25rem). */
+    --radius-default: 0.25rem;
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+    --ui-font-size: 13px;
 
     /* Editor-specific tokens */
     --toolbar: 252 33% 97.1%;
@@ -225,7 +236,7 @@
     height: 10px;
   }
   .editor-scrollbar::-webkit-scrollbar-track {
-    background: hsl(var(--muted));
+    background: var(--scrollbar-track, hsl(var(--muted)));
   }
   .editor-scrollbar::-webkit-scrollbar-thumb {
     background: hsl(var(--muted-foreground) / 0.3);

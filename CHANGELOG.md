@@ -10,6 +10,12 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+### Added
+- **NovaPad Paper theme.** A calm, neutral light theme: pure-grey text and lines, a white frame
+  around the editor, grey hover and selection, fuchsia kept only for emphasis, slightly larger
+  interface text (14px) and rounder corners. Pick it in Settings → Appearance → Themes. NovaPad
+  Light is unchanged.
+
 ## [1.6.15]
 
 ### Added
