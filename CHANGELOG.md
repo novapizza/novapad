@@ -10,6 +10,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+## [1.6.16]
+
 ### Added
 - **NovaPad Paper theme.** A calm, neutral light theme: pure-grey text and lines, a white frame
   around the editor, grey hover and selection, fuchsia kept only for emphasis, slightly larger
@@ -325,7 +327,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 - **Settings page reset its selected category** when you switched to another tab and back — the
   active category is now preserved.
 
-[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.15...HEAD
+[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.16...HEAD
+[1.6.16]: https://github.com/novapizza/novapad/compare/v1.6.15...v1.6.16
 [1.6.15]: https://github.com/novapizza/novapad/compare/v1.6.14...v1.6.15
 [1.6.14]: https://github.com/novapizza/novapad/compare/v1.6.13...v1.6.14
 [1.6.13]: https://github.com/novapizza/novapad/compare/v1.6.12...v1.6.13

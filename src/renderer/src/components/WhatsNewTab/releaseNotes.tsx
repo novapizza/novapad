@@ -32,6 +32,26 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.16',
+    summary: (
+      <>
+        A new <strong>NovaPad Paper</strong> theme: a calm, neutral light look for the whole app.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'New theme: NovaPad Paper',
+        body: (
+          <>
+            A calm, neutral light theme: pure-grey text and lines, a white frame around the editor, and fuchsia
+            kept only where it matters. Interface text is a little larger and corners are rounder. Pick it in{' '}
+            <strong>Settings → Appearance → Themes</strong>; NovaPad Light stays as it was.
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.6.15',
     summary: (
       <>
@@ -48,16 +68,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             Double-click a formula to edit it; HTML and PDF exports keep it, and AI Assistant replies render math
             too. Writing about prices? Turn off <strong>Settings → Editor → Treat $…$ as inline math</strong>, or
             type <span className="font-mono">\$</span>.
-          </>
-        )
-      },
-      {
-        title: 'New theme: NovaPad Paper',
-        body: (
-          <>
-            A calm, neutral light theme: pure-grey text and lines, a white frame around the editor, and fuchsia
-            kept only where it matters. Interface text is a little larger and corners are rounder. Pick it in{' '}
-            <strong>Settings → Appearance → Themes</strong>; NovaPad Light stays as it was.
           </>
         )
       },
