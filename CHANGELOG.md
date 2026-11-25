@@ -10,6 +10,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+## [1.6.17]
+
 ### Added
 - **Split View now works like Notepad++'s two views.** The right-hand view has its own tabs, so
   you can put two different files side by side. Right-click a tab for **Move to Other View** or
@@ -346,7 +348,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 - **Settings page reset its selected category** when you switched to another tab and back — the
   active category is now preserved.
 
-[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.16...HEAD
+[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.17...HEAD
+[1.6.17]: https://github.com/novapizza/novapad/compare/v1.6.16...v1.6.17
 [1.6.16]: https://github.com/novapizza/novapad/compare/v1.6.15...v1.6.16
 [1.6.15]: https://github.com/novapizza/novapad/compare/v1.6.14...v1.6.15
 [1.6.14]: https://github.com/novapizza/novapad/compare/v1.6.13...v1.6.14

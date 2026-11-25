@@ -32,24 +32,14 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: '1.6.16',
+    version: '1.6.17',
     summary: (
       <>
-        A new <strong>NovaPad Paper</strong> theme, <strong>Split View</strong> with two sets of tabs like
-        Notepad++, and a file search that skips build output.
+        <strong>Split View</strong> with two sets of tabs like Notepad++, and a file search that skips binary
+        files and build output.
       </>
     ),
     highlights: [
-      {
-        title: 'New theme: NovaPad Paper',
-        body: (
-          <>
-            A calm, neutral light theme: pure-grey text and lines, a white frame around the editor, and fuchsia
-            kept only where it matters. Interface text is a little larger and corners are rounder. Pick it in{' '}
-            <strong>Settings → Appearance → Themes</strong>; NovaPad Light stays as it was.
-          </>
-        )
-      },
       {
         title: 'Split View with two sets of tabs',
         body: (
@@ -71,6 +61,26 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             <span className="font-mono">dist</span> and <span className="font-mono">target</span>. The file search
             now shows which folder it searches, with <strong>Change…</strong> and <strong>Close Folder</strong>{' '}
             links. <strong>File → Close Folder</strong> is new too.
+          </>
+        )
+      }
+    ]
+  },
+  {
+    version: '1.6.16',
+    summary: (
+      <>
+        A new <strong>NovaPad Paper</strong> theme: a calm, neutral light look for the whole app.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'New theme: NovaPad Paper',
+        body: (
+          <>
+            A calm, neutral light theme: pure-grey text and lines, a white frame around the editor, and fuchsia
+            kept only where it matters. Interface text is a little larger and corners are rounder. Pick it in{' '}
+            <strong>Settings → Appearance → Themes</strong>; NovaPad Light stays as it was.
           </>
         )
       }
