@@ -10,6 +10,25 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+### Added
+- **Split View now works like Notepad++'s two views.** The right-hand view has its own tabs, so
+  you can put two different files side by side. Right-click a tab for **Move to Other View** or
+  **Clone to Other View** (a clone is the same document in both views: edits show in both,
+  cursor and scroll stay separate). Menus, shortcuts and Find act on the view you last clicked
+  in, and new files open there. Closing a clone in one view keeps it open in the other. The
+  views are restored with your session. View → Split View still clones the current file; the
+  **×** at the end of the right-hand tab bar (or unticking the menu) moves its tabs back.
+- **File → Close Folder.** Closes the open folder without closing your tabs. Also offered at the
+  bottom of the file search (Ctrl+E), which now shows the folder it searches and a **Change…**
+  link.
+
+### Changed
+- **File search (Ctrl+E) and Find in Files skip binary files and build output.** Images, compiled
+  objects, archives, fonts, media and similar files are no longer indexed, and folders such as
+  `node_modules`, `out`, `dist`, `target`, `obj`, `__pycache__` and `coverage` are not walked, so
+  your source files reach the search instead of build output. Find in Files still includes a
+  binary type when you name it in the file filter (for example `*.dat`).
+
 ## [1.6.16]
 
 ### Added

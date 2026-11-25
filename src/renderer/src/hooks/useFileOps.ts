@@ -42,9 +42,16 @@ export interface SessionData {
     backupPath?: string | null
     originalMtime?: number
     isDirty?: boolean
+    /** Split View: which view(s) showed this tab. Absent = main. */
+    view?: 'main' | 'sub' | 'both'
   }>
   virtualTabs?: Array<{ kind: string; pluginId?: string }>
+  /** Flat index (virtualTabs ++ files) of the main view's active tab. */
   activeIndex: number
+  /** Split View: index into `files` of the sub view's active tab. */
+  subActiveIndex?: number
+  /** Split View: which view had focus. */
+  focusedView?: 'main' | 'sub'
   workspaceFolder?: string
   sidebarVisible?: boolean
   /** Must match UIState['sidebarPanel'] in store/uiStore.ts and SidebarPanel in
@@ -208,7 +215,10 @@ export function useFileOps() {
     const ghostFileIds: string[] = []
     let externallyChangedCount = 0
 
-    for (const file of session.files) {
+    // Saved file index → restored buffer id (entries can be skipped, so the
+    // positions in fileIds don't line up with session.files).
+    const idByFileIndex = new Map<number, string>()
+    for (const [fileIndex, file] of session.files.entries()) {
       // --- Snapshot-restore path: load contents from the backup file. ---
       if (file.backupPath) {
         const content = await backupApi().read(file.backupPath)
@@ -235,6 +245,7 @@ export function useFileOps() {
               isLargeFile: false
             })
             fileIds.push(id)
+            idByFileIndex.set(fileIndex, id)
             ghostFileIds.push(id)
           }
           // Untitled with missing backup is unrecoverable — drop it.
@@ -265,6 +276,7 @@ export function useFileOps() {
           backupPath: file.backupPath
         })
         fileIds.push(id)
+        idByFileIndex.set(fileIndex, id)
 
         if (file.filePath) {
           window.api.watch.add(file.filePath)
@@ -304,6 +316,7 @@ export function useFileOps() {
         isLargeFile: false
       })
       fileIds.push(id)
+      idByFileIndex.set(fileIndex, id)
       ghostFileIds.push(id)
     }
 
@@ -313,6 +326,17 @@ export function useFileOps() {
     // Set active tab
     const activeIdx = Math.min(Math.max(0, session.activeIndex), allIds.length - 1)
     useEditorStore.getState().setActive(allIds[activeIdx])
+
+    // Split View: put tabs back in their views, then the sub view's active tab
+    // and the focused view. Old sessions carry no `view` — everything stays main.
+    const st = useEditorStore.getState()
+    session.files.forEach((f, i) => {
+      const id = idByFileIndex.get(i)
+      if (id && (f.view === 'sub' || f.view === 'both')) st.updateBuffer(id, { view: f.view })
+    })
+    const subId = session.subActiveIndex !== undefined ? idByFileIndex.get(session.subActiveIndex) : undefined
+    if (subId && useEditorStore.getState().getBuffer(subId)?.view !== 'main') st.activateInView(subId, 'sub')
+    st.setFocusedView(session.focusedView === 'sub' ? 'sub' : 'main')
 
     if (externallyChangedCount > 0) {
       addToast(

@@ -208,14 +208,15 @@ export function registerFileHandlers(): void {
   })
 
   // Recursively list every file under a directory, for the Quick Open (Ctrl+P)
-  // fuzzy file finder. Reuses the Find-in-Files walker, which already skips
-  // dotfiles + node_modules and yields to the event loop so it won't block.
+  // fuzzy file finder. Reuses the Find-in-Files walker, which skips dotfiles
+  // and build/cache folders and yields to the event loop so it won't block.
+  // NovaPad only edits text, so binary files never enter the index.
   ipcMain.handle('file:list-files-recursive', async (_event, dirPath: string, max = QUICK_OPEN_MAX_FILES) => {
     const cap = Math.min(typeof max === 'number' && max > 0 ? max : QUICK_OPEN_MAX_FILES, QUICK_OPEN_MAX_FILES)
     const files: { path: string; name: string }[] = []
     let truncated = false
     try {
-      for await (const fp of collectFilesAsync(dirPath, /.*/, true)) {
+      for await (const fp of collectFilesAsync(dirPath, /.*/, true, true)) {
         if (files.length >= cap) { truncated = true; break }
         files.push({ path: fp, name: path.basename(fp) })
       }

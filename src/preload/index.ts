@@ -194,7 +194,7 @@ const api = {
     const allowedChannels = [
       'menu:file-new', 'menu:file-open', 'menu:file-save', 'menu:file-save-as',
       'menu:file-save-all', 'menu:file-close', 'menu:file-close-all', 'menu:file-reload',
-      'menu:folder-open', 'menu:find', 'menu:replace', 'menu:find-in-files', 'menu:mark',
+      'menu:folder-open', 'menu:folder-close', 'menu:find', 'menu:replace', 'menu:find-in-files', 'menu:mark',
       'menu:goto-file', 'menu:command-palette',
       'menu:settings-open', 'menu:shortcuts-open',
       'menu:whats-new-open',
@@ -230,7 +230,7 @@ const api = {
     const allowedChannels = [
       'menu:file-new', 'menu:file-open', 'menu:file-save', 'menu:file-save-as',
       'menu:file-save-all', 'menu:file-close', 'menu:file-close-all', 'menu:file-reload',
-      'menu:folder-open', 'menu:find', 'menu:replace', 'menu:find-in-files', 'menu:mark',
+      'menu:folder-open', 'menu:folder-close', 'menu:find', 'menu:replace', 'menu:find-in-files', 'menu:mark',
       'menu:goto-file', 'menu:command-palette',
       'menu:settings-open', 'menu:shortcuts-open',
       'menu:whats-new-open',

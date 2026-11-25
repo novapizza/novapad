@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import * as monaco from 'monaco-editor'
+import * as views from '../utils/editorViews'
+import { normalizeViews, type ViewMembership, type ViewName } from '../utils/editorViews'
 
 export type EOLType = 'CRLF' | 'LF' | 'CR'
 
@@ -40,25 +42,38 @@ export interface Buffer {
   isReadOnly: boolean
   /** Remote URL this buffer was fetched from (deeplink); null for local/untitled buffers. */
   sourceUrl: string | null
+  /** Which editor view(s) show this buffer (Notepad++ main/sub view). 'both' = cloned. */
+  view: ViewMembership
 }
+
+type NewBufferInput = Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath' | 'savedVersionId' | 'isReadOnly' | 'sourceUrl' | 'view'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null; isReadOnly?: boolean; sourceUrl?: string | null; view?: ViewMembership }
 
 interface EditorState {
   buffers: Buffer[]
+  /** The buffer the user is working in: always the focused view's active buffer. */
   activeId: string | null
-  splitActive: boolean
-  splitActiveId: string | null
+  /** Active tab of each view (see utils/editorViews.ts). */
+  mainActiveId: string | null
+  subActiveId: string | null
+  focusedView: ViewName
 
   // Actions
-  addBuffer: (buf: Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath' | 'savedVersionId' | 'isReadOnly' | 'sourceUrl'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null; isReadOnly?: boolean; sourceUrl?: string | null }) => string
-  addGhostBuffer: (buf: Omit<Buffer, 'id' | 'model' | 'kind' | 'pluginId' | 'backupPath' | 'savedVersionId' | 'isReadOnly' | 'sourceUrl'> & { kind?: BufferKind; pluginId?: string | null; backupPath?: string | null; isReadOnly?: boolean; sourceUrl?: string | null }) => string
+  addBuffer: (buf: NewBufferInput) => string
+  addGhostBuffer: (buf: NewBufferInput) => string
   hydrateBuffer: (id: string, patch: { content: string; encoding: string; eol: EOLType; mtime: number; hasBom?: boolean }) => void
   /** Add a large-JSON record-viewer tab (kind 'largeJson', no Monaco model). */
   addLargeJsonBuffer: (buf: { filePath: string; title: string; encoding: string; mtime: number }) => string
   removeBuffer: (id: string) => void
   updateBuffer: (id: string, patch: Partial<Buffer>) => void
   setActive: (id: string) => void
-  setSplitActive: (id: string) => void
-  toggleSplit: () => void
+  /** Activate `id` in a specific view and focus that view (tab click; needed for clones). */
+  activateInView: (id: string, view: ViewName) => void
+  setFocusedView: (view: ViewName) => void
+  cloneToOtherView: (id: string, from: ViewName) => void
+  moveToOtherView: (id: string, from: ViewName) => void
+  /** Drop a clone from one view. Returns false when `id` is not a clone (close the buffer instead). */
+  closeCloneInView: (id: string, view: ViewName) => boolean
+  collapseSubView: () => void
   getActive: () => Buffer | null
   getBuffer: (id: string) => Buffer | null
   findVirtualBuffer: (kind: BufferKind) => Buffer | null
@@ -76,11 +91,27 @@ function newId(): string {
   return `buf-${++_idCounter}`
 }
 
-export const useEditorStore = create<EditorState>((set, get) => ({
+/** New file buffers open in the focused view (Notepad++); everything else in main. */
+function defaultView(kind: BufferKind | undefined, focused: ViewName): ViewMembership {
+  return (kind ?? 'file') === 'file' && focused === 'sub' ? 'sub' : 'main'
+}
+
+export const useEditorStore = create<EditorState>((rawSet, get) => {
+  // Every update passes through normalizeViews, so the ~10 actions below that
+  // write `activeId` or `buffers` keep the two views consistent without each
+  // knowing about them. (External `useEditorStore.setState` calls — tab drag
+  // reorder — only reorder buffers and need no normalizing.)
+  const set = (
+    partial: Partial<EditorState> | ((s: EditorState) => Partial<EditorState>)
+  ): void =>
+    rawSet((s) => normalizeViews(s, { ...s, ...(typeof partial === 'function' ? partial(s) : partial) }))
+
+  return {
   buffers: [],
   activeId: null,
-  splitActive: false,
-  splitActiveId: null,
+  mainActiveId: null,
+  subActiveId: null,
+  focusedView: 'main',
 
   addBuffer: (buf) => {
     const id = newId()
@@ -91,7 +122,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     // mark savedVersionId as unreachable so undoing within Monaco can't clear it.
     const savedVersionId = buf.isDirty ? -1 : model.getAlternativeVersionId()
     set((s) => ({
-      buffers: [...s.buffers, { ...buf, kind: buf.kind ?? 'file', id, model, savedVersionId, loaded: true, missing: false, savedViewState: buf.savedViewState ?? null, pluginId: buf.pluginId ?? null, backupPath: buf.backupPath ?? null, isReadOnly: buf.isReadOnly ?? false, sourceUrl: buf.sourceUrl ?? null }],
+      buffers: [...s.buffers, { ...buf, kind: buf.kind ?? 'file', id, model, savedVersionId, loaded: true, missing: false, savedViewState: buf.savedViewState ?? null, pluginId: buf.pluginId ?? null, backupPath: buf.backupPath ?? null, isReadOnly: buf.isReadOnly ?? false, sourceUrl: buf.sourceUrl ?? null, view: buf.view ?? defaultView(buf.kind, s.focusedView) }],
       activeId: s.activeId ?? id
     }))
     return id
@@ -100,7 +131,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   addGhostBuffer: (buf) => {
     const id = newId()
     set((s) => ({
-      buffers: [...s.buffers, { ...buf, kind: buf.kind ?? 'file', id, model: null, savedVersionId: 0, pluginId: buf.pluginId ?? null, backupPath: buf.backupPath ?? null, isReadOnly: buf.isReadOnly ?? false, sourceUrl: buf.sourceUrl ?? null }],
+      buffers: [...s.buffers, { ...buf, kind: buf.kind ?? 'file', id, model: null, savedVersionId: 0, pluginId: buf.pluginId ?? null, backupPath: buf.backupPath ?? null, isReadOnly: buf.isReadOnly ?? false, sourceUrl: buf.sourceUrl ?? null, view: buf.view ?? defaultView(buf.kind, s.focusedView) }],
       activeId: s.activeId ?? id
     }))
     return id
@@ -149,7 +180,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           isLargeFile: true,
           backupPath: null,
           isReadOnly: false,
-          sourceUrl: null
+          sourceUrl: null,
+          view: 'main' as const
         }
       ],
       activeId: s.activeId ?? id
@@ -160,15 +192,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   removeBuffer: (id) => {
     const buf = get().buffers.find((b) => b.id === id)
     buf?.model?.dispose()
-    set((s) => {
-      const idx = s.buffers.findIndex((b) => b.id === id)
-      const buffers = s.buffers.filter((b) => b.id !== id)
-      let activeId = s.activeId
-      if (activeId === id) {
-        activeId = buffers[Math.max(0, idx - 1)]?.id ?? buffers[0]?.id ?? null
-      }
-      return { buffers, activeId }
-    })
+    // The new active tab of each view (left neighbour within that view) is
+    // chosen by normalizeViews — picking it from the flat list here could jump
+    // focus into the other view.
+    set((s) => ({ buffers: s.buffers.filter((b) => b.id !== id) }))
   },
 
   updateBuffer: (id, patch) => {
@@ -178,8 +205,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   setActive: (id) => set({ activeId: id }),
-  setSplitActive: (id) => set({ splitActiveId: id }),
-  toggleSplit: () => set((s) => ({ splitActive: !s.splitActive })),
+  activateInView: (id, view) =>
+    set(view === 'main' ? { mainActiveId: id, focusedView: 'main' } : { subActiveId: id, focusedView: 'sub' }),
+  setFocusedView: (view) => set({ focusedView: view }),
+  cloneToOtherView: (id, from) => set((s) => views.cloneToOtherView(s, id, from)),
+  moveToOtherView: (id, from) => set((s) => views.moveToOtherView(s, id, from)),
+  closeCloneInView: (id, view) => {
+    const patch = views.closeCloneInView(get(), id, view)
+    if (!patch) return false
+    set(patch)
+    return true
+  },
+  collapseSubView: () => set((s) => views.collapseSubView(s)),
 
   getActive: () => {
     const s = get()
@@ -228,7 +265,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           isLargeFile: false,
           backupPath: null,
           isReadOnly: false,
-          sourceUrl: null
+          sourceUrl: null,
+          view: 'main' as const
         }
       ],
       ...(activate ? { activeId: id } : {})
@@ -269,7 +307,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           isLargeFile: false,
           backupPath: null,
           isReadOnly: false,
-          sourceUrl: null
+          sourceUrl: null,
+          view: 'main' as const
         }
       ],
       activeId: id
@@ -310,7 +349,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           isLargeFile: false,
           backupPath: null,
           isReadOnly: false,
-          sourceUrl: null
+          sourceUrl: null,
+          view: 'main' as const
         }
       ],
       activeId: id
@@ -322,4 +362,5 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const buf = get().buffers.find((b) => b.kind === 'pluginDetail' && b.pluginId === pluginId)
     if (buf) get().removeBuffer(buf.id)
   }
-}))
+  }
+})

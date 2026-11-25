@@ -35,7 +35,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     version: '1.6.16',
     summary: (
       <>
-        A new <strong>NovaPad Paper</strong> theme: a calm, neutral light look for the whole app.
+        A new <strong>NovaPad Paper</strong> theme, <strong>Split View</strong> with two sets of tabs like
+        Notepad++, and a file search that skips build output.
       </>
     ),
     highlights: [
@@ -46,6 +47,30 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             A calm, neutral light theme: pure-grey text and lines, a white frame around the editor, and fuchsia
             kept only where it matters. Interface text is a little larger and corners are rounder. Pick it in{' '}
             <strong>Settings → Appearance → Themes</strong>; NovaPad Light stays as it was.
+          </>
+        )
+      },
+      {
+        title: 'Split View with two sets of tabs',
+        body: (
+          <>
+            Split View now works like Notepad++: the right-hand view has its own tabs, so two different files can
+            sit side by side. Right-click a tab for <strong>Move to Other View</strong> or{' '}
+            <strong>Clone to Other View</strong> (the same document in both views, with separate cursors). Menus,
+            shortcuts and Find act on the view you last clicked in, and your views come back with your session.
+          </>
+        )
+      },
+      {
+        title: 'File search finds your files, not build output',
+        body: (
+          <>
+            <span className="font-mono text-sm">Ctrl+E</span> and Find in Files no longer index binary files
+            (images, compiled objects, archives, fonts, media) or build folders such as{' '}
+            <span className="font-mono">node_modules</span>, <span className="font-mono">out</span>,{' '}
+            <span className="font-mono">dist</span> and <span className="font-mono">target</span>. The file search
+            now shows which folder it searches, with <strong>Change…</strong> and <strong>Close Folder</strong>{' '}
+            links. <strong>File → Close Folder</strong> is new too.
           </>
         )
       }
