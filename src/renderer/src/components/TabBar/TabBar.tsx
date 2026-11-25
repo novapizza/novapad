@@ -16,6 +16,7 @@ import { useUIStore } from '../../store/uiStore'
 import { detectPreviewKind } from '../../utils/previewKind'
 import { cn } from '../../lib/utils'
 import { fileManagerName } from '../../utils/platform'
+import { inView, type ViewName } from '../../utils/editorViews'
 
 interface TabBarProps {
   /** Async — dirty buffers show a modal confirm before closing. */
@@ -23,16 +24,39 @@ interface TabBarProps {
   onNewFile?: () => void
   /** Re-read the buffer's file from disk (dirty buffers confirm first). */
   onReload?: (id: string) => void
+  /** Which editor view this bar belongs to (Notepad++ main/sub view). Default main. */
+  view?: ViewName
+  /** Sub view only: closes the whole view (its tabs move back to main). */
+  onCloseView?: () => void
 }
 
-export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) => {
-  const { buffers, activeId, setActive } = useEditorStore()
+export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload, view = 'main', onCloseView }) => {
+  const allBuffers = useEditorStore((s) => s.buffers)
+  const activeId = useEditorStore((s) => s.activeId)
+  const focusedView = useEditorStore((s) => s.focusedView)
+  const viewActiveId = useEditorStore((s) => (view === 'main' ? s.mainActiveId : s.subActiveId))
+  const { activateInView, closeCloneInView, cloneToOtherView, moveToOtherView, setFocusedView } = useEditorStore.getState()
+  // This view's tabs, in the shared order.
+  const buffers = allBuffers.filter((b) => inView(b, view))
+  const isSub = view === 'sub'
+  const isFocusedView = focusedView === view
+  // Closing a clone only removes it from this view; anything else really closes.
+  const closeTab = (id: string): void | Promise<void> => {
+    if (closeCloneInView(id, view)) return
+    return onClose?.(id)
+  }
+  // New documents open in the view they were asked for from.
+  const newFileHere = (): void => {
+    setFocusedView(view)
+    onNewFile?.()
+  }
 
   // VS Code-style preview toggles, shown next to the "+" button when the active
   // buffer is previewable (markdown / json / csv / SQL plan). Depend on language
   // + path only — not content — so they don't re-render on every keystroke.
-  const activeBuf = buffers.find((b) => b.id === activeId)
+  const activeBuf = allBuffers.find((b) => b.id === activeId)
   const isPreviewable =
+    !isSub &&
     !!activeBuf && activeBuf.kind === 'file' && detectPreviewKind(activeBuf.language, activeBuf.filePath, null) !== null
   const showPreview = useUIStore((s) => s.showPreview)
   const previewFullscreen = useUIStore((s) => s.previewFullscreen)
@@ -87,10 +111,10 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) 
 
   // Scroll active tab into view
   useEffect(() => {
-    if (!activeId || !scrollRef.current) return
-    const tab = scrollRef.current.querySelector(`[data-tab-id="${activeId}"]`) as HTMLElement
+    if (!viewActiveId || !scrollRef.current) return
+    const tab = scrollRef.current.querySelector(`[data-tab-id="${viewActiveId}"]`) as HTMLElement
     tab?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
-  }, [activeId])
+  }, [viewActiveId])
 
   const handleWheel = (e: React.WheelEvent) => {
     if (scrollRef.current) scrollRef.current.scrollLeft += e.deltaY
@@ -124,7 +148,7 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) 
   // Close sequentially: each dirty buffer raises its own modal confirm, and
   // firing them all at once would stack N native dialogs on top of each other.
   const closeSequentially = async (ids: string[]) => {
-    for (const id of ids) await onClose?.(id)
+    for (const id of ids) await closeTab(id)
   }
 
   const closeOthers = (id: string) => {
@@ -150,8 +174,8 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) 
   // for ghost / not-yet-loaded buffers).
   const openCompare = useUIStore.getState().openCompare
   const compareWith = (leftId: string, rightId: string) => {
-    const a = buffers.find((b) => b.id === leftId)
-    const b = buffers.find((b) => b.id === rightId)
+    const a = allBuffers.find((b) => b.id === leftId)
+    const b = allBuffers.find((b) => b.id === rightId)
     if (!a || !b) return
     const aContent = a.model?.getValue() ?? a.content ?? ''
     const bContent = b.model?.getValue() ?? b.content ?? ''
@@ -166,13 +190,14 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) 
     const target = e.target as HTMLElement
     if (target.closest('[data-tab-id]')) return
     if (target.closest('button')) return
-    onNewFile?.()
+    newFileHere()
   }
 
   return (
     <div
       className="h-9 bg-tab-inactive border-b border-border flex items-stretch select-none shrink-0 relative"
-      data-testid="tabbar"
+      data-testid={isSub ? 'tabbar-sub' : 'tabbar'}
+      data-view={view}
       onDoubleClick={handleBarDoubleClick}
     >
       {/* Left scroll arrow */}
@@ -203,24 +228,25 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) 
                 data-tab-title={buf.title}
                 data-tab-kind={buf.kind}
                 data-tab-dirty={buf.isDirty ? 'true' : 'false'}
-                data-testid={buf.id === activeId ? 'active-tab' : undefined}
+                data-testid={buf.id === viewActiveId ? (isSub ? 'active-tab-sub' : 'active-tab') : undefined}
                 className={cn(
                   'group relative flex items-center gap-1.5 pl-3 pr-2 cursor-pointer text-base min-w-0 shrink-0 transition-colors border-r border-border',
-                  buf.id === activeId
+                  buf.id === viewActiveId
                     ? 'bg-tab-active text-tab-foreground font-medium shadow-[inset_0_-1px_0_0_hsl(var(--tab-active))]'
                     : 'bg-tab-inactive text-tab-muted font-medium hover:bg-tab-hover hover:text-tab-foreground',
                   !buf.loaded && 'opacity-55',
                 )}
-                onClick={() => setActive(buf.id)}
-                onAuxClick={(e) => { if (e.button === 1) onClose?.(buf.id) }}
+                onClick={() => activateInView(buf.id, view)}
+                onAuxClick={(e) => { if (e.button === 1) void closeTab(buf.id) }}
                 draggable
                 onDragStart={() => handleDragStart(buf.id)}
                 onDragOver={(e) => handleDragOver(e, buf.id)}
                 onDrop={handleDrop}
                 title={isVirtual ? buf.title : (buf.sourceUrl ?? buf.filePath ?? buf.title)}
               >
-                {/* Active indicator — accent top rule */}
-                {buf.id === activeId && (
+                {/* Active indicator — accent top rule, only in the focused view
+                    so it is clear which view commands act on. */}
+                {buf.id === viewActiveId && isFocusedView && (
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary" />
                 )}
 
@@ -247,7 +273,7 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) 
                   <button
                     type="button"
                     className="opacity-0 group-hover:opacity-100 hover:bg-secondary rounded-sm transition-opacity p-0.5 flex items-center justify-center"
-                    onClick={(e) => { e.stopPropagation(); onClose?.(buf.id) }}
+                    onClick={(e) => { e.stopPropagation(); void closeTab(buf.id) }}
                   >
                     <X size={18} />
                   </button>
@@ -255,18 +281,28 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) 
               </div>
             </ContextMenuTrigger>
             <ContextMenuContent className="w-48">
-              <ContextMenuItem onClick={() => onClose?.(buf.id)}>Close</ContextMenuItem>
+              <ContextMenuItem onClick={() => void closeTab(buf.id)}>Close</ContextMenuItem>
               <ContextMenuItem onClick={() => closeOthers(buf.id)}>Close Others</ContextMenuItem>
               <ContextMenuItem onClick={() => closeAll()}>Close All</ContextMenuItem>
               {buf.kind === 'file' && (() => {
                 // Only file buffers are eligible — virtual tabs (settings,
                 // plugins, etc.) have no comparable content. Disable the
                 // entry when there's nothing else open to diff against.
-                const otherFileBuffers = buffers.filter(
+                const otherFileBuffers = allBuffers.filter(
                   (b) => b.id !== buf.id && b.kind === 'file'
                 )
                 return (
                   <>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem data-testid="tab-move-other-view" onClick={() => moveToOtherView(buf.id, view)}>
+                      Move to Other View
+                    </ContextMenuItem>
+                    {/* Already a clone: it is in both views, nothing to clone. */}
+                    {buf.view !== 'both' && (
+                      <ContextMenuItem data-testid="tab-clone-other-view" onClick={() => cloneToOtherView(buf.id, view)}>
+                        Clone to Other View
+                      </ContextMenuItem>
+                    )}
                     <ContextMenuSeparator />
                     {otherFileBuffers.length === 0 ? (
                       <ContextMenuItem disabled>
@@ -358,12 +394,24 @@ export const TabBar: React.FC<TabBarProps> = ({ onClose, onNewFile, onReload }) 
       {/* New file button — outermost on the right */}
       <button
         className="w-9 flex items-center justify-center text-tab-muted hover:text-tab-foreground hover:bg-tab-hover transition-colors shrink-0 border-l border-border"
-        onClick={() => onNewFile?.()}
+        onClick={newFileHere}
         title="New file"
-        data-testid="tabbar-new-btn"
+        data-testid={isSub ? 'tabbar-sub-new-btn' : 'tabbar-new-btn'}
       >
         <Plus size={18} />
       </button>
+
+      {onCloseView && (
+        <button
+          className="w-9 flex items-center justify-center text-tab-muted hover:text-tab-foreground hover:bg-tab-hover transition-colors shrink-0 border-l border-border"
+          onClick={onCloseView}
+          aria-label="Close split view"
+          title="Close split view (tabs move back to the main view)"
+          data-testid="split-close"
+        >
+          <X size={18} />
+        </button>
+      )}
     </div>
   )
 }

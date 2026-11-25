@@ -51,7 +51,10 @@ async function run(): Promise<void> {
 
   // Producer: walk directory and push file paths into the queue
   const producer = (async () => {
-    for await (const fp of collectFilesAsync(opts.directory, filterRe, opts.isRecursive)) {
+    // Skip binary extensions only for a catch-all filter: if the user typed
+    // e.g. `*.dat`, they asked for that type and we must not drop it.
+    const skipBinary = filterRe.source === '.*'
+    for await (const fp of collectFilesAsync(opts.directory, filterRe, opts.isRecursive, skipBinary)) {
       queue.push(fp)
       // Wake one waiting consumer if any
       if (waiters.length > 0) waiters.shift()!()

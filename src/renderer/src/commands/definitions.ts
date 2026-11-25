@@ -272,6 +272,19 @@ export const COMMANDS: CommandDef[] = [
     }
   },
   {
+    id: 'file.closeFolder',
+    label: 'Close Folder',
+    section: 'File',
+    keywords: 'workspace directory project unload',
+    when: hasWorkspace,
+    run: () => {
+      // Open tabs stay open; only the folder scope (file tree, Ctrl+E index,
+      // Find in Files default) goes away. Session then saves no folder.
+      ui().setExpandedFolders([])
+      ui().setWorkspaceFolder(null)
+    }
+  },
+  {
     id: 'file.save',
     label: 'Save',
     section: 'File',

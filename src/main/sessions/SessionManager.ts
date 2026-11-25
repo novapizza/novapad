@@ -18,7 +18,12 @@ interface SessionFile {
   originalMtime: number
   /** Whether the buffer was dirty at session-save time. */
   isDirty: boolean
+  /** Split View: which view(s) showed this tab. Absent = main. */
+  view?: SessionView
 }
+
+type SessionView = 'main' | 'sub' | 'both'
+const KNOWN_VIEWS: ReadonlySet<SessionView> = new Set(['main', 'sub', 'both'])
 
 export type SessionVirtualKind = 'settings' | 'shortcuts' | 'whatsNew' | 'pluginManager' | 'pluginDetail'
 
@@ -46,6 +51,10 @@ interface Session {
   notesVisible?: boolean
   /** Paths of folders expanded in the File Browser tree. */
   expandedFolders?: string[]
+  /** Split View: index into `files` of the sub view's active tab. */
+  subActiveIndex?: number
+  /** Split View: which view had focus. */
+  focusedView?: 'main' | 'sub'
 }
 
 const KNOWN_SIDEBAR_PANELS: ReadonlySet<SidebarPanel> =
@@ -128,10 +137,13 @@ export class SessionManager {
         viewState: version >= 2 ? ((f.viewState as object | null) ?? null) : null,
         backupPath: typeof f.backupPath === 'string' ? (f.backupPath as string) : null,
         originalMtime: typeof f.originalMtime === 'number' ? (f.originalMtime as number) : 0,
-        isDirty: typeof f.isDirty === 'boolean' ? (f.isDirty as boolean) : false
+        isDirty: typeof f.isDirty === 'boolean' ? (f.isDirty as boolean) : false,
+        ...(KNOWN_VIEWS.has(f.view as SessionView) ? { view: f.view as SessionView } : {})
       }))
 
     const activeIndex = typeof obj.activeIndex === 'number' ? obj.activeIndex : 0
+    const subActiveIndex = typeof obj.subActiveIndex === 'number' ? obj.subActiveIndex : undefined
+    const focusedView = obj.focusedView === 'sub' ? 'sub' as const : undefined
     const workspaceFolder = typeof obj.workspaceFolder === 'string' ? obj.workspaceFolder : undefined
     const sidebarVisible = typeof obj.sidebarVisible === 'boolean' ? obj.sidebarVisible : undefined
     const notesVisible = typeof obj.notesVisible === 'boolean' ? obj.notesVisible : undefined
@@ -170,6 +182,8 @@ export class SessionManager {
       files: normalizedFiles,
       virtualTabs,
       activeIndex,
+      subActiveIndex,
+      focusedView,
       workspaceFolder,
       sidebarVisible,
       sidebarPanel,

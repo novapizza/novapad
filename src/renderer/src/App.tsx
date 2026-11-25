@@ -69,12 +69,20 @@ import { backupApi } from './utils/backupApi'
 import { editorRegistry } from './utils/editorRegistry'
 import { fileOpsRegistry } from './commands/fileOpsRegistry'
 import { useCommandKeys } from './commands/useCommandKeys'
+import { runCommand } from './commands/registry'
 import { flushAllTableEdits } from './components/CsvViewer/tableLensBridge'
 
 export default function App() {
   const { activeId, buffers } = useEditorStore()
   const activeBuffer = buffers.find((b) => b.id === activeId)
   const activeKind = activeBuffer?.kind ?? 'file'
+  // Split View (Notepad++ two views): the main column always shows the main
+  // view's active tab; `activeId` is the focused view's tab (what commands,
+  // status bar and previews follow). Without a split the two are the same.
+  const mainActiveId = useEditorStore((s) => s.mainActiveId)
+  const hasSubView = useEditorStore((s) => s.buffers.some((b) => b.view !== 'main'))
+  const mainBuffer = buffers.find((b) => b.id === mainActiveId)
+  const mainKind = mainBuffer?.kind ?? 'file'
   const { theme, showToolbar, showStatusBar, showBottomPanel, showSidebar, openFind, csvViewerOpen, csvViewerText, csvViewerFileName, showPreview, previewFullscreen, previewLayout, compareOpen, transformOpen, splitView } = useUIStore()
   // Auto-close the preview pane when the user switches tabs. Without this,
   // toggling preview on (say) a .md tab would leave it open across every
@@ -97,6 +105,35 @@ export default function App() {
   // Assistant, Notes) — each of which double-fired with its own native menu
   // accelerator whenever focus sat outside Monaco.
   useCommandKeys()
+
+  // View → Split View and the sub view drive each other. Whichever changed
+  // since the last render wins, so a Move to Other View (sub view appears)
+  // ticks the menu, and unticking the menu closes the sub view:
+  //  - toggled on  → clone the active file into the sub view (Notepad++ "clone");
+  //  - toggled off → every tab goes back to the main view;
+  //  - sub view gained/lost its last tab → the menu checkbox follows.
+  const prevSplitRef = useRef(splitView)
+  const prevHasSubRef = useRef(hasSubView)
+  useEffect(() => {
+    const toggled = prevSplitRef.current !== splitView
+    const subChanged = prevHasSubRef.current !== hasSubView
+    prevSplitRef.current = splitView
+    prevHasSubRef.current = hasSubView
+    if (toggled && splitView && !hasSubView) {
+      const s = useEditorStore.getState()
+      const buf = s.buffers.find((b) => b.id === s.activeId)
+      if (buf?.kind === 'file') {
+        s.cloneToOtherView(buf.id, s.focusedView)
+      } else {
+        useUIStore.getState().setSplitView(false)
+        useUIStore.getState().addToast('Open a file to split the view.', 'info')
+      }
+    } else if (toggled && !splitView && hasSubView) {
+      useEditorStore.getState().collapseSubView()
+    } else if (subChanged && splitView !== hasSubView) {
+      useUIStore.getState().setSplitView(hasSubView)
+    }
+  }, [splitView, hasSubView])
 
   // AI assistant streaming. Subscribed once here rather than in the panel so
   // chunks keep landing in the transcript even if the user closes the panel
@@ -135,11 +172,11 @@ export default function App() {
   const previewVisible = previewKind !== null && !previewFullscreen && previewLayout === 'side'
   // Inline layout: preview replaces the editor within the current tab area
   // (an overlay over EditorPane), keeping the tab bar / toolbar / status bar.
-  const previewInlineVisible = previewKind !== null && !previewFullscreen && previewLayout === 'inline'
+  // Inline preview overlays the main editor, so only when the main view has focus.
+  const previewInlineVisible = previewKind !== null && !previewFullscreen && previewLayout === 'inline' && activeId === mainActiveId
   const previewFullscreenVisible = previewKind !== null && previewFullscreen
-  // Split View: a second editor mirroring the active file buffer. Suppressed
-  // for virtual tabs (settings/plugins) and while a preview is fullscreen.
-  const splitVisible = splitView && activeKind === 'file' && !!activeId && !previewFullscreen
+  // Split View: the sub view shows while it has tabs (hidden under a fullscreen preview).
+  const splitVisible = hasSubView && !previewFullscreen
   // AI assistant. The badge and the docked panel both require the feature to be
   // enabled and a real file tab to be active — there is nothing to ask about on
   // a Settings or Plugin Manager tab.
@@ -370,6 +407,8 @@ export default function App() {
       useUIStore.getState().setShowSidebar(true)
       useUIStore.getState().setSidebarPanel('files')
     })
+    // Harmless when no folder is open: it just sets the folder to null again.
+    window.api.on('menu:folder-close', () => runCommand('file.closeFolder'))
     window.api.on('menu:goto-file', () => useUIStore.getState().setCommandPalette('files'))
     window.api.on('menu:command-palette', () => useUIStore.getState().setCommandPalette('commands'))
     window.api.on('ui:toggle-theme', () => {
@@ -565,11 +604,19 @@ export default function App() {
       }
 
       // Capture current editor's viewState before building session payload
-      const editor = editorRegistry.get()
+      // Main editor → main view's active tab. The sub editor's state is kept
+      // only for a tab that lives in the sub view alone (a clone keeps main's).
       const state = useEditorStore.getState()
-      if (editor && state.activeId) {
-        const vs = editor.saveViewState()
-        if (vs) state.updateBuffer(state.activeId, { viewState: vs })
+      const mainEditor = editorRegistry.getView('main')
+      if (mainEditor && state.mainActiveId) {
+        const vs = mainEditor.saveViewState()
+        if (vs) state.updateBuffer(state.mainActiveId, { viewState: vs })
+      }
+      const subEditor = editorRegistry.getView('sub')
+      const subBuf = state.subActiveId ? state.getBuffer(state.subActiveId) : null
+      if (subEditor && subBuf?.view === 'sub') {
+        const vs = subEditor.saveViewState()
+        if (vs) state.updateBuffer(subBuf.id, { viewState: vs })
       }
 
       const freshState = useEditorStore.getState()
@@ -588,8 +635,9 @@ export default function App() {
         return remember && !!b.backupPath
       })
 
+      // activeIndex = the main view's active tab (same as the active tab without a split).
       let activeIndex = 0
-      const active = freshState.buffers.find((b) => b.id === freshState.activeId)
+      const active = freshState.buffers.find((b) => b.id === freshState.mainActiveId)
       if (active) {
         if (active.kind === 'file') {
           const i = fileBuffers.findIndex((b) => b.id === active.id)
@@ -614,13 +662,18 @@ export default function App() {
           viewState: b.viewState ? JSON.parse(JSON.stringify(b.viewState)) : b.savedViewState,
           backupPath: remember ? b.backupPath : null,
           originalMtime: b.mtime || 0,
-          isDirty: b.isDirty
+          isDirty: b.isDirty,
+          ...(b.view !== 'main' ? { view: b.view } : {})
         })),
         virtualTabs: virtualBuffers.map((b) => ({
           kind: b.kind,
           ...(b.kind === 'pluginDetail' && b.pluginId ? { pluginId: b.pluginId } : {})
         })),
         activeIndex,
+        ...(() => {
+          const i = fileBuffers.findIndex((b) => b.id === freshState.subActiveId)
+          return i >= 0 ? { subActiveIndex: i, focusedView: freshState.focusedView } : {}
+        })(),
         workspaceFolder: uiState.workspaceFolder,
         sidebarVisible: uiState.showSidebar,
         sidebarPanel: uiState.sidebarPanel,
@@ -664,6 +717,7 @@ export default function App() {
       window.api.off('session:restore')
       window.api.off('app:before-close')
       window.api.off('menu:folder-open')
+      window.api.off('menu:folder-close')
       window.api.off('menu:goto-file')
       window.api.off('menu:command-palette')
       offLargeJson()
@@ -777,7 +831,7 @@ export default function App() {
                     <div className="flex flex-col h-full overflow-hidden">
                       <TabBar onClose={closeBuffer} onNewFile={newFile} onReload={(id) => void reloadBuffer(id)} />
                       <div className="flex flex-1 overflow-hidden relative">
-                        {!activeId ? (
+                        {!mainActiveId ? (
                           // No active tab: show WelcomeScreen even if inactive virtual
                           // tabs exist (e.g., a background-opened "What's New" tab on
                           // fresh install). Otherwise we'd render an empty EditorPane.
@@ -789,32 +843,32 @@ export default function App() {
                         ) : (
                           <>
                             {/* Monaco stays mounted so switching to a virtual tab preserves file view state */}
-                            <EditorPane activeId={activeId} />
-                            {activeKind === 'settings' && (
+                            <EditorPane activeId={mainActiveId} />
+                            {mainKind === 'settings' && (
                               <div className="absolute inset-0 bg-background z-10"><SettingsTab /></div>
                             )}
-                            {activeKind === 'shortcuts' && (
+                            {mainKind === 'shortcuts' && (
                               <div className="absolute inset-0 bg-background z-10"><ShortcutsTab /></div>
                             )}
-                            {activeKind === 'whatsNew' && (
+                            {mainKind === 'whatsNew' && (
                               <div className="absolute inset-0 bg-background z-10"><WhatsNewTab /></div>
                             )}
-                            {activeKind === 'pluginManager' && (
+                            {mainKind === 'pluginManager' && (
                               <div className="absolute inset-0 bg-background z-10"><PluginManagerTab /></div>
                             )}
-                            {activeKind === 'pluginDetail' && activeBuffer?.pluginId && (
+                            {mainKind === 'pluginDetail' && mainBuffer?.pluginId && (
                               <div className="absolute inset-0 bg-background z-10">
-                                <PluginDetailTab pluginId={activeBuffer.pluginId} />
+                                <PluginDetailTab pluginId={mainBuffer.pluginId} />
                               </div>
                             )}
-                            {activeKind === 'largeJson' && (
+                            {mainKind === 'largeJson' && (
                               <div className="absolute inset-0 bg-background z-10">
                                 <Suspense fallback={
                                   <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
                                     Loading record viewer…
                                   </div>
                                 }>
-                                  <LargeJsonTab bufferId={activeId} />
+                                  <LargeJsonTab bufferId={mainActiveId} />
                                 </Suspense>
                               </div>
                             )}
@@ -848,7 +902,12 @@ export default function App() {
                         className="w-1 bg-border cursor-col-resize shrink-0 transition-colors hover:bg-primary data-[resize-handle-active]:bg-primary"
                       />
                       <Panel id="split-editor-pane" order={2} defaultSize={sidePaneSize} minSize={15}>
-                        <SplitEditorPane />
+                        <SplitEditorPane
+                          onClose={closeBuffer}
+                          onNewFile={newFile}
+                          onReload={(id) => void reloadBuffer(id)}
+                          loadBuffer={loadBuffer}
+                        />
                       </Panel>
                     </>
                   )}

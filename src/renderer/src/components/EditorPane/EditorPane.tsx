@@ -84,7 +84,8 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
 
   // Extracted command dispatch — shared by menu IPC and CustomEvent listeners.
   const dispatchCommand = useCallback((command: string) => {
-    const editor = editorRef.current
+    // The focused view's editor — the sub view's when Split View has focus.
+    const editor = editorRegistry.get() ?? editorRef.current
     if (!editor) return
 
     // Fold to a specific nesting depth (View ▸ Folding ▸ Collapse Level N).
@@ -525,7 +526,11 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
     })
 
     editorRef.current = editor
-    editorRegistry.set(editor)
+    editorRegistry.set(editor, 'main')
+    // Typing/clicking here makes the main view the one commands act on.
+    editor.onDidFocusEditorText(() => {
+      if (useEditorStore.getState().focusedView !== 'main') useEditorStore.getState().setFocusedView('main')
+    })
 
     // Override Monaco's built-in Cmd+F / Ctrl+H to use our custom dialog
     // Pre-fill with current selection if it's a single-line non-empty string
@@ -680,7 +685,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ activeId }) => {
 
     return () => {
       ro.disconnect()
-      editorRegistry.set(null)
+      editorRegistry.set(null, 'main')
       editor.dispose()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

@@ -102,6 +102,10 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
             }
           }
         },
+        {
+          label: 'Close Folder',
+          click: () => win.webContents.send('menu:folder-close')
+        },
         { type: 'separator' },
         {
           label: 'Save',

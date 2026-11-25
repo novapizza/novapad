@@ -73,6 +73,7 @@ export function MenuBar({
   const [hoveredSubmenu, setHoveredSubmenu] = useState<string | null>(null)
   const [recentFiles, setRecentFiles] = useState<string[]>([])
   const menuRef = useRef<HTMLDivElement>(null)
+  const workspaceFolder = useUIStore((s) => s.workspaceFolder)
   const {
     showToolbar, showStatusBar, showSidebar,
     wordWrap, renderWhitespace, showEOL, showNonPrinting, showControlChars,
@@ -134,6 +135,7 @@ export function MenuBar({
       { label: '&New File', icon: <FilePlus size={18} />, shortcut: `${mod}+N`, action: onNew },
       { label: '&Open File...', icon: <FolderOpen size={18} />, shortcut: `${mod}+O`, action: onOpen },
       { label: 'Open &Folder...', shortcut: `${mod}+Shift+O`, action: onOpenFolder },
+      { label: 'Close Folder', disabled: !workspaceFolder, action: cmd('file.closeFolder') },
       { label: '&Save', icon: <Save size={18} />, shortcut: `${mod}+S`, action: onSave },
       { label: 'Save &As...', shortcut: `${mod}+Shift+S`, action: onSaveAs },
       { label: 'Sa&ve All', shortcut: `${mod}+${alt}+S`, action: onSaveAll },

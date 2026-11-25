@@ -26,6 +26,7 @@ const MAX_RESULTS = 50
 const COMMAND_PREFIX = '>'
 
 const norm = (p: string): string => p.replace(/\\/g, '/')
+const folderName = (p: string): string => norm(p).replace(/\/+$/, '').split('/').pop() || p
 
 /** `fuzzyFilter` scores `{ name, path }`; commands adapt rather than widening it. */
 interface CommandSearchItem {
@@ -331,6 +332,33 @@ export function CommandPalette(): React.ReactElement | null {
         {mode === 'files' && truncated && (
           <div className="px-3 py-1.5 border-t border-border text-sm text-muted-foreground">
             Showing the first {allFiles.length.toLocaleString()} files — narrow your search to find more.
+          </div>
+        )}
+        {/* Scope line: the folder may have been restored from the last session,
+            so always say where results come from and offer a way out. */}
+        {mode === 'files' && workspaceFolder && (
+          <div
+            data-testid="command-palette-scope"
+            className="flex items-center gap-2 px-3 py-1.5 border-t border-border text-sm text-muted-foreground"
+          >
+            <span className="truncate" title={workspaceFolder}>
+              in: <span className="text-foreground">{folderName(workspaceFolder)}</span>
+            </span>
+            <span className="flex-1" />
+            <button
+              data-testid="command-palette-change-folder"
+              onClick={() => { close(); runCommand('file.openFolder') }}
+              className="shrink-0 hover:text-foreground hover:underline"
+            >
+              Change…
+            </button>
+            <button
+              data-testid="command-palette-close-folder"
+              onClick={() => runCommand('file.closeFolder')}
+              className="shrink-0 hover:text-foreground hover:underline"
+            >
+              Close Folder
+            </button>
           </div>
         )}
       </div>

@@ -34,6 +34,10 @@ test('file mode: lists, fuzzy-filters and opens files from the open folder', asy
   fs.writeFileSync(path.join(dir, 'readme.txt'), 'hi')
   fs.mkdirSync(path.join(dir, 'nested'))
   fs.writeFileSync(path.join(dir, 'nested', 'config-loader.ts'), 'c')
+  // Never indexed: a binary file and a build-output folder.
+  fs.writeFileSync(path.join(dir, 'logo.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+  fs.mkdirSync(path.join(dir, 'dist'))
+  fs.writeFileSync(path.join(dir, 'dist', 'bundle-alpha.js'), 'x')
 
   const input = page.getByTestId('command-palette-input')
   const results = page.getByTestId('command-palette-file')
@@ -62,6 +66,27 @@ test('file mode: lists, fuzzy-filters and opens files from the open folder', asy
       await row.click()
       await expect(page.locator('[data-tab-title="readme.txt"]')).toBeVisible()
       await expect(palette).not.toBeVisible()
+    })
+
+    await test.step('binary files and build folders are not indexed', async () => {
+      await sendIPC(electronApp, 'menu:goto-file')
+      await expect(results).toHaveCount(3) // alpha.txt, readme.txt, nested/config-loader.ts
+      // Fuzzy matching may still surface a loose hit (e.g. "logo" → nested/config-loader),
+      // so assert on the excluded names themselves.
+      await input.fill('logo.png')
+      await expect(results.filter({ hasText: 'logo.png' })).toHaveCount(0)
+      await input.fill('bundle-alpha')
+      await expect(results.filter({ hasText: 'bundle-alpha.js' })).toHaveCount(0)
+      await input.fill('')
+      await expect(results).toHaveCount(3)
+    })
+
+    await test.step('shows the searched folder; Close Folder empties the search', async () => {
+      await expect(page.getByTestId('command-palette-scope')).toContainText(path.basename(dir))
+      await page.getByTestId('command-palette-close-folder').click()
+      await expect(page.getByTestId('command-palette-scope')).toHaveCount(0)
+      await expect(page.getByText('No folder is open.')).toBeVisible()
+      await expect(page.locator('[data-tab-title="readme.txt"]')).toBeVisible() // tabs stay open
     })
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })

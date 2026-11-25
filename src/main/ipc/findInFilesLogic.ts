@@ -2,6 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as iconv from 'iconv-lite'
 import * as chardet from 'chardet'
+import { isBinaryFileName, isExcludedDirName } from '../../shared/indexExclude'
 
 export interface FindInFilesOptions {
   searchId?: string
@@ -48,10 +49,18 @@ export function parseFilter(filter: string): RegExp {
   return new RegExp(patterns.join('|') + '$', 'i')
 }
 
+/**
+ * Walk `dir` and yield matching file paths. Dotfiles/dotdirs and build/cache
+ * output folders (see `isExcludedDirName`) are always skipped below the root;
+ * the root itself is never filtered, so pointing at `out/` still works.
+ * `skipBinary` drops files whose extension marks them as binary — callers pass
+ * it unless the user explicitly asked for a file type.
+ */
 export async function* collectFilesAsync(
   dir: string,
   filterRe: RegExp,
-  recursive: boolean
+  recursive: boolean,
+  skipBinary = false
 ): AsyncGenerator<string> {
   let dirVisits = 0
 
@@ -69,13 +78,14 @@ export async function* collectFilesAsync(
     }
 
     for (const entry of entries) {
-      if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
+      if (entry.name.startsWith('.')) continue
 
       const full = path.join(current, entry.name)
 
       if (entry.isDirectory()) {
-        if (recursive) yield* walk(full)
+        if (recursive && !isExcludedDirName(entry.name)) yield* walk(full)
       } else if (entry.isFile()) {
+        if (skipBinary && isBinaryFileName(entry.name)) continue
         if (filterRe.test(entry.name)) {
           yield full
         }
