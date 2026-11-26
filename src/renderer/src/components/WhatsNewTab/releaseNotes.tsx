@@ -32,6 +32,27 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '1.6.18',
+    summary: (
+      <>
+        Open dialogs now show <strong>hidden files and folders</strong>.
+      </>
+    ),
+    highlights: [
+      {
+        title: 'Pick hidden files and folders',
+        body: (
+          <>
+            <strong>File → Open File</strong>, <strong>Open Folder</strong>, plugin install and{' '}
+            <strong>Tools → Hash → Generate from files</strong> now list hidden items such as{' '}
+            <span className="font-mono">.config</span> or <span className="font-mono">.env</span>, so you can
+            open them without typing the path.
+          </>
+        )
+      }
+    ]
+  },
+  {
     version: '1.6.17',
     summary: (
       <>

@@ -10,6 +10,13 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 
 ## [Unreleased]
 
+## [1.6.18]
+
+### Changed
+- **Open dialogs show hidden files and folders.** File → Open File, Open Folder, plugin install
+  and Tools → Hash → Generate from files now list hidden items (for example `.config` or `.env`),
+  so you can pick them without typing the path.
+
 ## [1.6.17]
 
 ### Added
@@ -348,7 +355,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 - **Settings page reset its selected category** when you switched to another tab and back — the
   active category is now preserved.
 
-[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.17...HEAD
+[Unreleased]: https://github.com/novapizza/novapad/compare/v1.6.18...HEAD
+[1.6.18]: https://github.com/novapizza/novapad/compare/v1.6.17...v1.6.18
 [1.6.17]: https://github.com/novapizza/novapad/compare/v1.6.16...v1.6.17
 [1.6.16]: https://github.com/novapizza/novapad/compare/v1.6.15...v1.6.16
 [1.6.15]: https://github.com/novapizza/novapad/compare/v1.6.14...v1.6.15
