@@ -82,7 +82,7 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
             // Keeping a single filter forces the dialog to always show every
             // file type by default.
             const result = await dialog.showOpenDialog(win, {
-              properties: ['openFile', 'multiSelections'],
+              properties: ['openFile', 'multiSelections', 'showHiddenFiles'],
               filters: [{ name: 'All Files', extensions: ['*'] }]
             })
             if (!result.canceled) {
@@ -95,7 +95,7 @@ export function buildMenu(win: BrowserWindow, recentFiles: string[] = []): void 
           ...displayKey('CmdOrCtrl+Shift+O'),
           click: async () => {
             const result = await dialog.showOpenDialog(win, {
-              properties: ['openDirectory']
+              properties: ['openDirectory', 'showHiddenFiles']
             })
             if (!result.canceled) {
               win.webContents.send('menu:folder-open', result.filePaths[0])

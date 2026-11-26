@@ -44,7 +44,7 @@ export function registerPluginHandlers(): void {
     if (!win) return null
 
     const result = await dialog.showOpenDialog(win, {
-      properties: ['openFile', 'openDirectory'],
+      properties: ['openFile', 'openDirectory', 'showHiddenFiles'],
       title: 'Select Plugin (folder or .zip)',
       filters: [
         { name: 'Plugin Package', extensions: ['zip'] },
