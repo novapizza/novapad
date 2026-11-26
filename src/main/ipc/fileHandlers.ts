@@ -305,7 +305,7 @@ export function registerFileHandlers(): void {
     // e.g. "Text Files" and reopen with it. Keeping a single filter forces
     // the dialog to always show every file type by default.
     const result = await dialog.showOpenDialog(win, {
-      properties: ['openFile', 'multiSelections'],
+      properties: ['openFile', 'multiSelections', 'showHiddenFiles'],
       filters: [{ name: 'All Files', extensions: ['*'] }]
     })
     if (result.canceled || result.filePaths.length === 0) return null
@@ -316,7 +316,7 @@ export function registerFileHandlers(): void {
     const win = BrowserWindow.getFocusedWindow()
     if (!win) return null
     const result = await dialog.showOpenDialog(win, {
-      properties: ['openDirectory']
+      properties: ['openDirectory', 'showHiddenFiles']
     })
     if (result.canceled || result.filePaths.length === 0) return null
     return result.filePaths[0]

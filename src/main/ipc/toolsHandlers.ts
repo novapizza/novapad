@@ -44,7 +44,7 @@ export function registerToolsHandlers(): void {
     const win = BrowserWindow.fromWebContents(event.sender) ?? undefined
     const result = await dialog.showOpenDialog(win!, {
       title: `Generate ${algo.toUpperCase()} from files`,
-      properties: ['openFile', 'multiSelections'],
+      properties: ['openFile', 'multiSelections', 'showHiddenFiles'],
       filters: [{ name: 'All Files', extensions: ['*'] }]
     })
     if (result.canceled || result.filePaths.length === 0) {
