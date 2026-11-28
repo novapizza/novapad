@@ -49,6 +49,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             open them without typing the path.
           </>
         )
+      },
+      {
+        title: 'Update notifications are easier to see',
+        body: (
+          <>
+            <strong>Help → Check for Updates</strong> messages now appear
+            above any open dialog, on a solid colored background that stays readable in dark theme.
+            On a copy that can't update itself, it now tells you why instead of doing nothing.
+          </>
+        )
       }
     ]
   },

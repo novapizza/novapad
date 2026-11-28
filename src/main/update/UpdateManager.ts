@@ -13,6 +13,8 @@ export class UpdateManager {
   private installTimer: ReturnType<typeof setTimeout> | null = null
   private checkInterval: ReturnType<typeof setInterval> | null = null
   private enabled = false
+  /** Why auto-update is off, shown to the user when they check manually. */
+  private disabledReason: string | null = null
   /** macOS: Squirrel.Mac has staged the update (native 'update-downloaded'). */
   private squirrelReady = false
   /** macOS: a manual install is already waiting on Squirrel — ignore repeat clicks. */
@@ -25,10 +27,12 @@ export class UpdateManager {
   async init(): Promise<void> {
     if (process.env['E2E_TEST'] === '1') {
       this.log('info', 'disabled (E2E mode)')
+      this.disabledReason = 'Updates are turned off in test mode.'
       return
     }
     if (!app.isPackaged) {
       this.log('info', 'disabled (unpackaged)')
+      this.disabledReason = 'Updates are turned off in development builds.'
       return
     }
     // Linux: only the AppImage self-updates (it swaps its own file, no root).
@@ -36,10 +40,12 @@ export class UpdateManager {
     // polkit password prompt on quit — those users update through a package.
     if (process.platform === 'linux' && !process.env['APPIMAGE']) {
       this.log('info', 'disabled (rpm/deb install — update via package manager)')
+      this.disabledReason = 'Update NovaPad through your package manager.'
       return
     }
     if (!(await this.canWriteInstallDir())) {
       this.log('info', 'disabled (no write access to install dir — manual installer required)')
+      this.disabledReason = "This copy of NovaPad can't update itself. Download the latest installer to update."
       return
     }
 
@@ -189,7 +195,18 @@ export class UpdateManager {
   }
 
   async checkForUpdates(manual: boolean): Promise<void> {
-    if (!this.enabled) return
+    if (!this.enabled) {
+      if (!manual) return
+      // Dev-only: play the full event sequence so the update toasts can be seen.
+      if (!app.isPackaged && process.env['NOVAPAD_UPDATE_PREVIEW'] === '1') {
+        this.previewUpdateFlow()
+        return
+      }
+      // A manual check must always answer, even when updates are off.
+      this.log('info', 'manual check while disabled', { reason: this.disabledReason })
+      this.send('update:disabled', { reason: this.disabledReason })
+      return
+    }
     this.log('info', 'checkForUpdates called', { manual })
     this.manualCheckInFlight = manual
     try {
@@ -198,6 +215,19 @@ export class UpdateManager {
       this.manualCheckInFlight = false
       void err
     }
+  }
+
+  /** Dev preview (NOVAPAD_UPDATE_PREVIEW=1): fake checking → available →
+   *  downloading → downloaded. Never runs in a packaged build. */
+  private previewUpdateFlow(): void {
+    const version = `${app.getVersion()}-preview`
+    this.log('info', 'preview update flow', { version })
+    this.send('update:checking', { manual: true })
+    setTimeout(() => this.send('update:available', { version, manual: true }), 1_500)
+    for (let pct = 10; pct <= 100; pct += 10) {
+      setTimeout(() => this.send('update:downloading', { percent: pct }), 1_500 + pct * 30)
+    }
+    setTimeout(() => this.send('update:downloaded', { version }), 5_000)
   }
 
   isCapable(): boolean {

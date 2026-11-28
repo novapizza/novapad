@@ -217,7 +217,7 @@ const api = {
       'largejson:progress', 'largejson:chunk',
       'menu:check-for-updates',
       'update:checking', 'update:available', 'update:not-available',
-      'update:downloading', 'update:downloaded', 'update:error',
+      'update:downloading', 'update:downloaded', 'update:error', 'update:disabled',
       'deeplink:open', 'deeplink:new'
     ]
     if (!allowedChannels.includes(channel)) return () => {}
@@ -253,7 +253,7 @@ const api = {
       'largejson:progress', 'largejson:chunk',
       'menu:check-for-updates',
       'update:checking', 'update:available', 'update:not-available',
-      'update:downloading', 'update:downloaded', 'update:error',
+      'update:downloading', 'update:downloaded', 'update:error', 'update:disabled',
       'deeplink:open', 'deeplink:new'
     ]
     if (allowedChannels.includes(channel)) {

@@ -1,15 +1,23 @@
+import { createPortal } from "react-dom";
 import { useUIStore } from "../../store/uiStore";
 import { Toaster as Sonner, toast } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
-const Toaster = ({ ...props }: ToasterProps) => {
+/** Highest z-index a browser honours, so toasts sit above every overlay
+ *  (dialogs and palettes use z-[9000]/z-[9999]). */
+const TOP_Z_INDEX = 2147483647;
+
+const Toaster = ({ style, ...props }: ToasterProps) => {
   const theme = useUIStore((s) => s.theme);
 
-  return (
+  // Portal to <body> so no ancestor stacking context can trap the toasts
+  // underneath a dialog or overlay.
+  return createPortal(
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      style={{ zIndex: TOP_Z_INDEX, ...style }}
       toastOptions={{
         classNames: {
           toast:
@@ -20,7 +28,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
         },
       }}
       {...props}
-    />
+    />,
+    document.body
   );
 };
 
