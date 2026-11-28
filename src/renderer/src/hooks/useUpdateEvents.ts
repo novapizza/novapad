@@ -5,37 +5,72 @@ import { useUpdateStore } from '../store/updateStore'
 
 type UpdateToastKind = 'info' | 'success' | 'error'
 
-/** Solid, high-contrast fills. Sonner's rich colors are near-black in dark theme
- *  (info bg is hsl(215 100% 6%)), which made update toasts blend into the editor. */
-const UPDATE_TOAST_BG: Record<UpdateToastKind, string> = {
-  info: '#2563eb',    // blue-600
-  success: '#059669', // emerald-600
-  error: '#dc2626'    // red-600
+interface UpdateToastPalette {
+  bg: string
+  fg: string
+  /** Left stripe + icon colour (inverted info card only). */
+  accent?: string
+  /** Fill for the close/action buttons: the opposite of `bg`. */
+  buttonBg: string
+  buttonFg: string
+}
+
+const SLATE_900 = '#0f172a'
+const SLATE_50 = '#f8fafc'
+
+/**
+ * Info is an inverted card: it flips against the app theme (~18:1 vs the app
+ * background in both), with a blue stripe. A solid blue fill only managed
+ * ~4-5:1 and read like the app's own accent. Success/error stay solid fills.
+ * Sonner's rich colours were near-black in dark theme, hence custom fills.
+ */
+function paletteFor(kind: UpdateToastKind, dark: boolean): UpdateToastPalette {
+  switch (kind) {
+    case 'info':
+      return dark
+        ? { bg: SLATE_50, fg: SLATE_900, accent: '#2563eb', buttonBg: SLATE_900, buttonFg: '#ffffff' }
+        : { bg: SLATE_900, fg: '#ffffff', accent: '#3b82f6', buttonBg: '#ffffff', buttonFg: SLATE_900 }
+    case 'success':
+      return { bg: '#059669', fg: '#ffffff', buttonBg: '#ffffff', buttonFg: SLATE_900 }
+    case 'error':
+      return { bg: '#dc2626', fg: '#ffffff', buttonBg: '#ffffff', buttonFg: SLATE_900 }
+  }
+}
+
+/** The app toggles dark mode with a `dark` class on <html> (Tailwind). */
+function isDarkTheme(): boolean {
+  return document.documentElement.classList.contains('dark')
 }
 
 /**
- * Update toasts use an opaque fill in both themes (they stack above every
- * overlay via the Toaster's z-index). Inline `style` beats sonner's
- * rich-color attribute selectors.
+ * Opaque, theme-aware update toasts (they stack above every overlay via the
+ * Toaster's z-index). Inline `style` beats sonner's rich-colour selectors;
+ * title/description inherit the toast colour so the palette drives them.
  */
 function updateToast(kind: UpdateToastKind, opts: ExternalToast = {}): ExternalToast {
-  const bg = UPDATE_TOAST_BG[kind]
+  const p = paletteFor(kind, isDarkTheme())
   return {
     richColors: false,
     ...opts,
     style: {
-      background: bg,
-      borderColor: bg,
-      color: '#ffffff',
+      background: p.bg,
+      borderColor: p.accent ?? p.bg,
+      color: p.fg,
       boxShadow: '0 10px 30px rgba(0, 0, 0, 0.45)',
+      ...(p.accent ? { borderLeft: `4px solid ${p.accent}` } : {}),
+      // Read by the classNames below (classes are static; colours are not).
+      ['--update-accent' as string]: p.accent ?? p.fg,
+      ['--update-bg' as string]: p.bg,
+      ['--update-fg' as string]: p.fg,
       ...opts.style
     },
+    actionButtonStyle: { background: p.buttonBg, color: p.buttonFg, ...opts.actionButtonStyle },
     classNames: {
-      title: '!text-white font-semibold',
-      description: '!text-white/90',
-      icon: '!text-white',
-      closeButton: '!bg-white !text-slate-900 !border-white',
-      actionButton: '!bg-white !text-slate-900 font-semibold',
+      title: '!text-inherit font-semibold',
+      description: '!text-inherit opacity-90',
+      icon: '!text-[var(--update-accent)]',
+      closeButton: '!bg-[var(--update-bg)] !text-[var(--update-fg)] !border-[var(--update-fg)]',
+      actionButton: 'font-semibold',
       ...opts.classNames
     }
   }

@@ -13,7 +13,8 @@ per-version notes in `src/renderer/src/components/WhatsNewTab/releaseNotes.tsx`.
 ### Fixed
 - **Update notifications are easier to see.** Help → Check for Updates messages (checking,
   found, ready to install, up to date, error) now show above any open
-  dialog, on a solid blue/green/red background instead of a near-black one in dark theme.
+  dialog, as a high-contrast card that flips with the theme (green when ready, red on error)
+  instead of a near-black one in dark theme.
 - **Check for Updates always answers.** On a copy that can't update itself (a portable copy in a
   read-only folder, a Linux rpm/deb install), it now says why instead of doing nothing.
 
